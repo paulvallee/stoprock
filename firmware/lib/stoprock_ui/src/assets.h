@@ -34,7 +34,7 @@ extern const Font kFontDseg16;      // percentage
 extern const Font kFontSpleen6x12;  // labels, tips, help page
 extern const Bitmap kLogo;          // 176 px wordmark
 extern const Sprite kRockOutline;   // rock slot circle
-extern const Sprite kCursorRing;    // cursor on the next slot
+extern const Sprite kCursorRing;    // cursor on the next slot: a bold ring within the slot
 extern const Sprite kCheck;         // made
 extern const Sprite kCross;         // missed
 

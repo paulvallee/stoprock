@@ -8,7 +8,7 @@ pio device monitor             # serial console, 115200 baud
 pio run -e emu                 # build the simulator image (see ../simulator)
 pio test -e native             # logic tests on this computer
 pio run -e render && .pio/build/render/program /tmp/r && python3 ../tools/compare_render.py /tmp/r
-                               # check the device's screens match the mockups pixel for pixel
+                               # check the device's screens match the mockups pixel for pixel (main, low battery, help, and the cursor at all 17 positions)
 ```
 
 ## Layout

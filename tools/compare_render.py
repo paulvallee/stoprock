@@ -24,6 +24,8 @@ def main():
         "battery": screen.main_screen(render.STONES, shots, tip=render.WARNING, warn=True),
         "help": screen.help_page(logo.device_logo(), "Last game 9/12 shots made", shot_pct=75, battery=84, battery_note="~11 games battery left"),
     }
+    for n in range(17):
+        refs[f"cursor{n:02d}"] = screen.main_screen(render.STONES, [i % 3 != 2 for i in range(n)], tip=render.TIPS[0])
     rows, worst = [], 0
     for name, ref in refs.items():
         fw = Image.open(src / f"{name}.pbm").convert("1")

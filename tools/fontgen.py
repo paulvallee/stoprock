@@ -113,7 +113,7 @@ def main():
     emit_bitmap("kLogo", logo.device_logo(), out)
     # Shapes from tools/mockups/screen.py main_screen(), drawn around an integer centre.
     emit_sprite("kRockOutline", lambda d, c: d.ellipse([c - 7, c - 7, c + 7, c + 7], outline=0, width=1), 23, out)
-    emit_sprite("kCursorRing", lambda d, c: d.ellipse([c - 10, c - 10, c + 10, c + 10], outline=0, width=2), 23, out)
+    emit_sprite("kCursorRing", lambda d, c: d.ellipse([c - 7, c - 7, c + 7, c + 7], outline=0, width=3), 23, out)
     emit_sprite("kCheck", lambda d, c: d.line([(c - 4, c), (c - 1, c + 3), (c + 4, c - 4)], fill=0, width=2), 23, out)
     emit_sprite("kCross", lambda d, c: (d.line([(c - 3, c - 3), (c + 3, c + 3)], fill=0, width=2),
                                         d.line([(c - 3, c + 3), (c + 3, c - 3)], fill=0, width=2)), 23, out)

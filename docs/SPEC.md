@@ -70,7 +70,7 @@ A stone gives at most one **B2H** (back line, or tee line, to hog line) followed
 ## 5. Shots
 
 - 8 ends × 2 rocks = 16 slots, filled in order.
-- The **cursor** (a thick black ring) sits on the slot the next made/missed entry will fill. At the start of a game it is on end 1, rock 1. When all 16 are filled the cursor disappears.
+- The **cursor** (the slot's own circle drawn bold, 3 px, so it never reaches past its slot) sits on the slot the next made/missed entry will fill. At the start of a game it is on end 1, rock 1. When all 16 are filled the cursor disappears.
 - Up/down with all 16 filled, or undo with nothing to undo: error buzz, no change.
 - **Percentage** = made ÷ rocks logged so far this game. Empty slots don't count.
 - Each game is stored in the databank (section 6) with every rock's result.

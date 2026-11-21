@@ -132,7 +132,19 @@ class SegFont:
         self.draw(d, s, x, (y0 + y1 - self.h) // 2)
 
 
+_fonts = None
+
+
 def fonts():
+    """Created once: ink() caches measurements by font object, so fonts must not be recreated
+    (a new font object can reuse an old one's id and pick up its measurements)."""
+    global _fonts
+    if _fonts is None:
+        _fonts = _make_fonts()
+    return _fonts
+
+
+def _make_fonts():
     return dict(
         label=bdf("spleen-6x12"),
         big=ImageFont.truetype(str(DSEG), 25),
@@ -150,9 +162,10 @@ def rock_xy(k):
     return SH_X0 + (18 if j == 0 else 37), top + pitch * end + pitch / 2
 
 
-def main_screen(stones, shots, tip=None, warn=False):
+def main_screen(stones, shots, tip=None, warn=False, show_cursor=True):
     """stones: newest first, each (bh, hh) with None for a split not timed.
-    shots: True made / False missed, in throw order. The ring marks the next slot."""
+    shots: True made / False missed, in throw order. The cursor (a bold ring, inside the
+    slot itself) marks the next slot."""
     fs = fonts()
     img = Image.new("1", (W, H), 1)
     d = ImageDraw.Draw(img)
@@ -203,8 +216,8 @@ def main_screen(stones, shots, tip=None, warn=False):
                 else:
                     d.line([(cx - 3, cy - 3), (cx + 3, cy + 3)], fill=0, width=2)
                     d.line([(cx - 3, cy + 3), (cx + 3, cy - 3)], fill=0, width=2)
-            if k == cursor:
-                d.ellipse([cx - 10, cy - 10, cx + 10, cy + 10], outline=0, width=2)
+            if k == cursor and show_cursor:  # bold ring within the slot: never touches its neighbours
+                d.ellipse([cx - 7, cy - 7, cx + 7, cy + 7], outline=0, width=3)
 
     # percentage: DSEG7 digits packed by their ink, % sign drawn to match
     # one line straight across: over the tip strip and the percentage row alike

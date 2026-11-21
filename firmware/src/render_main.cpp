@@ -43,6 +43,19 @@ int main(int argc, char** argv) {
     snprintf(path, sizeof path, "%s/battery.pbm", dir);
     writePbm(c, path);
 
+    // The cursor at every position: 0-16 rocks logged, a mix of made and missed.
+    v.warning = false;
+    for (int n = 0; n <= 16; ++n) {
+        ShotLog s;
+        for (int i = 0; i < n; ++i) s.add(i % 3 != 2);
+        v.shots = &s;
+        v.tip1 = "Rocker up: made shot";
+        v.tip2 = "Rocker down: missed";
+        drawMain(c, v);
+        snprintf(path, sizeof path, "%s/cursor%02d.pbm", dir, n);
+        writePbm(c, path);
+    }
+
     drawHelp(c, "Last game 9/12 shots made", 75, 84, "~11 games battery left");
     snprintf(path, sizeof path, "%s/help.pbm", dir);
     writePbm(c, path);
