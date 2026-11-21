@@ -23,6 +23,7 @@ constexpr int64_t kPowerHoldUs = 3 * kSec;
 constexpr int64_t kIdleSleepUs = 20 * kSec;
 constexpr int64_t kPowerOffUs = 5 * 60 * kSec;
 constexpr int64_t kCleanAfterHhUs = 5 * kSec;
+constexpr uint8_t kStonesPerClean = 4;         // ghost-clearing full refresh after every 4th timed stone
 constexpr int64_t kBatteryCheckUs = 30 * kSec;
 constexpr uint32_t kNewGameGapS = 2 * 3600;
 constexpr int kMaxStones = 12;
@@ -114,6 +115,7 @@ uint8_t stoneCount = 0;
 int64_t lastActivity = 0;
 int64_t sleepAt = 0;
 int64_t cleanAt = -1;
+uint8_t stonesSinceClean = 0;
 int64_t nextBatteryCheck = 0;
 bool lowBattery = false;
 uint8_t tipIndex = 0;
@@ -249,14 +251,22 @@ void pushStone(const Stone& s) {
     stones[0] = s;
 }
 
-void closeStone(int64_t now, bool cleanNow) {
+void closeStone(int64_t now) {
     board::led(false);
     sleepAt = now;
-    if (cleanNow) cleanAt = now;
+}
+
+// A timed stone finished (with an HH, or a BH only). Every kStonesPerClean-th one gets a
+// ghost-clearing refresh at the safe moment: cleanDelay after it closed.
+void countTimedStone(int64_t now, int64_t cleanDelay) {
+    if (++stonesSinceClean >= kStonesPerClean) cleanAt = now + cleanDelay;
 }
 
 void handleOutcome(const Outcome& o, int64_t now) {
-    if (o.closedFirst == TimingEvent::BhClosed) Serial.println("timing: BH-only stone closed");
+    if (o.closedFirst == TimingEvent::BhClosed) {
+        Serial.println("timing: BH-only stone closed");
+        countTimedStone(now, 0);
+    }
     switch (o.event) {
     case TimingEvent::Started:
         board::led(true);
@@ -276,8 +286,8 @@ void handleOutcome(const Outcome& o, int64_t now) {
         if (o.hadBh && stoneCount > 0) stones[0].hh = toHundredths(o.us);
         else pushStone(Stone{-1, toHundredths(o.us)});
         Serial.printf("timing: HH %.2f\n", o.us / 1e6);
-        closeStone(now, false);
-        cleanAt = now + kCleanAfterHhUs;
+        closeStone(now);
+        countTimedStone(now, kCleanAfterHhUs);
         syncModel();
         break;
     case TimingEvent::IgnoredTooSoon:
@@ -285,12 +295,13 @@ void handleOutcome(const Outcome& o, int64_t now) {
         break;
     case TimingEvent::Abandoned:
         Serial.println("timing: abandoned");
-        closeStone(now, false);
+        closeStone(now);
         syncModel();  // releases any deferred shots
         break;
     case TimingEvent::BhClosed:
         Serial.println("timing: BH-only stone closed");
-        closeStone(now, true);
+        closeStone(now);
+        countTimedStone(now, 0);
         syncModel();
         break;
     case TimingEvent::None:
@@ -475,10 +486,12 @@ void loop() {
     sound.update(now);
     serialCommands();
 
-    // ghost clearing between stones; advances the tip
+    // ghost clearing between stones; advances the tip. If the next stone has already
+    // started, it waits: that stone's end schedules it again.
     if (cleanAt >= 0 && now >= cleanAt) {
         cleanAt = -1;
         if (!timing.active()) {
+            stonesSinceClean = 0;
             tipIndex = (tipIndex + 1) % kTipCount;
             prefs.putUChar("tip", tipIndex);
             syncModel(true);
