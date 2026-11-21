@@ -19,7 +19,6 @@ TIPS = [
     ("Rocker up: made shot", "Rocker down: missed"),
     ("Hold rocker to undo", "keep holding to undo more"),
     ("Back2Hog: back/tee to hog", "click far hog for Hog2Hog"),
-    ("Back2Hog: back to hog", "Hog2Hog: hog to far hog"),
     ("Top or side button both", "time. Use either one."),
     ("Two clicks within 1.5 s", "count as one"),
     ("After an H2H, the next", "click starts a new stone"),
@@ -83,7 +82,7 @@ def main():
     sheet("stoprock screens", [
         ("Switched off: help page", "Shown after power-off; e-ink keeps it with no power",
          screen.help_page(dev, "Last game 21 Nov   9/12   75%")),
-        ("Main screen with a tip", "Tip 4 of 9; the next tip shows after each timed stone",
+        ("Main screen with a tip", "Tip 4 of 8; the next tip shows after each timed stone",
          screen.main_screen(STONES, BASE + [False], tip=TIPS[3])),
         ("Low battery", "Warning replaces the tip until charged",
          screen.main_screen(STONES, BASE + [False], tip=WARNING, warn=True)),

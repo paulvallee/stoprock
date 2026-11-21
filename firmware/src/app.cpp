@@ -33,7 +33,6 @@ const char* const kTips[][2] = {
     {"Rocker up: made shot", "Rocker down: missed"},
     {"Hold rocker to undo", "keep holding to undo more"},
     {"Back2Hog: back/tee to hog", "click far hog for Hog2Hog"},
-    {"Back2Hog: back to hog", "Hog2Hog: hog to far hog"},
     {"Top or side button both", "time. Use either one."},
     {"Two clicks within 1.5 s", "count as one"},
     {"After an H2H, the next", "click starts a new stone"},

@@ -116,12 +116,11 @@ A stone gives at most one **B2H** (back line, or tee line, to hog line) followed
 | 1 | Rocker up: made shot | Rocker down: missed |
 | 2 | Hold rocker to undo | keep holding to undo more |
 | 3 | Back2Hog: back/tee to hog | click far hog for Hog2Hog |
-| 4 | Back2Hog: back to hog | Hog2Hog: hog to far hog |
-| 5 | Top or side button both | time. Use either one. |
-| 6 | Two clicks within 1.5 s | count as one |
-| 7 | After an H2H, the next | click starts a new stone |
-| 8 | Each switch-on starts | a new game |
-| 9 | Switches off after 5 min | idle. Hold side to wake |
+| 4 | Top or side button both | time. Use either one. |
+| 5 | Two clicks within 1.5 s | count as one |
+| 6 | After an H2H, the next | click starts a new stone |
+| 7 | Each switch-on starts | a new game |
+| 8 | Switches off after 5 min | idle. Hold side to wake |
 | Warning | Battery low | Charge after this game |
 
 ## 9. Help page (shown while off)
