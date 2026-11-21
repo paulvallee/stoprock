@@ -1,0 +1,44 @@
+// Hardware layer. One implementation per target: board_coreink.cpp (M5Stack CoreInk)
+// and board_emu.cpp (Espressif esp-emulator: ESP32-S3, screen and sounds sent to simulator/).
+#pragma once
+#include <stdint.h>
+
+#include "canvas.h"
+
+namespace board {
+
+enum Button : uint8_t { kTop, kSide, kUp, kPress, kDown, kButtonCount };
+
+void begin();
+
+// True while the button is held (raw level, the app debounces).
+bool held(Button b);
+// GPIO number of a button, for interrupts and wake-up.
+int pin(Button b);
+
+// Push the region r of c to the screen and wait until it is visible.
+// full = ghost-clearing refresh of the whole screen.
+void show(const stoprock::Canvas& c, stoprock::Rect r, bool full);
+
+void tone(uint16_t hz);  // 0 = silent
+void led(bool on);
+
+// Battery charge 0-100, or -1 if unknown.
+int batteryPercent();
+
+// Real-time clock, seconds since 1970 (UTC). valid() is false until the clock has been set.
+uint32_t clockNow();
+bool clockValid();
+void clockSet(uint32_t unixSeconds);
+
+// Light sleep until a button is pressed or wakeAtUs (esp_timer time; -1 = none) passes.
+// Returns false if this board doesn't sleep (the app then just idles).
+bool lightSleep(int64_t wakeAtUs);
+
+// Switch off (the e-ink keeps the last image). Returns only where power-off is impossible
+// (on USB power, or in the simulator), after the user presses the side button again.
+void powerOff();
+
+const char* name();
+
+}  // namespace board

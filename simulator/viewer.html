@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>stoprock simulator</title>
+<style>
+  :root { --paper: #dedad6; --ink: #191919; }
+  body { font: 14px/1.4 -apple-system, system-ui, sans-serif; background: #f2f2f0; color: #222;
+         margin: 0; padding: 24px; display: flex; gap: 32px; flex-wrap: wrap; }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  .device { position: relative; width: 480px; height: 560px; }
+  .body { position: absolute; left: 30px; top: 40px; width: 420px; height: 500px; border-radius: 28px;
+          background: #cfd2d6; box-shadow: inset 0 0 0 2px #9aa0a6, 0 6px 18px rgba(0,0,0,.15); }
+  canvas { position: absolute; left: 70px; top: 80px; width: 400px; height: 400px;
+           image-rendering: pixelated; background: var(--paper); box-shadow: 0 0 0 2px #888; }
+  button { font: inherit; border: 0; background: #3a3f45; color: #fff; cursor: pointer;
+           user-select: none; touch-action: none; }
+  button.down { background: #d0592b; }
+  .top { position: absolute; left: 150px; top: 8px; width: 120px; height: 34px; border-radius: 8px 8px 0 0; }
+  .side { position: absolute; left: 0; top: 200px; width: 32px; height: 110px; border-radius: 8px 0 0 8px;
+          writing-mode: vertical-rl; }
+  .rocker { position: absolute; left: 446px; top: 120px; width: 34px; display: flex; flex-direction: column; gap: 4px; }
+  .rocker button { height: 54px; border-radius: 0 8px 8px 0; }
+  .led { position: absolute; left: 400px; top: 56px; width: 12px; height: 12px; border-radius: 50%;
+         background: #555; box-shadow: inset 0 0 2px #000; }
+  .led.on { background: #3ddc5a; box-shadow: 0 0 10px #3ddc5a; }
+  .panel { max-width: 520px; }
+  .keys td { padding: 2px 10px 2px 0; }
+  kbd { background: #fff; border: 1px solid #bbb; border-radius: 4px; padding: 0 5px; font-size: 12px; }
+  #log { height: 260px; overflow: auto; background: #1d1f22; color: #cfd6dc; font: 12px/1.35 ui-monospace, monospace;
+         padding: 8px; border-radius: 6px; white-space: pre-wrap; }
+  label { display: inline-flex; gap: 6px; align-items: center; margin: 8px 0; }
+</style>
+</head>
+<body>
+<div class="device">
+  <button class="top" data-b="top">top</button>
+  <button class="side" data-b="side">side / power</button>
+  <div class="body"></div>
+  <div class="led" id="led"></div>
+  <canvas id="screen" width="200" height="200"></canvas>
+  <div class="rocker">
+    <button data-b="up">▲</button>
+    <button data-b="press">●</button>
+    <button data-b="down">▼</button>
+  </div>
+</div>
+
+<div class="panel">
+  <h1>stoprock simulator</h1>
+  <p>The real firmware, running in Espressif's esp-emulator on an ESP32-S3. Screen updates take as long as
+     the CoreInk's e-ink (0.26 s, or 2 s for a full refresh). Hold a button with the mouse or a key.</p>
+  <table class="keys">
+    <tr><td><kbd>Space</kbd> or <kbd>T</kbd></td><td>top button: timing click</td></tr>
+    <tr><td><kbd>S</kbd></td><td>side button: timing click; hold 3 s to switch off</td></tr>
+    <tr><td><kbd>↑</kbd> / <kbd>↓</kbd></td><td>rocker up: made / rocker down: missed</td></tr>
+    <tr><td><kbd>Enter</kbd></td><td>rocker press: hold 1 s to undo</td></tr>
+  </table>
+  <label><input type="checkbox" id="lowbat"> Low battery</label>
+  <label><input type="checkbox" id="sound" checked> Sound</label>
+  <div id="log"></div>
+</div>
+
+<script>
+const PAPER = [222, 218, 214], INK = [25, 25, 25];
+const canvas = document.getElementById("screen");
+const ctx = canvas.getContext("2d");
+const img = ctx.createImageData(200, 200);
+const log = document.getElementById("log");
+
+function draw(hex) {
+  for (let y = 0; y < 200; y++) {
+    for (let c = 0; c < 25; c++) {
+      const byte = parseInt(hex.substr((y * 25 + c) * 2, 2), 16);
+      for (let b = 0; b < 8; b++) {
+        const black = byte & (0x80 >> b);
+        const i = (y * 200 + c * 8 + b) * 4;
+        const col = black ? INK : PAPER;
+        img.data[i] = col[0]; img.data[i + 1] = col[1]; img.data[i + 2] = col[2]; img.data[i + 3] = 255;
+      }
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
+function flashThen(hex) {           // a full e-ink refresh flashes black, then white
+  ctx.fillStyle = "rgb(25,25,25)"; ctx.fillRect(0, 0, 200, 200);
+  setTimeout(() => { ctx.fillStyle = "rgb(222,218,214)"; ctx.fillRect(0, 0, 200, 200); }, 500);
+  setTimeout(() => draw(hex), 1000);
+}
+
+// sound
+let audio = null, osc = null;
+function tone(hz) {
+  if (!document.getElementById("sound").checked) hz = 0;
+  if (!audio) return;
+  if (osc) { osc.stop(); osc = null; }
+  if (hz > 0) {
+    osc = audio.createOscillator();
+    const gain = audio.createGain();
+    gain.gain.value = 0.05;
+    osc.type = "square";
+    osc.frequency.value = hz;
+    osc.connect(gain).connect(audio.destination);
+    osc.start();
+  }
+}
+function unlockAudio() { if (!audio) audio = new AudioContext(); }
+
+function addLog(text) {
+  log.textContent += text + "\n";
+  if (log.textContent.length > 20000) log.textContent = log.textContent.slice(-15000);
+  log.scrollTop = log.scrollHeight;
+}
+
+const events = new EventSource("/events");
+events.onmessage = (m) => {
+  const e = JSON.parse(m.data);
+  if (e.type === "fb") e.full ? flashThen(e.data) : draw(e.data);
+  else if (e.type === "tone") tone(e.hz);
+  else if (e.type === "led") document.getElementById("led").classList.toggle("on", e.on);
+  else if (e.type === "log") addLog(e.text);
+};
+
+// buttons
+const held = {};
+function send(name, action) {
+  fetch("/button", { method: "POST", body: JSON.stringify({ name, action }) });
+}
+function press(name) {
+  unlockAudio();
+  if (held[name]) return;
+  held[name] = true;
+  document.querySelectorAll(`[data-b="${name}"]`).forEach(b => b.classList.add("down"));
+  send(name, "press");
+}
+function release(name) {
+  if (!held[name]) return;
+  held[name] = false;
+  document.querySelectorAll(`[data-b="${name}"]`).forEach(b => b.classList.remove("down"));
+  send(name, "release");
+}
+document.querySelectorAll("[data-b]").forEach(b => {
+  const name = b.dataset.b;
+  b.addEventListener("pointerdown", (e) => { b.setPointerCapture(e.pointerId); press(name); });
+  b.addEventListener("pointerup", () => release(name));
+  b.addEventListener("pointercancel", () => release(name));
+});
+const KEYS = { " ": "top", t: "top", s: "side", ArrowUp: "up", ArrowDown: "down", Enter: "press" };
+document.addEventListener("keydown", (e) => {
+  const name = KEYS[e.key] || KEYS[e.key.toLowerCase()];
+  if (!name || e.target.tagName === "INPUT") return;
+  e.preventDefault();
+  if (!e.repeat) press(name);
+});
+document.addEventListener("keyup", (e) => {
+  const name = KEYS[e.key] || KEYS[e.key.toLowerCase()];
+  if (name) { e.preventDefault(); release(name); }
+});
+document.getElementById("lowbat").addEventListener("change", (e) => send("lowbat", e.target.checked ? "press" : "release"));
+</script>
+</body>
+</html>

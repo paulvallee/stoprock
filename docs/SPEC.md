@@ -1,6 +1,6 @@
 # stoprock: device specification
 
-A pocket curling stopwatch with a shot-percentage tracker. Version 0.2 (design agreed, firmware not started).
+A pocket curling stopwatch with a shot-percentage tracker. Version 0.2 (design agreed; firmware in `firmware/`, not yet run on hardware).
 
 Mockups: [`mockups/screens.png`](mockups/screens.png) (help page, main screen, low battery) and [`mockups/rocker-storyboard.png`](mockups/rocker-storyboard.png). Regenerate them with `python tools/mockups/render.py`.
 

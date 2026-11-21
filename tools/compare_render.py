@@ -1,0 +1,55 @@
+"""Compare the firmware's screens with the mockups, pixel by pixel.
+
+    cd firmware && pio run -e render && .pio/build/render/program /tmp/render
+    python tools/compare_render.py /tmp/render [out.png]
+"""
+from pathlib import Path
+import sys
+
+from PIL import Image
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "tools" / "mockups"))
+import logo  # noqa: E402
+import render  # noqa: E402
+import screen  # noqa: E402
+
+
+def main():
+    src = Path(sys.argv[1])
+    out = Path(sys.argv[2]) if len(sys.argv) > 2 else None
+    shots = render.BASE + [False]
+    refs = {
+        "main": screen.main_screen(render.STONES, shots, tip=render.TIPS[4]),
+        "battery": screen.main_screen(render.STONES, shots, tip=render.WARNING, warn=True),
+        "help": screen.help_page(logo.device_logo(), "Last game 21 Nov   9/12   75%"),
+    }
+    rows, worst = [], 0
+    for name, ref in refs.items():
+        fw = Image.open(src / f"{name}.pbm").convert("1")
+        diff = Image.new("RGB", (200, 200), "white")
+        n = 0
+        for y in range(200):
+            for x in range(200):
+                a, b = ref.getpixel((x, y)) == 0, fw.getpixel((x, y)) == 0
+                if a != b:
+                    n += 1
+                    diff.putpixel((x, y), (220, 40, 40) if b else (40, 90, 220))
+                elif a:
+                    diff.putpixel((x, y), (190, 190, 190))
+        worst = max(worst, n)
+        print(f"{name:8s} {n:5d} pixels differ")
+        rows.append((ref.convert("RGB"), fw.convert("RGB"), diff))
+    if out:
+        z = 2
+        sheet = Image.new("RGB", (3 * 200 * z + 40, len(rows) * (200 * z + 20) + 20), (240, 240, 240))
+        for i, row in enumerate(rows):
+            for j, im in enumerate(row):
+                sheet.paste(im.resize((200 * z, 200 * z), Image.NEAREST), (10 + j * (200 * z + 10), 10 + i * (200 * z + 20)))
+        sheet.save(out)
+        print("wrote", out)
+    return 0 if worst == 0 else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
