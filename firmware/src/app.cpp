@@ -505,7 +505,13 @@ void setup() {
     bank.begin();
     newGame();  // every switch-on starts a new game
 
-    for (uint8_t b = 0; b < board::kButtonCount; ++b) buttons[b].rawDown = buttons[b].down = board::held(static_cast<board::Button>(b));
+    // A button already held at start-up (the side button used to switch on) is neither a
+    // press nor a hold: it does nothing until it has been let go.
+    for (uint8_t b = 0; b < board::kButtonCount; ++b) {
+        const bool held = board::held(static_cast<board::Button>(b));
+        buttons[b].rawDown = buttons[b].down = held;
+        buttons[b].holdFired = held;
+    }
     attachInterruptArg(board::pin(board::kTop), onEdge, reinterpret_cast<void*>(board::kTop), FALLING);
     attachInterruptArg(board::pin(board::kSide), onEdge, reinterpret_cast<void*>(board::kSide), FALLING);
 

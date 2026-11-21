@@ -82,11 +82,11 @@ void clockSet(uint32_t unixSeconds) {
 bool lightSleep(int64_t) { return false; }  // the emulator doesn't model light sleep on the S3
 
 void powerOff() {
-    // Nothing to switch off: wait for the side button to be let go, pressed and let go
-    // again (standing in for "hold side button to start"), then the app restarts.
+    // Nothing to switch off: wait for the side button to be let go (it was held to switch
+    // off), then restart as soon as it's pressed again, as the CoreInk switches on while
+    // the button is held. The app ignores a button already held when it starts.
     while (digitalRead(kPins[kSide]) == LOW) delay(20);
     while (digitalRead(kPins[kSide]) == HIGH) delay(20);
-    while (digitalRead(kPins[kSide]) == LOW) delay(20);
 }
 
 const char* name() { return "esp-emulator"; }
