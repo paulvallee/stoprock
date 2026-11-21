@@ -48,7 +48,15 @@ static void test_double_press_restarts() {
 static void test_window_boundaries() {
     TimingEngine t;
     t.click(0);
-    TEST_ASSERT_EQUAL(TimingEvent::BH, t.click(sec(1.5)).event);  // 1.5 s is B2H
+    TEST_ASSERT_EQUAL(TimingEvent::BH, t.click(sec(1.0)).event);  // 1.0 s is B2H
+    t.reset();
+    t.click(0);
+    TEST_ASSERT_EQUAL(TimingEvent::Restarted, t.click(sec(0.99)).event);  // under 1 s: double press
+    t.reset();
+    t.click(0);
+    Outcome heavy = t.click(sec(1.6));                     // big-weight tee-to-hog
+    TEST_ASSERT_EQUAL(TimingEvent::BH, heavy.event);
+    TEST_ASSERT_EQUAL_INT64(sec(1.6), heavy.us);
     t.reset();
     t.click(0);
     TEST_ASSERT_EQUAL(TimingEvent::HH, t.click(sec(7.0)).event);  // 7 s is H2H

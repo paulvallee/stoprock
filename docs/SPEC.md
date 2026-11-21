@@ -53,8 +53,8 @@ A stone gives at most one **B2H** (back line, or tee line, to hog line) followed
 | State | Event | Result |
 |---|---|---|
 | **Idle** (usually asleep) | Click | Start a new stone; record the time; green LED on |
-| **Started** | Click under 1.5 s later | Double press: restart timing from this click |
-| | Click 1.5 s to under 7 s later | Log **B2H** → *Waiting for H2H* |
+| **Started** | Click under 1 s later | Double press: restart timing from this click |
+| | Click 1 s to under 7 s later | Log **B2H** → *Waiting for H2H* |
 | | Click 7–20 s later | Log **H2H** on a new row (B2H blank) → *Done* |
 | | No click for 20 s | Abandon the stone (nothing logged) → *Idle* |
 | **Waiting for H2H** | Click under 7 s after the B2H click | Ignore it (error buzz); keep timing from the B2H click |
@@ -63,7 +63,7 @@ A stone gives at most one **B2H** (back line, or tee line, to hog line) followed
 | **Done** | — | LED off; sleep at once → *Idle* |
 
 - After an H2H the stone is finished, so the next click always starts the next stone, however soon it comes (an opposing team may throw quickly).
-- The window limits (1.5, 7 and 20 s) are settings, with these values as defaults.
+- The window limits (1, 7 and 20 s) are settings, with these values as defaults. The double-press limit is 1 s, not 1.5 s, because B2H may be timed from the tee line: tee-to-hog is about 0.5 s shorter than back-to-hog, so a peel is about 2 s and big weight can approach 1.6 s.
 - Every result is also saved to the game databank (section 6).
 - The green LED is lit from a stone's first click until it is done or abandoned, as the "timing in progress" sign.
 
@@ -119,7 +119,7 @@ A stone gives at most one **B2H** (back line, or tee line, to hog line) followed
 | 2 | Hold rocker to undo | keep holding to undo more |
 | 3 | Back2Hog: back/tee to hog | click far hog for Hog2Hog |
 | 4 | Top or side button both | time. Use either one. |
-| 5 | Two clicks within 1.5 s | count as one |
+| 5 | Two clicks within 1 s | count as one |
 | 6 | After an H2H, the next | click starts a new stone |
 | 7 | Each switch-on starts | a new game |
 | 8 | Off after 5 min idle. | Hold side to switch on |
@@ -161,7 +161,7 @@ The physical update takes about 0.26 s whatever the area changed, so the goal is
 
 Rules:
 1. During a stone (first click until done or abandoned), only timing updates run. Rocker entries are logged and beep immediately; their screen update waits.
-2. If a click lands during a ghost-clearing refresh, its time is still exact. The earliest possible result (1.5 s later) waits at most about 0.5 s for the refresh to finish. In play, a stone can't be delivered within 7 s of the previous one crossing the far hog.
+2. If a click lands during a ghost-clearing refresh, its time is still exact. The earliest possible result (1 s later) waits at most about 1 s for the refresh to finish. In play, a stone can't be delivered within 7 s of the previous one crossing the far hog.
 3. The screen runs as its own task; input handling never waits for it. Queued updates are merged into the latest state.
 4. Every click beeps immediately as confirmation.
 5. Target: under 0.3 s from click to visible result. To be measured on the device, at room temperature and on the ice.

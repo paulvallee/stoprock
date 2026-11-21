@@ -20,7 +20,7 @@ TIPS = [
     ("Hold rocker to undo", "keep holding to undo more"),
     ("Back2Hog: back/tee to hog", "click far hog for Hog2Hog"),
     ("Top or side button both", "time. Use either one."),
-    ("Two clicks within 1.5 s", "count as one"),
+    ("Two clicks within 1 s", "count as one"),
     ("After an H2H, the next", "click starts a new stone"),
     ("Each switch-on starts", "a new game"),
     ("Off after 5 min idle.", "Hold side to switch on"),
