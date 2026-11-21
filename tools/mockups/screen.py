@@ -298,8 +298,8 @@ def help_page(device_logo, last_game, shot_pct=None, battery=None, battery_note=
     line(" H2H hog line to hog line")
     y += 8
     tag("SHOTS", "use rocker")
-    line(" up = made     down = missed")
-    line(" hold 0.5s = undo last shot")
+    line(" up   = made   down = missed")
+    line(" hold = undo last shot")
     y += 6
     d.line([(4, y), (195, y)], fill=0)
     y += 6
