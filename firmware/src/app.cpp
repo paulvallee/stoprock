@@ -36,7 +36,7 @@ const char* const kTips[][2] = {
     {"Back2Hog: back to hog", "Hog2Hog: hog to far hog"},
     {"Top or side button both", "time. Use either one."},
     {"Two clicks within 1.5 s", "count as one"},
-    {"After an HH, the next", "click starts a new stone"},
+    {"After an H2H, the next", "click starts a new stone"},
     {"Each switch-on starts", "a new game"},
     {"Switches off after 5 min", "idle. Hold side to wake"},
 };
@@ -247,7 +247,7 @@ void closeStone(int64_t now) {
     sleepAt = now;
 }
 
-// A timed stone finished (with an HH, or a BH only). At the safe moment, delay after it
+// A timed stone finished (with an H2H, or a B2H only). At the safe moment, delay after it
 // closed, the tip moves on with a partial update; every kStonesPerClean-th stone that update
 // is a ghost-clearing full refresh instead.
 void countTimedStone(int64_t now, int64_t delay) {
@@ -258,7 +258,7 @@ void countTimedStone(int64_t now, int64_t delay) {
 
 void handleOutcome(const Outcome& o, int64_t now) {
     if (o.closedFirst == TimingEvent::BhClosed) {
-        Serial.println("timing: BH-only stone closed");
+        Serial.println("timing: B2H-only stone closed");
         countTimedStone(now, 0);
     }
     switch (o.event) {
@@ -272,7 +272,7 @@ void handleOutcome(const Outcome& o, int64_t now) {
     case TimingEvent::BH:
         pushStone(Stone{toHundredths(o.us), -1});
         bank.addStone(toStored(stones[0].bh), StoneTimes::kNoTime, board::clockNow());
-        Serial.printf("timing: BH %.2f\n", o.us / 1e6);
+        Serial.printf("timing: B2H %.2f\n", o.us / 1e6);
         syncModel();
         break;
     case TimingEvent::HH:
@@ -283,13 +283,13 @@ void handleOutcome(const Outcome& o, int64_t now) {
             pushStone(Stone{-1, toHundredths(o.us)});
             bank.addStone(StoneTimes::kNoTime, toStored(stones[0].hh), board::clockNow());
         }
-        Serial.printf("timing: HH %.2f\n", o.us / 1e6);
+        Serial.printf("timing: H2H %.2f\n", o.us / 1e6);
         closeStone(now);
         countTimedStone(now, kCleanAfterHhUs);
         syncModel();
         break;
     case TimingEvent::IgnoredTooSoon:
-        Serial.println("timing: too soon after BH, ignored");
+        Serial.println("timing: too soon after B2H, ignored");
         break;
     case TimingEvent::Abandoned:
         Serial.println("timing: abandoned");
@@ -297,7 +297,7 @@ void handleOutcome(const Outcome& o, int64_t now) {
         syncModel();  // releases any deferred shots
         break;
     case TimingEvent::BhClosed:
-        Serial.println("timing: BH-only stone closed");
+        Serial.println("timing: B2H-only stone closed");
         closeStone(now);
         countTimedStone(now, 0);
         syncModel();

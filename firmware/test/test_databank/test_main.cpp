@@ -68,10 +68,10 @@ static void test_times_are_stored() {
     Databank db(st);
     db.begin();
     db.startGame(0, false);
-    db.addStone(342, NONE, 1);        // BH 3.42
-    db.setLastHogToHog(1381, 2);      // ... and its HH 13.81
-    db.addStone(NONE, 1402, 3);       // HH only
-    db.addStone(338, NONE, 4);        // BH only
+    db.addStone(342, NONE, 1);        // B2H 3.42
+    db.setLastHogToHog(1381, 2);      // ... and its H2H 13.81
+    db.addStone(NONE, 1402, 3);       // H2H only
+    db.addStone(338, NONE, 4);        // B2H only
     GameRecord g;
     TEST_ASSERT_TRUE(db.load(1, g));
     TEST_ASSERT_EQUAL_UINT16(3, g.stoneCount);

@@ -2,7 +2,7 @@
 
 A pocket curling stopwatch and shot-percentage tracker.
 
-- **Timing:** click at the back line, near hog and far hog. The stoprock works out back-line-to-hog (BH) and hog-to-hog (HH) times from the gaps and shows the newest result large, in a fixed spot, as fast as the e-ink screen allows.
+- **Timing:** click at the back line, near hog and far hog. The stoprock works out back-line-to-hog (B2H) and hog-to-hog (H2H) times from the gaps and shows the newest result large, in a fixed spot, as fast as the e-ink screen allows.
 - **Shots:** rocker up for a made shot, down for a miss, hold to undo. Tracks your percentage for the game and over the season.
 
 ![stoprock screens](docs/mockups/screens.png)

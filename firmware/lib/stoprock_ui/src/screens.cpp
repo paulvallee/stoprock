@@ -235,8 +235,8 @@ void drawHelp(Canvas& c, const char* lastGame) {
     y += 18;
     tag("TIMING", "top or side button");
     line(" click back line, hog, far hog");
-    line(" BH  back line to hog line");
-    line(" HH  hog line to hog line");
+    line(" B2H back or tee to hog line");
+    line(" H2H hog line to hog line");
     y += 5;
     tag("SHOTS", "rocker");
     line(" up = made     down = missed");

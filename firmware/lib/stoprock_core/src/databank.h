@@ -59,9 +59,9 @@ public:
     // The game in progress. Change it through the calls below.
     const GameRecord& current() const { return current_; }
     void setShots(uint8_t count, uint16_t bits, uint32_t now);
-    // A stone's first result: a BH (hogToHog = kNoTime), or an HH with no BH.
+    // A stone's first result: a B2H (hogToHog = kNoTime), or an H2H with no B2H.
     void addStone(uint16_t backToHog, uint16_t hogToHog, uint32_t now);
-    // The HH that completes the last stone's BH.
+    // The H2H that completes the last stone's B2H.
     void setLastHogToHog(uint16_t hogToHog, uint32_t now);
 
     // Stored games: ids run from firstId() to lastId(); a gap means that record was lost.

@@ -22,7 +22,7 @@ TIPS = [
     ("Back2Hog: back to hog", "Hog2Hog: hog to far hog"),
     ("Top or side button both", "time. Use either one."),
     ("Two clicks within 1.5 s", "count as one"),
-    ("After an HH, the next", "click starts a new stone"),
+    ("After an H2H, the next", "click starts a new stone"),
     ("Each switch-on starts", "a new game"),
     ("Switches off after 5 min", "idle. Hold side to wake"),
 ]

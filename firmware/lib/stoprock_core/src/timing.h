@@ -1,5 +1,5 @@
-// Timing engine: turns timestamped clicks into back-line-to-hog (BH) and
-// hog-to-hog (HH) times. Pure logic, no hardware; see docs/SPEC.md section 4.
+// Timing engine: turns timestamped clicks into back-line-to-hog (B2H) and
+// hog-to-hog (H2H) times. Pure logic, no hardware; see docs/SPEC.md section 4.
 #pragma once
 #include <stdint.h>
 
@@ -7,31 +7,31 @@ namespace stoprock {
 
 struct TimingConfig {
     int64_t doublePressUs = 1500000;  // gaps under this are one click
-    int64_t bhMaxUs = 7000000;        // BH is [doublePress, bhMax)
-    int64_t hhMaxUs = 20000000;       // HH is [bhMax, hhMax]; also the wait timeout
+    int64_t bhMaxUs = 7000000;        // B2H is [doublePress, bhMax)
+    int64_t hhMaxUs = 20000000;       // H2H is [bhMax, hhMax]; also the wait timeout
 };
 
 enum class TimingState : uint8_t {
     Idle,        // no stone being timed
-    Started,     // first click recorded, waiting for BH or HH
-    WaitingHH,   // BH logged, waiting for HH
+    Started,     // first click recorded, waiting for B2H or H2H
+    WaitingHH,   // B2H logged, waiting for H2H
 };
 
 enum class TimingEvent : uint8_t {
     None,
     Started,       // a click started a new stone
     Restarted,     // double press: timing restarted from the later click
-    BH,            // BH logged (value in Outcome::us); now waiting for HH
-    HH,            // HH logged; stone done
-    IgnoredTooSoon,// click too soon after a BH; ignored (error buzz)
+    BH,            // B2H logged (value in Outcome::us); now waiting for H2H
+    HH,            // H2H logged; stone done
+    IgnoredTooSoon,// click too soon after a B2H; ignored (error buzz)
     Abandoned,     // started but no result within the timeout
-    BhClosed,      // BH logged but no HH within the timeout; stone done
+    BhClosed,      // B2H logged but no H2H within the timeout; stone done
 };
 
 struct Outcome {
     TimingEvent event = TimingEvent::None;
-    int64_t us = 0;           // BH or HH duration for those events
-    bool hadBh = false;       // for HH: whether this stone already has a BH
+    int64_t us = 0;           // B2H or H2H duration for those events
+    bool hadBh = false;       // for H2H: whether this stone already has a B2H
     // Set when a click arrives after a deadline that poll() never processed
     // (for example straight after sleep): the closing event that was missed.
     TimingEvent closedFirst = TimingEvent::None;
@@ -59,7 +59,7 @@ public:
 private:
     TimingConfig cfg_;
     TimingState state_ = TimingState::Idle;
-    int64_t anchor_ = 0;  // start click (Started) or BH click (WaitingHH)
+    int64_t anchor_ = 0;  // start click (Started) or B2H click (WaitingHH)
 };
 
 }  // namespace stoprock

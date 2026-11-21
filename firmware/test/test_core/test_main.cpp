@@ -48,22 +48,22 @@ static void test_double_press_restarts() {
 static void test_window_boundaries() {
     TimingEngine t;
     t.click(0);
-    TEST_ASSERT_EQUAL(TimingEvent::BH, t.click(sec(1.5)).event);  // 1.5 s is BH
+    TEST_ASSERT_EQUAL(TimingEvent::BH, t.click(sec(1.5)).event);  // 1.5 s is B2H
     t.reset();
     t.click(0);
-    TEST_ASSERT_EQUAL(TimingEvent::HH, t.click(sec(7.0)).event);  // 7 s is HH
+    TEST_ASSERT_EQUAL(TimingEvent::HH, t.click(sec(7.0)).event);  // 7 s is H2H
     t.reset();
     t.click(0);
-    TEST_ASSERT_EQUAL(TimingEvent::HH, t.click(sec(20.0)).event); // 20 s is still HH
+    TEST_ASSERT_EQUAL(TimingEvent::HH, t.click(sec(20.0)).event); // 20 s is still H2H
 }
 
 static void test_click_too_soon_after_bh_is_ignored() {
     TimingEngine t;
     t.click(0);
-    t.click(sec(3));  // BH
+    t.click(sec(3));  // B2H
     TEST_ASSERT_EQUAL(TimingEvent::IgnoredTooSoon, t.click(sec(5)).event);
     TEST_ASSERT_EQUAL(TimingState::WaitingHH, t.state());
-    Outcome hh = t.click(sec(17));  // still measured from the BH click
+    Outcome hh = t.click(sec(17));  // still measured from the B2H click
     TEST_ASSERT_EQUAL(TimingEvent::HH, hh.event);
     TEST_ASSERT_EQUAL_INT64(sec(14), hh.us);
 }
@@ -72,7 +72,7 @@ static void test_click_after_hh_starts_next_stone_immediately() {
     TimingEngine t;
     t.click(0);
     t.click(sec(3));
-    t.click(sec(17));                                            // HH, done
+    t.click(sec(17));                                            // H2H, done
     TEST_ASSERT_EQUAL(TimingEvent::Started, t.click(sec(19.5)).event);  // 2.5 s later
 }
 
@@ -96,7 +96,7 @@ static void test_bh_without_hh_closes_after_timeout() {
 static void test_late_click_after_missed_deadline_starts_new_stone() {
     TimingEngine t;
     t.click(0);
-    t.click(sec(3));                   // BH; nobody polls (asleep)
+    t.click(sec(3));                   // B2H; nobody polls (asleep)
     Outcome o = t.click(sec(60));      // much later
     TEST_ASSERT_EQUAL(TimingEvent::Started, o.event);
     TEST_ASSERT_EQUAL(TimingEvent::BhClosed, o.closedFirst);

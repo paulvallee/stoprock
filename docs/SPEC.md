@@ -48,21 +48,21 @@ Timing clicks are timestamped in the interrupt handler, so screen activity never
 
 ## 4. Timing
 
-A stone gives at most one **BH** (back line to hog line) followed by at most one **HH** (hog line to hog line). Gaps are measured between consecutive clicks.
+A stone gives at most one **B2H** (back line, or tee line, to hog line) followed by at most one **H2H** (hog line to hog line). On screen these are the Back2Hog and Hog2Hog columns. Gaps are measured between consecutive clicks.
 
 | State | Event | Result |
 |---|---|---|
 | **Idle** (usually asleep) | Click | Start a new stone; record the time; green LED on |
 | **Started** | Click under 1.5 s later | Double press: restart timing from this click |
-| | Click 1.5 s to under 7 s later | Log **BH** → *Waiting for HH* |
-| | Click 7–20 s later | Log **HH** on a new row (BH blank) → *Done* |
+| | Click 1.5 s to under 7 s later | Log **B2H** → *Waiting for H2H* |
+| | Click 7–20 s later | Log **H2H** on a new row (B2H blank) → *Done* |
 | | No click for 20 s | Abandon the stone (nothing logged) → *Idle* |
-| **Waiting for HH** | Click under 7 s after the BH click | Ignore it (error buzz); keep timing from the BH click |
-| | Click 7–20 s after the BH click | Log **HH** on the same row → *Done* |
-| | No click for 20 s after the BH click | Keep the BH-only row → *Idle* |
+| **Waiting for H2H** | Click under 7 s after the B2H click | Ignore it (error buzz); keep timing from the B2H click |
+| | Click 7–20 s after the B2H click | Log **H2H** on the same row → *Done* |
+| | No click for 20 s after the B2H click | Keep the B2H-only row → *Idle* |
 | **Done** | — | LED off; sleep at once → *Idle* |
 
-- After an HH the stone is finished, so the next click always starts the next stone, however soon it comes (an opposing team may throw quickly).
+- After an H2H the stone is finished, so the next click always starts the next stone, however soon it comes (an opposing team may throw quickly).
 - The window limits (1.5, 7 and 20 s) are settings, with these values as defaults.
 - Every result is also saved to the game databank (section 6).
 - The green LED is lit from a stone's first click until it is done or abandoned, as the "timing in progress" sign.
@@ -88,7 +88,7 @@ A stone gives at most one **BH** (back line to hog line) followed by at most one
 | State | Entered when | Woken by |
 |---|---|---|
 | Awake | Any press | — |
-| Light sleep | Straight after an HH; 20 s after a BH with no HH; 20 s after an abandoned start; otherwise 20 s after the last press | Any button (the waking press counts as a normal press), or the timer for the next tip or ghost clearing |
+| Light sleep | Straight after an H2H; 20 s after a B2H with no H2H; 20 s after an abandoned start; otherwise 20 s after the last press | Any button (the waking press counts as a normal press), or the timer for the next tip or ghost clearing |
 | Off | 5 min with no press, or side button held 3 s | Side button held |
 
 - On switching off, the screen gets one full refresh to the **help page** (section 9), which the e-ink keeps with no power.
@@ -102,8 +102,8 @@ A stone gives at most one **BH** (back line to hog line) followed by at most one
 
 | Area | Position | Content |
 |---|---|---|
-| Column labels | y 0–12 | `BH`, `HH`, `SHOTS` in Spleen 6×12 |
-| Newest result | y 13–47, BH x 0–72, HH x 72–152 | DSEG7 Classic Bold 25 px, square decimal point. Blank cell if that split wasn't timed. |
+| Column labels | y 0–12 | `Back2Hog`, `Hog2Hog`, `SHOTS` in Spleen 6×12 |
+| Newest result | y 13–47, B2H x 0–72, H2H x 72–152 | DSEG7 Classic Bold 25 px, square decimal point. Blank cell if that split wasn't timed. |
 | Older results | below, newest first, 15 px rows, up to 8 rows | Drawn 7-segment digits: 12 px high, 7 px wide, 2 px strokes, empty corner pixels, 2 × 2 decimal point. Equal-width digits so points line up. |
 | Tip strip | x 0–152, bottom 26 px | Two lines of Spleen 6×12, max 25 characters each |
 | Shots | x 152–200 | One row per end (1–8), rock 1 and rock 2 side by side; ✓ made, ✗ missed, empty circle not thrown; ring = cursor. End numbers in drawn segments (9 px, 1 px strokes). |
@@ -119,7 +119,7 @@ A stone gives at most one **BH** (back line to hog line) followed by at most one
 | 4 | Back2Hog: back to hog | Hog2Hog: hog to far hog |
 | 5 | Top or side button both | time. Use either one. |
 | 6 | Two clicks within 1.5 s | count as one |
-| 7 | After an HH, the next | click starts a new stone |
+| 7 | After an H2H, the next | click starts a new stone |
 | 8 | Each switch-on starts | a new game |
 | 9 | Switches off after 5 min | idle. Hold side to wake |
 | Warning | Battery low | Charge after this game |
@@ -133,8 +133,8 @@ stoprock logo (176 px), then Spleen 6×12:
 
  [TIMING] top or side button
   click back line, hog, far hog
-  BH  back line to hog line
-  HH  hog line to hog line
+  B2H back or tee to hog line
+  H2H hog line to hog line
 
  [SHOTS]  rocker
   up = made     down = missed
@@ -153,10 +153,10 @@ The physical update takes about 0.26 s whatever the area changed, so the goal is
 | Event | Update |
 |---|---|
 | Start click | Beep and LED on. **No screen update.** |
-| First result of a stone (BH, or HH with no BH) | Beep. One update: move the previous result into the list, and show the new value in the large row. |
-| HH after a BH | Beep. Only the large HH cell. |
+| First result of a stone (B2H, or H2H with no B2H) | Beep. One update: move the previous result into the list, and show the new value in the large row. |
+| H2H after a B2H | Beep. Only the large H2H cell. |
 | Rocker | Beep. That rock, the cursor and the percentage. |
-| Next tip (partial update of the tip strip) | After **every timed stone**: **5 s after its HH click**, or **20 s after its BH click** if it has no HH. A timer wakes the chip from light sleep for it. Abandoned starts don't count. If the next stone has already started, it waits for that stone to end. |
+| Next tip (partial update of the tip strip) | After **every timed stone**: **5 s after its H2H click**, or **20 s after its B2H click** if it has no H2H. A timer wakes the chip from light sleep for it. Abandoned starts don't count. If the next stone has already started, it waits for that stone to end. |
 | Ghost clearing (2 s full refresh) | Takes the place of the tip update after **every 4th timed stone** (a setting, to tune on the real panel); it shows the next tip too. |
 
 Rules:
@@ -174,7 +174,7 @@ Rules:
 | Made | High beep |
 | Missed | Low beep |
 | Undo | Falling two-tone |
-| Not allowed (including a click too soon after a BH) | Error buzz |
+| Not allowed (including a click too soon after a B2H) | Error buzz |
 
 ## 12. Brand
 
@@ -205,4 +205,4 @@ Rules:
 
 ## 16. First firmware milestone
 
-An on-device test: press a button, show a time in the large BH cell, and measure click-to-visible latency, at room temperature and at the rink.
+An on-device test: press a button, show a time in the large B2H cell, and measure click-to-visible latency, at room temperature and at the rink.
