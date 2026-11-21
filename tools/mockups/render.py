@@ -17,7 +17,7 @@ LOGO = ROOT / "assets" / "logo"
 
 TIPS = [
     ("Rocker up: made shot", "Rocker down: missed"),
-    ("Hold rocker 1 s to undo", "your last shot"),
+    ("Hold rocker 0.5 s to undo", "your last shot"),
     ("Click at back line, hog", "and far hog for BH + HH"),
     ("BH: back line to hog", "HH: hog line to hog line"),
     ("Ring marks the slot your", "next shot will fill"),
@@ -96,7 +96,7 @@ def main():
     sheet("Logging your shots with the rocker (ring = cursor on the next slot)", [
         ("1. Rocker UP", "Rock fills with a check, cursor moves on", screen.main_screen(STONES, BASE + [True], tip=TIPS[0])),
         ("2. Rocker UP (by mistake)", "It was actually a miss", screen.main_screen(STONES, BASE + [True, True], tip=TIPS[0])),
-        ("3. HOLD rocker 1 s", "Undo: cursor steps back and clears that rock", screen.main_screen(STONES, BASE + [True], tip=TIPS[0])),
+        ("3. HOLD rocker 0.5 s", "Undo: cursor steps back and clears that rock", screen.main_screen(STONES, BASE + [True], tip=TIPS[0])),
         ("4. Rocker DOWN", "Rock fills with an X, cursor moves on", screen.main_screen(STONES, BASE + [True, False], tip=TIPS[0])),
     ], DOCS / "rocker-storyboard.png", cols=2)
 

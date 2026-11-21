@@ -240,7 +240,7 @@ void drawHelp(Canvas& c, const char* lastGame) {
     y += 5;
     tag("SHOTS", "rocker");
     line(" up = made     down = missed");
-    line(" hold 1 s = undo last shot");
+    line(" hold 0.5 s = undo last shot");
     y += 4;
     c.line(4, y, 195, y);
     y += 4;

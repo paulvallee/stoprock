@@ -270,7 +270,7 @@ def help_page(device_logo, last_game):
     y += 5
     tag("SHOTS", "rocker")
     line(" up = made     down = missed")
-    line(" hold 1 s = undo last shot")
+    line(" hold 0.5 s = undo last shot")
     y += 4
     d.line([(4, y), (195, y)], fill=0)
     y += 4

@@ -53,7 +53,7 @@ first run also downloads the push-button part (`pushbutton.wasm`) from the esp-e
 | <kbd>S</kbd> | **side / power** | Timing click; hold 3 s to switch off (shows the help page; press it again to switch back on) |
 | <kbd>↑</kbd> | rocker **▲** | Made shot |
 | <kbd>↓</kbd> | rocker **▼** | Missed shot |
-| <kbd>Enter</kbd> | rocker **●** | Hold 1 s to undo the last shot |
+| <kbd>Enter</kbd> | rocker **●** | Hold 0.5 s to undo the last shot |
 
 The **Low battery** box holds down a sixth virtual button that the simulator board reads as a low battery.
 

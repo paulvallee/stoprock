@@ -18,7 +18,7 @@ constexpr int64_t kSec = 1000000;
 constexpr int64_t kConfirmUs = 15000;          // a timing press must still be held 15 ms after its edge
 constexpr int64_t kEdgeGapUs = 30000;          // ignore further edges of the same button within 30 ms
 constexpr int64_t kStableUs = 20000;           // rocker debounce
-constexpr int64_t kUndoHoldUs = 1 * kSec;
+constexpr int64_t kUndoHoldUs = kSec / 2;   // 0.5 s
 constexpr int64_t kPowerHoldUs = 3 * kSec;
 constexpr int64_t kIdleSleepUs = 20 * kSec;
 constexpr int64_t kPowerOffUs = 5 * 60 * kSec;
@@ -30,7 +30,7 @@ constexpr int kMaxGames = 64;
 
 const char* const kTips[][2] = {
     {"Rocker up: made shot", "Rocker down: missed"},
-    {"Hold rocker 1 s to undo", "your last shot"},
+    {"Hold rocker 0.5 s to undo", "your last shot"},
     {"Click at back line, hog", "and far hog for BH + HH"},
     {"BH: back line to hog", "HH: hog line to hog line"},
     {"Ring marks the slot your", "next shot will fill"},

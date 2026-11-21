@@ -41,7 +41,7 @@ Graphics library: **M5GFX / M5Unified** (has a driver for this screen, `Panel_GD
 | Side button, held | Power on (from off). Power off when held 3 s while on (to confirm against the hardware's own power-button behaviour). |
 | Rocker up | Log a **made** shot at the cursor |
 | Rocker down | Log a **missed** shot at the cursor |
-| Rocker press, held 1 s | **Undo**: cursor steps back one slot and clears it (like backspace). Repeatable. |
+| Rocker press, held 0.5 s | **Undo**: cursor steps back one slot and clears it (like backspace). Repeatable. |
 | Rocker press, short | Nothing |
 | Rocker press, held while switching on | Start a new game |
 
@@ -112,7 +112,7 @@ A stone gives at most one **BH** (back line to hog line) followed by at most one
 | # | Line 1 | Line 2 |
 |---|---|---|
 | 1 | Rocker up: made shot | Rocker down: missed |
-| 2 | Hold rocker 1 s to undo | your last shot |
+| 2 | Hold rocker 0.5 s to undo | your last shot |
 | 3 | Click at back line, hog | and far hog for BH + HH |
 | 4 | BH: back line to hog | HH: hog line to hog line |
 | 5 | Ring marks the slot your | next shot will fill |
@@ -140,7 +140,7 @@ stoprock logo (176 px), then Spleen 6×12:
 
  [SHOTS]  rocker
   up = made     down = missed
-  hold 1 s = undo last shot
+  hold 0.5 s = undo last shot
  ─────────────────────────────
  Switches off after 5 min idle
  Last game 21 Nov   9/12   75%
