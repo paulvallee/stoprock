@@ -215,7 +215,7 @@ void drawMain(Canvas& c, const MainView& v) {
     }
 }
 
-void drawHelp(Canvas& c, const char* lastGame) {
+void drawHelp(Canvas& c, const char* lastGame, int battery) {
     c.clear();
     const Font& f = kFontSpleen6x12;
     c.blit(kLogo, (W - kLogo.w) / 2, 4);
@@ -244,7 +244,20 @@ void drawHelp(Canvas& c, const char* lastGame) {
     y += 4;
     c.line(4, y, 195, y);
     y += 4;
-    line("Switches off after 5 min idle");
+    if (battery >= 0) {  // battery at switch-off, bottom right: icon and percentage
+        char pct[6];
+        snprintf(pct, sizeof pct, "%d%%", battery > 100 ? 100 : battery);
+        const int bx = W - 4 - (17 + 6 * static_cast<int>(strlen(pct)));
+        c.fillRect(bx, y + 3, bx + 12, y + 3);       // outline
+        c.fillRect(bx, y + 9, bx + 12, y + 9);
+        c.fillRect(bx, y + 3, bx, y + 9);
+        c.fillRect(bx + 12, y + 3, bx + 12, y + 9);
+        c.fillRect(bx + 13, y + 5, bx + 14, y + 7);  // terminal
+        const int fill = pyRound(9.0 * (battery > 100 ? 100 : battery) / 100);
+        if (fill > 0) c.fillRect(bx + 2, y + 5, bx + 2 + fill - 1, y + 7);
+        c.text(f, bx + 17, y, pct);
+    }
+    line("Off after 5 min idle");
     line(lastGame);
 }
 

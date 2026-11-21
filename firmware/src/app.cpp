@@ -192,6 +192,7 @@ struct Model {
     bool help = false;
     bool full = false;      // next update is a ghost-clearing full refresh
     char lastGame[40] = "";
+    int battery = -1;       // help page: charge at switch-off
 };
 
 Model model;
@@ -219,7 +220,7 @@ void displayTask(void*) {
         xSemaphoreGive(modelLock);
 
         if (m.help) {
-            drawHelp(next, m.lastGame);
+            drawHelp(next, m.lastGame, m.battery);
         } else {
             MainView v;
             v.stones = m.stones;
@@ -443,6 +444,7 @@ void showHelpAndPowerOff() {
     Serial.println("power: off");
     publish([](Model& m) {
         strncpy(m.lastGame, line, sizeof m.lastGame - 1);
+        m.battery = board::batteryPercent();
         m.help = true;
         m.full = true;
     });

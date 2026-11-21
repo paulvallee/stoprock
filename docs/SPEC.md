@@ -141,7 +141,7 @@ stoprock logo (176 px), then Spleen 6×12:
   up = made     down = missed
   hold 0.5 s = undo last shot
  ─────────────────────────────
- Switches off after 5 min idle
+ Off after 5 min idle    [▭] 84%
  Last game 21 Nov   9/12   75%
 ```
 

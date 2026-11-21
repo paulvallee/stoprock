@@ -81,7 +81,7 @@ def main():
     header = wm.resize((620, round(wm.height * 620 / wm.width)), Image.LANCZOS).convert("RGB")
     sheet("stoprock screens", [
         ("Switched off: help page", "Shown after power-off; e-ink keeps it with no power",
-         screen.help_page(dev, "Last game 21 Nov   9/12   75%")),
+         screen.help_page(dev, "Last game 21 Nov   9/12   75%", battery=84)),
         ("Main screen with a tip", "Tip 4 of 8; the next tip shows after each timed stone",
          screen.main_screen(STONES, BASE + [False], tip=TIPS[3])),
         ("Low battery", "Warning replaces the tip until charged",

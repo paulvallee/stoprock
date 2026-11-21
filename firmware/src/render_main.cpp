@@ -43,7 +43,7 @@ int main(int argc, char** argv) {
     snprintf(path, sizeof path, "%s/battery.pbm", dir);
     writePbm(c, path);
 
-    drawHelp(c, "Last game 21 Nov   9/12   75%");
+    drawHelp(c, "Last game 21 Nov   9/12   75%", 84);
     snprintf(path, sizeof path, "%s/help.pbm", dir);
     writePbm(c, path);
     return 0;

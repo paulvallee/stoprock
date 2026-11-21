@@ -239,7 +239,7 @@ def main_screen(stones, shots, tip=None, warn=False):
 
 
 # --------------------------------------------------------------------------- help page
-def help_page(device_logo, last_game):
+def help_page(device_logo, last_game, battery=None):
     img = Image.new("1", (W, H), 1)
     d = ImageDraw.Draw(img)
     d.fontmode = "1"
@@ -274,7 +274,16 @@ def help_page(device_logo, last_game):
     y += 4
     d.line([(4, y), (195, y)], fill=0)
     y += 4
-    line("Switches off after 5 min idle")
+    if battery is not None:  # battery at switch-off, bottom right: icon and percentage
+        pct = f"{battery}%"
+        bx = W - 4 - (17 + 6 * len(pct))
+        d.rectangle([bx, y + 3, bx + 12, y + 9], outline=0)
+        d.rectangle([bx + 13, y + 5, bx + 14, y + 7], fill=0)
+        fill = round(9 * max(0, min(100, battery)) / 100)
+        if fill > 0:
+            d.rectangle([bx + 2, y + 5, bx + 2 + fill - 1, y + 7], fill=0)
+        d.text((bx + 17, y), pct, font=f, fill=0)
+    line("Off after 5 min idle")
     line(last_game)
     assert y <= H, f"help page overflows: {y}"
     return img
