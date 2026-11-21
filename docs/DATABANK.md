@@ -17,6 +17,7 @@ One record per game:
 | `shots` | Your rocks in order: `M` made, `X` missed (up to 16) |
 | `made`, `thrown`, `pct` | Summary of `shots`; `pct` is -1 with no rocks thrown |
 | `stones` | Every timed stone in order, as `[back-to-hog, hog-to-hog]` in seconds; `null` where that split wasn't timed (up to 128) |
+| `battery_start`, `battery_end` | Battery charge (%) at switch-on and at switch-off; `null` if unknown (no reading, a game recorded before format version 2, or a game that never switched off cleanly) |
 
 Rules:
 
@@ -35,7 +36,7 @@ the flash and commits each record atomically.
 Keys in the namespace `bank`:
 
 - `meta`: version (1), oldest id, next id, last acknowledged id, as little-endian u32s.
-- `g<id>`: one game, record format version 1:
+- `g<id>`: one game, record format version 2:
 
 | Bytes | Field |
 |---|---|
@@ -48,11 +49,22 @@ Keys in the namespace `bank`:
 | 12–15 | Updated |
 | 16–17 | Shot bits: bit *i* set = rock *i* made |
 | 18–19 | Number of timed stones *n* (0–128) |
-| 20–23 | Reserved (0) |
+| 20 | Battery % at switch-on (0xFF = unknown) |
+| 21 | Battery % at switch-off (0xFF = unknown) |
+| 22–23 | Reserved (0) |
 | 24 … 24 + 4*n* − 1 | Per stone: back-to-hog, hog-to-hog (u16 hundredths; 0xFFFF = not timed) |
 | last | Checksum of all preceding bytes |
 
-All numbers are little-endian. A record that fails its checks is skipped, not shown as a game.
+All numbers are little-endian. A record that fails its checks is skipped, not shown as a game. Version 1
+records (the same, with bytes 20–23 reserved) are still read, with the battery unknown.
+
+## Battery drain log
+
+Each game records the battery at switch-on and switch-off. At switch-off the device estimates the games left
+for the help page: the battery now, divided by the average drain of the last 10 completed games, rounded down.
+A game counts only if it has both readings, lost at least 1 %, and lasted at least 20 minutes, so a quick
+on-and-off or a game played on USB power doesn't skew it. The readings are M5Stack's voltage-based estimate,
+so expect the figure to move around by a game or two.
 
 ## Talking to the device
 
@@ -61,7 +73,7 @@ and replies. One command per line.
 
 | Command | Reply |
 |---|---|
-| `bank` | `@BANK {"first":1,"last":42,"synced":40,"current":42,"version":1}` |
+| `bank` | `@BANK {"first":1,"last":42,"synced":40,"current":42,"version":2}` |
 | `games` | Every stored game |
 | `games new` | Games after the last acknowledged one |
 | `game <id>` | Games from that id on |
@@ -73,8 +85,8 @@ Game listings are framed so they can be parsed from a stream that also carries l
 
 ```text
 @GAMES 2
-{"id":41,"v":1,"started":1795290802,"updated":1795297990,"clock":true,"shots":"MMXMMMXM","made":6,"thrown":8,"pct":75,"stones":[[3.47,13.92],[3.29,null],[null,14.02]]}
-{"id":42,"v":1,"started":1795377202,"updated":1795377300,"clock":true,"shots":"M","made":1,"thrown":1,"pct":100,"stones":[]}
+{"id":41,"v":2,"started":1795290802,"updated":1795297990,"clock":true,"shots":"MMXMMMXM","made":6,"thrown":8,"pct":75,"stones":[[3.47,13.92],[3.29,null],[null,14.02]],"battery_start":88,"battery_end":85}
+{"id":42,"v":2,"started":1795377202,"updated":1795377300,"clock":true,"shots":"M","made":1,"thrown":1,"pct":100,"stones":[],"battery_start":85,"battery_end":null}
 @END
 ```
 

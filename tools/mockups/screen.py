@@ -255,7 +255,7 @@ def draw_pie(d, cx, cy, pct):
                     d.point((cx + dx, cy + dy), fill=0)
 
 
-def help_page(device_logo, last_game, shot_pct=None, battery=None):
+def help_page(device_logo, last_game, shot_pct=None, battery=None, battery_note=None):
     img = Image.new("1", (W, H), 1)
     d = ImageDraw.Draw(img)
     d.fontmode = "1"
@@ -283,9 +283,9 @@ def help_page(device_logo, last_game, shot_pct=None, battery=None):
     line(" B2H back or tee to hog line")
     line(" H2H hog line to hog line")
     y += 8
-    tag("SHOTS", "rocker")
+    tag("SHOTS", "use rocker")
     line(" up = made     down = missed")
-    line(" hold 0.5 s = undo last shot")
+    line(" hold 0.5s = undo last shot")
     y += 6
     d.line([(4, y), (195, y)], fill=0)
     y += 6
@@ -302,6 +302,8 @@ def help_page(device_logo, last_game, shot_pct=None, battery=None):
         draw_pie(d, ix + 7, y + 6, shot_pct)
         percent(shot_pct)
     y += 12
+    if battery_note:  # e.g. "~11 games battery left", from past games' drain
+        d.text((4, y), battery_note, font=f, fill=0)
     if battery is not None:
         bx = ix
         d.rectangle([bx, y + 3, bx + 12, y + 9], outline=0)

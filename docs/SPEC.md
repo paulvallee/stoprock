@@ -79,7 +79,7 @@ A stone gives at most one **B2H** (back line, or tee line, to hog line) followed
 
 - **Every switch-on starts a new game.** Light sleep between stones doesn't restart the chip, so it never splits a game. (If the device switches itself off after 5 minutes idle, the next switch-on is a new game.)
 - A game is written to flash only once it has a shot or a time in it, so switching on and off doesn't leave empty games.
-- The **databank** keeps every game in its own flash partition: start time, shots (made/missed in order), and every timed stone's back-to-hog and hog-to-hog times. Up to 500 games; when full, the oldest is dropped. Each game has a number that is never reused.
+- The **databank** keeps every game in its own flash partition: start time, shots (made/missed in order), every timed stone's back-to-hog and hog-to-hog times, and the battery charge at switch-on and switch-off (the battery drain log). Up to 500 games; when full, the oldest is dropped. Each game has a number that is never reused.
 - A companion app reads new games and acknowledges them; nothing is deleted on acknowledgement. Format and commands: [`DATABANK.md`](DATABANK.md).
 - The clock is kept by the BM8563 real-time clock and set by the companion app (separate project), or over the serial console for now. Games recorded before the clock is set are marked so; their times are relative.
 
@@ -136,15 +136,15 @@ stoprock logo (176 px), then Spleen 6×12:
   B2H back or tee to hog line
   H2H hog line to hog line
 
- [SHOTS]  rocker
+ [SHOTS]  use rocker
   up = made     down = missed
-  hold 0.5 s = undo last shot
+  hold 0.5s = undo last shot
  ─────────────────────────────
  Last game 21 Nov   9/12  (◔) 75%
-                          [▭] 84%
+ ~11 games battery left   [▭] 84%
 ```
 
-`[TIMING]` and `[SHOTS]` are white-on-black labels. The last rows show the most recent game, with its shot percentage beside a small pie, and the battery charge at switch-off beside a battery icon; the two percentages are right-aligned.
+`[TIMING]` and `[SHOTS]` are white-on-black labels. The last rows show the most recent game, with its shot percentage beside a small pie, and the battery charge at switch-off beside a battery icon; the two percentages are right-aligned. Once at least one game has been completed, the battery row starts with an estimate: "~N games battery left" (from the average drain of the last 10 completed games of 20 minutes or more, rounded down), or "Charge before next game" below one game.
 
 ## 10. Screen update plan (responsiveness)
 

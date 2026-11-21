@@ -25,8 +25,10 @@ struct MainView {
 void drawMain(Canvas& c, const MainView& v);
 
 // lastGame: e.g. "Last game 21 Nov   9/12". shotPct: shown with a pie, -1 = none.
-// battery: charge at switch-off, -1 = unknown.
-void drawHelp(Canvas& c, const char* lastGame, int shotPct = -1, int battery = -1);
+// battery: charge at switch-off, -1 = unknown. batteryNote: left of the battery, e.g.
+// "~11 games battery left"; nullptr or "" = none.
+void drawHelp(Canvas& c, const char* lastGame, int shotPct = -1, int battery = -1,
+              const char* batteryNote = nullptr);
 
 // Hundredths of a second from microseconds, rounded.
 inline int32_t toHundredths(int64_t us) { return static_cast<int32_t>((us + 5000) / 10000); }

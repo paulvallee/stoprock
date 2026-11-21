@@ -196,6 +196,65 @@ static void test_full_game_of_stones() {
     TEST_ASSERT_EQUAL_UINT16(1427, g.stones[127].hogToHog);
 }
 
+static void test_battery_is_logged_per_game() {
+    MemStore st;
+    Databank db(st);
+    db.begin();
+    db.startGame(0, true, 90);
+    db.setShots(1, 1, 60);
+    db.endGame(87, 7200);
+    GameRecord g;
+    TEST_ASSERT_TRUE(db.load(1, g));
+    TEST_ASSERT_EQUAL_UINT8(90, g.batteryStart);
+    TEST_ASSERT_EQUAL_UINT8(87, g.batteryEnd);
+    TEST_ASSERT_EQUAL_UINT32(7200, g.updated);
+    db.startGame(8000, true, 87);
+    db.endGame(86, 8100);                  // empty game: nothing stored
+    TEST_ASSERT_EQUAL_UINT32(1, db.count());
+}
+
+static void test_games_left_estimate() {
+    MemStore st;
+    Databank db(st);
+    db.begin();
+    TEST_ASSERT_EQUAL_INT(-1, db.gamesLeft(80));       // nothing to go on yet
+    auto game = [&](uint32_t start, uint32_t secs, int b0, int b1) {
+        db.startGame(start, true, b0);
+        db.setShots(1, 1, start + 1);
+        db.endGame(b1, start + secs);
+    };
+    game(0, 7200, 90, 87);                  // 3 % in a 2-hour game
+    TEST_ASSERT_EQUAL_INT(29, db.gamesLeft(87));        // 87 / 3
+    game(10000, 7200, 87, 82);              // 5 %: average 4 %
+    TEST_ASSERT_EQUAL_INT(20, db.gamesLeft(82));        // 82 / 4 = 20.5, rounded down
+    game(20000, 300, 82, 70);               // 5-minute game: ignored
+    game(30000, 7200, 70, 75);              // charged during the game: ignored
+    TEST_ASSERT_EQUAL_INT(18, db.gamesLeft(75));        // 75 / 4
+    TEST_ASSERT_EQUAL_INT(0, db.gamesLeft(3));
+    TEST_ASSERT_EQUAL_INT(-1, db.gamesLeft(-1));        // battery unknown
+}
+
+static void test_reads_version_1_records() {
+    GameRecord r;
+    r.id = 5;
+    r.shotCount = 2;
+    r.shotBits = 1;
+    r.batteryStart = 50;
+    r.batteryEnd = 40;
+    uint8_t buf[Databank::kMaxRecordSize];
+    const size_t n = Databank::encode(r, buf);
+    buf[1] = 1;                             // as an older firmware wrote it: bytes 20-23 reserved
+    buf[20] = buf[21] = 0;
+    uint8_t c = 0x5A;                       // recompute the checksum the same way encode() does
+    for (size_t i = 0; i + 1 < n; ++i) c = static_cast<uint8_t>((c << 1 | c >> 7) ^ buf[i]);
+    buf[n - 1] = c;
+    GameRecord back;
+    TEST_ASSERT_TRUE(Databank::decode(buf, n, back));
+    TEST_ASSERT_EQUAL_UINT8(2, back.shotCount);
+    TEST_ASSERT_EQUAL_UINT8(GameRecord::kNoBattery, back.batteryStart);
+    TEST_ASSERT_EQUAL_UINT8(GameRecord::kNoBattery, back.batteryEnd);
+}
+
 static void test_json_line() {
     GameRecord r;
     r.id = 12;
@@ -210,8 +269,9 @@ static void test_json_line() {
     char out[256];
     Databank::toJson(r, out, sizeof out);
     TEST_ASSERT_EQUAL_STRING(
-        "{\"id\":12,\"v\":1,\"started\":100,\"updated\":200,\"clock\":true,\"shots\":\"MXM\","
-        "\"made\":2,\"thrown\":3,\"pct\":67,\"stones\":[[3.47,13.92],[null,14.02]]}",
+        "{\"id\":12,\"v\":2,\"started\":100,\"updated\":200,\"clock\":true,\"shots\":\"MXM\","
+        "\"made\":2,\"thrown\":3,\"pct\":67,\"stones\":[[3.47,13.92],[null,14.02]],"
+        "\"battery_start\":null,\"battery_end\":null}",
         out);
     char small[20];
     const int need = Databank::toJson(r, small, sizeof small);
@@ -230,6 +290,9 @@ int main() {
     RUN_TEST(test_erase_all_keeps_counting_and_current_game);
     RUN_TEST(test_encode_decode_round_trip_and_corruption);
     RUN_TEST(test_full_game_of_stones);
+    RUN_TEST(test_battery_is_logged_per_game);
+    RUN_TEST(test_games_left_estimate);
+    RUN_TEST(test_reads_version_1_records);
     RUN_TEST(test_json_line);
     return UNITY_END();
 }

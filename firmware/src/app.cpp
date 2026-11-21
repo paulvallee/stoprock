@@ -170,7 +170,7 @@ Databank bank(bankStore);
 
 // Every switch-on starts a new game; it's stored once it has a shot or a time in it.
 void newGame() {
-    bank.startGame(board::clockNow(), board::clockValid());
+    bank.startGame(board::clockNow(), board::clockValid(), board::batteryPercent());
     shots.clear();
     stoneCount = 0;
     Serial.println("game: new");
@@ -194,6 +194,7 @@ struct Model {
     char lastGame[40] = "";
     int shotPct = -1;       // help page: last game's shot percentage
     int battery = -1;       // help page: charge at switch-off
+    char batteryNote[28] = "";  // help page: games of battery left
 };
 
 Model model;
@@ -221,7 +222,7 @@ void displayTask(void*) {
         xSemaphoreGive(modelLock);
 
         if (m.help) {
-            drawHelp(next, m.lastGame, m.shotPct, m.battery);
+            drawHelp(next, m.lastGame, m.shotPct, m.battery, m.batteryNote);
         } else {
             MainView v;
             v.stones = m.stones;
@@ -425,8 +426,15 @@ void printAudit(const ClockAudit& a, bool current) {
 // ------------------------------------------------------------------ power
 void showHelpAndPowerOff() {
     static char line[40];
-    static int shotPct;
+    static char note[28];
+    static int shotPct, battery;
     shotPct = -1;
+    battery = board::batteryPercent();
+    bank.endGame(battery, board::clockNow());  // log the battery at the end of this game
+    const int left = bank.gamesLeft(battery);
+    if (left < 0) note[0] = 0;
+    else if (left == 0) snprintf(note, sizeof note, "Charge before next game");
+    else snprintf(note, sizeof note, "~%d game%s battery left", left, left == 1 ? "" : "s");
     static GameRecord g;  // big (128 stones): keep it off the stack
     if (!bank.lastGame(g)) {
         snprintf(line, sizeof line, "No games yet");
@@ -451,7 +459,8 @@ void showHelpAndPowerOff() {
     publish([](Model& m) {
         strncpy(m.lastGame, line, sizeof m.lastGame - 1);
         m.shotPct = shotPct;
-        m.battery = board::batteryPercent();
+        m.battery = battery;
+        strncpy(m.batteryNote, note, sizeof m.batteryNote - 1);
         m.help = true;
         m.full = true;
     });

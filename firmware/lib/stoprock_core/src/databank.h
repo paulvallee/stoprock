@@ -34,6 +34,9 @@ struct GameRecord {
     uint8_t shotCount = 0;    // rocks logged, 0-16
     uint16_t shotBits = 0;    // bit i set = rock i made
     uint16_t stoneCount = 0;  // timed stones, oldest first
+    static constexpr uint8_t kNoBattery = 0xFF;
+    uint8_t batteryStart = kNoBattery;  // charge % at switch-on
+    uint8_t batteryEnd = kNoBattery;    // charge % at switch-off (unknown if it never switched off cleanly)
     StoneTimes stones[kMaxStones];
 
     bool empty() const { return shotCount == 0 && stoneCount == 0; }
@@ -41,7 +44,7 @@ struct GameRecord {
 
 class Databank {
 public:
-    static constexpr uint8_t kVersion = 1;            // record format version
+    static constexpr uint8_t kVersion = 2;            // record format version (1 still readable)
     static constexpr size_t kHeaderSize = 24;
     static constexpr size_t kMaxRecordSize = kHeaderSize + 4 * GameRecord::kMaxStones + 1;
     static constexpr uint32_t kDefaultCapacity = 500;
@@ -54,7 +57,7 @@ public:
 
     // Start a new game (every switch-on). It is only written to flash once it has
     // something in it, so switching on and off doesn't fill the databank with empty games.
-    void startGame(uint32_t now, bool clockSet);
+    void startGame(uint32_t now, bool clockSet, int batteryPercent = -1);
 
     // The game in progress. Change it through the calls below.
     const GameRecord& current() const { return current_; }
@@ -63,6 +66,13 @@ public:
     void addStone(uint16_t backToHog, uint16_t hogToHog, uint32_t now);
     // The H2H that completes the last stone's B2H.
     void setLastHogToHog(uint16_t hogToHog, uint32_t now);
+    // The game ends (switch-off): note the battery. Kept only if the game is stored.
+    void endGame(int batteryPercent, uint32_t now);
+
+    // Battery: games left at batteryPercent, from the average drain of the last `recent`
+    // completed games (both readings, a drop of at least 1 %, and at least minSeconds long).
+    // -1 if there are none to go on yet.
+    int gamesLeft(int batteryPercent, uint32_t minSeconds = 20 * 60, uint8_t recent = 10);
 
     // Stored games: ids run from firstId() to lastId(); a gap means that record was lost.
     uint32_t firstId() const { return first_; }

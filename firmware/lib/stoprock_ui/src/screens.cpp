@@ -231,7 +231,7 @@ static void drawPie(Canvas& c, int cx, int cy, int pct) {
     }
 }
 
-void drawHelp(Canvas& c, const char* lastGame, int shotPct, int battery) {
+void drawHelp(Canvas& c, const char* lastGame, int shotPct, int battery, const char* batteryNote) {
     c.clear();
     const Font& f = kFontSpleen6x12;
     c.blit(kLogo, (W - kLogo.w) / 2, 4);
@@ -253,9 +253,9 @@ void drawHelp(Canvas& c, const char* lastGame, int shotPct, int battery) {
     line(" B2H back or tee to hog line");
     line(" H2H hog line to hog line");
     y += 8;
-    tag("SHOTS", "rocker");
+    tag("SHOTS", "use rocker");
     line(" up = made     down = missed");
-    line(" hold 0.5 s = undo last shot");
+    line(" hold 0.5s = undo last shot");
     y += 6;
     c.line(4, y, 195, y);
     y += 6;
@@ -273,6 +273,7 @@ void drawHelp(Canvas& c, const char* lastGame, int shotPct, int battery) {
         percent(shotPct);
     }
     y += 12;
+    if (batteryNote && *batteryNote) c.text(f, 4, y, batteryNote);  // games left, from past drain
     if (battery >= 0) {
         const int bx = ix;
         c.fillRect(bx, y + 3, bx + 12, y + 3);       // outline

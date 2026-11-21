@@ -26,9 +26,11 @@ uint8_t checksum(const uint8_t* p, size_t n) {  // simple, enough to catch a tor
 
 }  // namespace
 
-// Layout, version 1: a 24-byte header, 4 bytes per timed stone, then a checksum byte.
+// Layout, version 2: a 24-byte header, 4 bytes per timed stone, then a checksum byte.
 //   0 'G'   1 version   2 flags (bit 0: clock set)   3 shot count
-//   4-7 id   8-11 started   12-15 updated   16-17 shot bits   18-19 stone count   20-23 reserved (0)
+//   4-7 id   8-11 started   12-15 updated   16-17 shot bits   18-19 stone count
+//   20 battery % at start   21 battery % at end (0xFF = unknown)   22-23 reserved (0)
+// Version 1 is the same with bytes 20-23 all reserved: it reads back with the battery unknown.
 //   then per stone: back-to-hog (u16), hog-to-hog (u16), hundredths, 0xFFFF = not timed
 //   last byte: checksum of everything before it
 size_t Databank::encode(const GameRecord& r, uint8_t* out) {
@@ -43,6 +45,8 @@ size_t Databank::encode(const GameRecord& r, uint8_t* out) {
     put32(out + 12, r.updated);
     put16(out + 16, r.shotBits);
     put16(out + 18, n);
+    out[20] = r.batteryStart;
+    out[21] = r.batteryEnd;
     uint8_t* p = out + kHeaderSize;
     for (uint16_t i = 0; i < n; ++i, p += 4) {
         put16(p, r.stones[i].backToHog);
@@ -53,7 +57,7 @@ size_t Databank::encode(const GameRecord& r, uint8_t* out) {
 }
 
 bool Databank::decode(const uint8_t* in, size_t len, GameRecord& r) {
-    if (len < kHeaderSize + 1 || in[0] != kMagic || in[1] != kVersion || in[3] > 16) return false;
+    if (len < kHeaderSize + 1 || in[0] != kMagic || in[1] < 1 || in[1] > kVersion || in[3] > 16) return false;
     const uint16_t n = get16(in + 18);
     if (n > GameRecord::kMaxStones || len != kHeaderSize + 4u * n + 1) return false;
     if (in[len - 1] != checksum(in, len - 1)) return false;
@@ -65,6 +69,10 @@ bool Databank::decode(const uint8_t* in, size_t len, GameRecord& r) {
     r.updated = get32(in + 12);
     r.shotBits = get16(in + 16) & static_cast<uint16_t>(r.shotCount >= 16 ? 0xFFFF : (1u << r.shotCount) - 1);
     r.stoneCount = n;
+    if (in[1] >= 2) {
+        r.batteryStart = in[20];
+        r.batteryEnd = in[21];
+    }
     const uint8_t* p = in + kHeaderSize;
     for (uint16_t i = 0; i < n; ++i, p += 4) {
         r.stones[i].backToHog = get16(p);
@@ -104,7 +112,13 @@ int Databank::toJson(const GameRecord& r, char* out, size_t len) {
         add(appendTime(out + (n < len ? n : len), room(), r.stones[i].hogToHog));
         add(snprintf(out + (n < len ? n : len), room(), "]"));
     }
-    add(snprintf(out + (n < len ? n : len), room(), "]}"));
+    add(snprintf(out + (n < len ? n : len), room(), "],\"battery_start\":"));
+    add(r.batteryStart == GameRecord::kNoBattery ? snprintf(out + (n < len ? n : len), room(), "null")
+                                                 : snprintf(out + (n < len ? n : len), room(), "%u", r.batteryStart));
+    add(snprintf(out + (n < len ? n : len), room(), ",\"battery_end\":"));
+    add(r.batteryEnd == GameRecord::kNoBattery ? snprintf(out + (n < len ? n : len), room(), "null")
+                                               : snprintf(out + (n < len ? n : len), room(), "%u", r.batteryEnd));
+    add(snprintf(out + (n < len ? n : len), room(), "}"));
     return static_cast<int>(n);
 }
 
@@ -130,10 +144,15 @@ void Databank::saveMeta() {
     store_.put(kMetaKey, m, sizeof m);
 }
 
-void Databank::startGame(uint32_t now, bool clockSet) {
+static uint8_t toBattery(int pct) {
+    return pct < 0 ? GameRecord::kNoBattery : static_cast<uint8_t>(pct > 100 ? 100 : pct);
+}
+
+void Databank::startGame(uint32_t now, bool clockSet, int batteryPercent) {
     current_ = GameRecord();
     current_.started = current_.updated = now;
     current_.clockSet = clockSet;
+    current_.batteryStart = toBattery(batteryPercent);
     currentStored_ = false;
 }
 
@@ -156,6 +175,29 @@ void Databank::setLastHogToHog(uint16_t hogToHog, uint32_t now) {
     current_.stones[current_.stoneCount - 1].hogToHog = hogToHog;
     current_.updated = now;
     save();
+}
+
+void Databank::endGame(int batteryPercent, uint32_t now) {
+    if (!currentStored_) return;  // nothing in it: not worth a record
+    current_.batteryEnd = toBattery(batteryPercent);
+    current_.updated = now;
+    save();
+}
+
+int Databank::gamesLeft(int batteryPercent, uint32_t minSeconds, uint8_t recent) {
+    if (batteryPercent < 0) return -1;
+    static GameRecord g;  // ~540 bytes: keep it off the stack
+    uint32_t drained = 0, games = 0;
+    for (uint32_t id = next_; id-- > first_ && games < recent;) {
+        if (!load(id, g)) continue;
+        if (g.batteryStart == GameRecord::kNoBattery || g.batteryEnd == GameRecord::kNoBattery) continue;
+        if (g.batteryEnd >= g.batteryStart) continue;            // charging, or too little to measure
+        if (g.updated < g.started || g.updated - g.started < minSeconds) continue;
+        drained += g.batteryStart - g.batteryEnd;
+        ++games;
+    }
+    if (games == 0) return -1;
+    return static_cast<int>(static_cast<uint32_t>(batteryPercent) * games / drained);  // rounds down
 }
 
 void Databank::save() {
