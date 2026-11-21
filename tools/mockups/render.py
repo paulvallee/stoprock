@@ -23,7 +23,7 @@ TIPS = [
     ("Two clicks within 1.5 s", "count as one"),
     ("After an H2H, the next", "click starts a new stone"),
     ("Each switch-on starts", "a new game"),
-    ("Switches off after 5 min", "idle. Hold side to wake"),
+    ("Off after 5 min idle.", "Hold side to switch on"),
 ]
 WARNING = ("Battery low", "Charge after this game")
 

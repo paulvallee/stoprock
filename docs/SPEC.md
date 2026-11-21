@@ -120,7 +120,7 @@ A stone gives at most one **B2H** (back line, or tee line, to hog line) followed
 | 5 | Two clicks within 1.5 s | count as one |
 | 6 | After an H2H, the next | click starts a new stone |
 | 7 | Each switch-on starts | a new game |
-| 8 | Switches off after 5 min | idle. Hold side to wake |
+| 8 | Off after 5 min idle. | Hold side to switch on |
 | Warning | Battery low | Charge after this game |
 
 ## 9. Help page (shown while off)

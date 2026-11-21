@@ -37,7 +37,7 @@ const char* const kTips[][2] = {
     {"Two clicks within 1.5 s", "count as one"},
     {"After an H2H, the next", "click starts a new stone"},
     {"Each switch-on starts", "a new game"},
-    {"Switches off after 5 min", "idle. Hold side to wake"},
+    {"Off after 5 min idle.", "Hold side to switch on"},
 };
 constexpr int kTipCount = sizeof kTips / sizeof kTips[0];
 const char* const kWarning[2] = {"Battery low", "Charge after this game"};
