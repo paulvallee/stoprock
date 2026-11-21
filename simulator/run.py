@@ -40,6 +40,7 @@ class Device:
         self.fb = bytearray(STRIDE * H)
         self.lock = threading.Lock()
         self.listeners = []
+        self.history = []  # recent console lines, replayed to a page that connects later
         self.control_port = control_port
         self.control = None
         cmd = [esp_emu, "--chip", "esp32s3", "--firmware", str(firmware),
@@ -64,6 +65,7 @@ class Device:
                 self.emit({"type": "led", "on": line.split()[1] == "1"})
             else:
                 print(line)
+                self.history = (self.history + [line])[-300:]
                 self.emit({"type": "log", "text": line})
         self.emit({"type": "log", "text": f"emulator exited ({self.proc.wait()})"})
 
@@ -128,6 +130,8 @@ def make_handler(device):
                 self.end_headers()
                 q = queue.Queue()
                 device.listeners.append(q)
+                for text in device.history:
+                    q.put({"type": "log", "text": text})
                 with device.lock:
                     q.put({"type": "fb", "full": False, "data": device.fb.hex()})
                 try:
