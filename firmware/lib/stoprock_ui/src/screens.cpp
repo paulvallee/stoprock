@@ -259,23 +259,24 @@ void drawHelp(Canvas& c, const char* lastGame, int shotPct, int battery, const c
     y += 6;
     c.line(4, y, 195, y);
     y += 6;
-    // Bottom right: shot percentage with a pie, battery with its icon. Icons share a
-    // column (room for "100%"); the percentages are right-aligned so the % signs line up.
-    const int ix = W - 4 - 6 * 4 - 17;
+    // Bottom right: shot percentage with a pie, battery with its icon. The icons end at the
+    // same x (room for "100%" after them), and the percentages are right-aligned so the
+    // % signs line up. That leaves 26 characters for "Last game 16/16 shots made".
+    const int iconRight = W - 29, pctRight = W - 2;
     auto percent = [&](int value) {
         char pct[6];
         snprintf(pct, sizeof pct, "%d%%", value < 0 ? 0 : value > 100 ? 100 : value);
-        c.text(f, W - 4 - 6 * static_cast<int>(strlen(pct)), y, pct);
+        c.text(f, pctRight - 6 * static_cast<int>(strlen(pct)), y, pct);
     };
     c.text(f, 4, y, lastGame);
     if (shotPct >= 0) {
-        drawPie(c, ix + 7, y + 6, shotPct);
+        drawPie(c, iconRight - 5, y + 6, shotPct);
         percent(shotPct);
     }
     y += 12;
     if (batteryNote && *batteryNote) c.text(f, 4, y, batteryNote);  // games left, from past drain
     if (battery >= 0) {
-        const int bx = ix;
+        const int bx = iconRight - 14;
         c.fillRect(bx, y + 3, bx + 12, y + 3);       // outline
         c.fillRect(bx, y + 9, bx + 12, y + 9);
         c.fillRect(bx, y + 3, bx, y + 9);

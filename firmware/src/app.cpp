@@ -447,18 +447,11 @@ void showHelpAndPowerOff() {
     if (!bank.lastGame(g)) {
         snprintf(line, sizeof line, "No games yet");
     } else {
-        char date[12] = "";
-        if (g.clockSet && g.started > 0) {
-            time_t t = g.started;
-            struct tm tmv;
-            gmtime_r(&t, &tmv);
-            strftime(date, sizeof date, "%d %b", &tmv);
-        }
         ShotLog s;
         s.restore(g.shotCount, g.shotBits);
-        if (s.count() == 0) snprintf(line, sizeof line, "Last game %s   %u stones", date, g.stoneCount);
+        if (s.count() == 0) snprintf(line, sizeof line, "Last game %u stones timed", g.stoneCount);
         else {
-            snprintf(line, sizeof line, "Last game %s   %d/%d", date, s.madeCount(), s.count());
+            snprintf(line, sizeof line, "Last game %d/%d shots made", s.madeCount(), s.count());
             shotPct = s.percent();
         }
     }

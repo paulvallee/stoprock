@@ -289,23 +289,24 @@ def help_page(device_logo, last_game, shot_pct=None, battery=None, battery_note=
     y += 6
     d.line([(4, y), (195, y)], fill=0)
     y += 6
-    # Bottom right: shot percentage with a pie, battery with its icon. Icons share a
-    # column (room for "100%"); the percentages are right-aligned so the % signs line up.
-    ix = W - 4 - 6 * 4 - 17
+    # Bottom right: shot percentage with a pie, battery with its icon. The icons end at the
+    # same x (room for "100%" after them), and the percentages are right-aligned so the
+    # % signs line up. That leaves 26 characters for "Last game 16/16 shots made".
+    icon_right, pct_right = W - 29, W - 2
 
     def percent(value):
         pct = f"{min(100, max(0, value))}%"
-        d.text((W - 4 - 6 * len(pct), y), pct, font=f, fill=0)
+        d.text((pct_right - 6 * len(pct), y), pct, font=f, fill=0)
 
     d.text((4, y), last_game, font=f, fill=0)
     if shot_pct is not None:
-        draw_pie(d, ix + 7, y + 6, shot_pct)
+        draw_pie(d, icon_right - 5, y + 6, shot_pct)
         percent(shot_pct)
     y += 12
     if battery_note:  # e.g. "~11 games battery left", from past games' drain
         d.text((4, y), battery_note, font=f, fill=0)
     if battery is not None:
-        bx = ix
+        bx = icon_right - 14
         d.rectangle([bx, y + 3, bx + 12, y + 9], outline=0)
         d.rectangle([bx + 13, y + 5, bx + 14, y + 7], fill=0)
         fill = round(9 * max(0, min(100, battery)) / 100)

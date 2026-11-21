@@ -140,7 +140,7 @@ stoprock logo (176 px), then Spleen 6×12:
   up = made     down = missed
   hold 0.5s = undo last shot
  ─────────────────────────────
- Last game 21 Nov   9/12  (◔) 75%
+ Last game 9/12 shots made (◔) 75%
  ~11 games battery left   [▭] 84%
 ```
 
