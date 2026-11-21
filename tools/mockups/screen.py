@@ -137,7 +137,7 @@ def fonts():
         label=bdf("spleen-6x12"),
         big=ImageFont.truetype(str(DSEG), 25),
         row=SegFont(h=12, w=7, t=2, gap=2, dot=2),
-        tiny=SegFont(h=9, w=5, t=1, gap=1, prop=True),
+        tiny=SegFont(h=9, w=5, t=1, gap=1),  # equal-width cells: a "1" sits on the right
         pct=ImageFont.truetype(str(DSEG), 16),
     )
 
@@ -190,7 +190,9 @@ def main_screen(stones, shots, tip=None, warn=False):
     r = 7
     for end in range(8):
         cy = top + pitch * end + pitch / 2
-        text_in_box(d, str(end + 1), fs["tiny"], SH_X0 + 1, SH_X0 + 9, cy - 6, cy + 6, align="left", margin=2)
+        # end number: centred in the gap between the divider and the rocks, and on the
+        # same centre line as its rocks (which are drawn at int(cy))
+        fs["tiny"].draw(d, str(end + 1), SH_X0 + 4, int(cy) - 4)
         for j in range(2):
             k = end * 2 + j
             cx, _ = rock_xy(k)

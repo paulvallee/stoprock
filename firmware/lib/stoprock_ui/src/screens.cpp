@@ -62,7 +62,7 @@ struct SegFont {
 };
 
 constexpr SegFont kRowFont{12, 7, 2, 2, 2, false};  // older results
-constexpr SegFont kEndFont{9, 5, 1, 1, 1, true};    // end numbers
+constexpr SegFont kEndFont{9, 5, 1, 1, 1, false};   // end numbers: equal-width cells, a "1" sits on the right
 
 enum Align { kLeft, kCentre, kRight };
 
@@ -158,7 +158,8 @@ void drawMain(Canvas& c, const MainView& v) {
         const double cy = top + pitch * end + pitch / 2;
         char n[3];
         snprintf(n, sizeof n, "%d", end + 1);
-        segInBox(c, kEndFont, n, SH_X0 + 1, SH_X0 + 9, cy - 6, cy + 6, kLeft, 2);
+        // centred in the gap between the divider and the rocks, on the rocks' centre line
+        kEndFont.draw(c, n, SH_X0 + 4, static_cast<int>(cy) - 4);
         for (int j = 0; j < 2; ++j) {
             const int k = end * 2 + j;
             const int cx = SH_X0 + (j == 0 ? 18 : 37);
