@@ -115,7 +115,7 @@ A stone gives at most one **BH** (back line to hog line) followed by at most one
 |---|---|---|
 | 1 | Rocker up: made shot | Rocker down: missed |
 | 2 | Hold rocker to undo | keep holding to undo more |
-| 3 | Click at back line, hog | and far hog for BH + HH |
+| 3 | Back2Hog: back/tee to hog | click far hog for Hog2Hog |
 | 4 | Back2Hog: back to hog | Hog2Hog: hog to far hog |
 | 5 | Top or side button both | time. Use either one. |
 | 6 | Two clicks within 1.5 s | count as one |

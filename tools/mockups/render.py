@@ -18,7 +18,7 @@ LOGO = ROOT / "assets" / "logo"
 TIPS = [
     ("Rocker up: made shot", "Rocker down: missed"),
     ("Hold rocker to undo", "keep holding to undo more"),
-    ("Click at back line, hog", "and far hog for BH + HH"),
+    ("Back2Hog: back/tee to hog", "click far hog for Hog2Hog"),
     ("Back2Hog: back to hog", "Hog2Hog: hog to far hog"),
     ("Top or side button both", "time. Use either one."),
     ("Two clicks within 1.5 s", "count as one"),
