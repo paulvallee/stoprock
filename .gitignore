@@ -1,0 +1,10 @@
+# Python
+__pycache__/
+*.pyc
+
+# PlatformIO
+.pio/
+.vscode/
+
+# OS
+.DS_Store
