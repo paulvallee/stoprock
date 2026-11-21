@@ -14,7 +14,7 @@ LABEL_H = 12
 BIG_H = 34
 ROW_H = 15
 TIP_H = 26
-END_ROWS = 9  # 8 ends + percentage row
+ROCKS_BOTTOM = H - TIP_H  # the 8 ends sit above this; the percentage row and tip strip below it
 SLOTS = 16
 
 _bdf_cache = {}
@@ -145,7 +145,7 @@ def fonts():
 # --------------------------------------------------------------------------- main screen
 def rock_xy(k):
     top = LABEL_H + 1
-    pitch = (H - top) / END_ROWS
+    pitch = (ROCKS_BOTTOM - top) / 8
     end, j = divmod(k, 2)
     return SH_X0 + (18 if j == 0 else 37), top + pitch * end + pitch / 2
 
@@ -186,7 +186,7 @@ def main_screen(stones, shots, tip=None, warn=False):
     # rocks, one row per end; ring = cursor on the next slot
     cursor = len(shots) if len(shots) < SLOTS else -1
     top = LABEL_H + 1
-    pitch = (H - top) / END_ROWS
+    pitch = (ROCKS_BOTTOM - top) / 8
     r = 7
     for end in range(8):
         cy = top + pitch * end + pitch / 2
@@ -205,8 +205,9 @@ def main_screen(stones, shots, tip=None, warn=False):
                 d.ellipse([cx - 10, cy - 10, cx + 10, cy + 10], outline=0, width=2)
 
     # percentage: DSEG7 digits packed by their ink, % sign drawn to match
-    y9 = top + pitch * 8
-    d.line([(SH_X0 + 2, y9), (W - 1, y9)], fill=0, width=2)
+    # one line straight across: over the tip strip and the percentage row alike
+    y9 = ROCKS_BOTTOM
+    d.line([(0, y9), (W - 1, y9)], fill=0, width=2)
     if shots:
         n = str(round(100 * sum(shots) / len(shots)))
         f = fs["pct"]
@@ -231,8 +232,6 @@ def main_screen(stones, shots, tip=None, warn=False):
         ty = H - TIP_H
         if warn:
             d.rectangle([0, ty, SH_X0 - 1, H - 1], fill=0)
-        else:
-            d.line([(0, ty), (SH_X0 - 1, ty)], fill=0, width=2)
         for i, line in enumerate(tip):
             d.text((1, ty + 2 + i * 12), line, font=fs["label"], fill=1 if warn else 0)
     return img

@@ -10,7 +10,8 @@ namespace {
 
 constexpr int W = 200, H = 200;
 constexpr int BH_X0 = 0, HH_X0 = 72, SH_X0 = 152;
-constexpr int LABEL_H = 12, BIG_H = 34, ROW_H = 15, TIP_H = 26, END_ROWS = 9;
+constexpr int LABEL_H = 12, BIG_H = 34, ROW_H = 15, TIP_H = 26;
+constexpr int ROCKS_BOTTOM = H - TIP_H;  // the 8 ends sit above this; the percentage row and tip strip below it
 
 // Python's round(): halves go to the even neighbour.
 int pyRound(double v) {
@@ -152,7 +153,7 @@ void drawMain(Canvas& c, const MainView& v) {
     const ShotLog empty;
     const ShotLog& shots = v.shots ? *v.shots : empty;
     const int cursor = shots.cursor();
-    const double top = LABEL_H + 1, pitch = (H - top) / END_ROWS;
+    const double top = LABEL_H + 1, pitch = (ROCKS_BOTTOM - top) / 8;
     for (int end = 0; end < 8; ++end) {
         const double cy = top + pitch * end + pitch / 2;
         char n[3];
@@ -169,8 +170,9 @@ void drawMain(Canvas& c, const MainView& v) {
     }
 
     // percentage: DSEG7 digits packed by their ink, % sign drawn to match
-    const double y9 = top + pitch * 8;
-    hline(c, SH_X0 + 2, W - 1, static_cast<int>(y9), 2);
+    // one line straight across: over the tip strip and the percentage row alike
+    const double y9 = ROCKS_BOTTOM;
+    hline(c, 0, W - 1, ROCKS_BOTTOM, 2);
     if (shots.count() > 0) {
         char n[4];
         snprintf(n, sizeof n, "%d", shots.percent());
@@ -209,7 +211,6 @@ void drawMain(Canvas& c, const MainView& v) {
     if (tip) {
         const int ty = H - TIP_H;
         if (v.warning) c.fillRect(0, ty, SH_X0 - 1, H - 1);
-        else hline(c, 0, SH_X0 - 1, ty, 2);
         c.text(label, 1, ty + 2, v.tip1, !v.warning);
         if (v.tip2) c.text(label, 1, ty + 14, v.tip2, !v.warning);
     }
