@@ -30,7 +30,7 @@ constexpr int kMaxGames = 64;
 
 const char* const kTips[][2] = {
     {"Rocker up: made shot", "Rocker down: missed"},
-    {"Hold rocker 0.5 s to undo", "your last shot"},
+    {"Hold rocker 0.5 s to undo", "keep holding to undo more"},
     {"Click at back line, hog", "and far hog for BH + HH"},
     {"BH: back line to hog", "HH: hog line to hog line"},
     {"Ring marks the slot your", "next shot will fill"},
@@ -82,6 +82,7 @@ struct ButtonState {
     int64_t rawSince = 0;
     int64_t downSince = 0;
     bool holdFired = false;
+    int64_t nextRepeat = 0;   // rocker press: when the next undo fires while held
     bool pending = false;     // timing buttons: edge seen, waiting to confirm
     int64_t pendingT = 0;
 };
@@ -351,12 +352,14 @@ void onShot(bool made) {
     if (!timing.active()) syncModel();
 }
 
-void onUndo() {
-    if (!shots.undo()) { sound.play(kError); return; }
+// Returns false when there was nothing to undo.
+bool onUndo() {
+    if (!shots.undo()) { sound.play(kError); return false; }
     sound.play(kUndo);
     Serial.printf("shots: undo, %d/%d\n", shots.madeCount(), shots.count());
     saveShots();
     if (!timing.active()) syncModel();
+    return true;
 }
 
 void onPress(uint8_t b, int64_t t) {
@@ -364,6 +367,7 @@ void onPress(uint8_t b, int64_t t) {
     s.down = true;
     s.downSince = t;
     s.holdFired = false;
+    s.nextRepeat = t + kUndoHoldUs;
     activity(t);
     switch (b) {
     case board::kTop:
@@ -400,7 +404,13 @@ void pollButtons(int64_t now) {
 
         // holds
         if (s.down && !s.holdFired) {
-            if (b == board::kPress && now - s.downSince >= kUndoHoldUs) { s.holdFired = true; activity(now); onUndo(); }
+            // Rocker press: undo after 0.5 s, then again every 0.5 s while held. Stops after
+            // one error buzz once there's nothing left to undo.
+            if (b == board::kPress && now >= s.nextRepeat) {
+                s.nextRepeat += kUndoHoldUs;
+                activity(now);
+                if (!onUndo()) s.holdFired = true;
+            }
             if (b == board::kSide && now - s.downSince >= kPowerHoldUs) { s.holdFired = true; showHelpAndPowerOff(); }
         }
     }
