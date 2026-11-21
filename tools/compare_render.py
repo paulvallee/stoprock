@@ -20,7 +20,7 @@ def main():
     out = Path(sys.argv[2]) if len(sys.argv) > 2 else None
     shots = render.BASE + [False]
     refs = {
-        "main": screen.main_screen(render.STONES, shots, tip=render.TIPS[4]),
+        "main": screen.main_screen(render.STONES, shots, tip=render.TIPS[3]),
         "battery": screen.main_screen(render.STONES, shots, tip=render.WARNING, warn=True),
         "help": screen.help_page(logo.device_logo(), "Last game 21 Nov   9/12   75%"),
     }

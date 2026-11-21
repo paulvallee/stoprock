@@ -19,15 +19,11 @@ TIPS = [
     ("Rocker up: made shot", "Rocker down: missed"),
     ("Hold rocker to undo", "keep holding to undo more"),
     ("Click at back line, hog", "and far hog for BH + HH"),
-    ("BH: back line to hog", "HH: hog line to hog line"),
-    ("Ring marks the slot your", "next shot will fill"),
+    ("Back2Hog: back to hog", "Hog2Hog: hog to far hog"),
     ("Top or side button both", "time. Use either one."),
     ("Two clicks within 1.5 s", "count as one"),
     ("After an HH, the next", "click starts a new stone"),
-    ("% is made shots out of", "rocks thrown tonight"),
     ("Each switch-on starts", "a new game"),
-    ("Rated to 0 °C. Keep it", "off the ice surface"),
-    ("Charge at room temp,", "never at the rink"),
     ("Switches off after 5 min", "idle. Hold side to wake"),
 ]
 WARNING = ("Battery low", "Charge after this game")
@@ -87,8 +83,8 @@ def main():
     sheet("stoprock screens", [
         ("Switched off: help page", "Shown after power-off; e-ink keeps it with no power",
          screen.help_page(dev, "Last game 21 Nov   9/12   75%")),
-        ("Main screen with a tip", "Tip 5 of 13; the next tip shows after each timed stone",
-         screen.main_screen(STONES, BASE + [False], tip=TIPS[4])),
+        ("Main screen with a tip", "Tip 4 of 9; the next tip shows after each timed stone",
+         screen.main_screen(STONES, BASE + [False], tip=TIPS[3])),
         ("Low battery", "Warning replaces the tip until charged",
          screen.main_screen(STONES, BASE + [False], tip=WARNING, warn=True)),
     ], DOCS / "screens.png", header=header)

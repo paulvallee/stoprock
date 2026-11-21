@@ -33,15 +33,11 @@ const char* const kTips[][2] = {
     {"Rocker up: made shot", "Rocker down: missed"},
     {"Hold rocker to undo", "keep holding to undo more"},
     {"Click at back line, hog", "and far hog for BH + HH"},
-    {"BH: back line to hog", "HH: hog line to hog line"},
-    {"Ring marks the slot your", "next shot will fill"},
+    {"Back2Hog: back to hog", "Hog2Hog: hog to far hog"},
     {"Top or side button both", "time. Use either one."},
     {"Two clicks within 1.5 s", "count as one"},
     {"After an HH, the next", "click starts a new stone"},
-    {"% is made shots out of", "rocks thrown tonight"},
     {"Each switch-on starts", "a new game"},
-    {"Rated to 0 \xC2\xB0" "C. Keep it", "off the ice surface"},
-    {"Charge at room temp,", "never at the rink"},
     {"Switches off after 5 min", "idle. Hold side to wake"},
 };
 constexpr int kTipCount = sizeof kTips / sizeof kTips[0];

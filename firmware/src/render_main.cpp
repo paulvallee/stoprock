@@ -30,8 +30,8 @@ int main(int argc, char** argv) {
     v.stones = stones;
     v.stoneCount = 6;
     v.shots = &shots;
-    v.tip1 = "Ring marks the slot your";
-    v.tip2 = "next shot will fill";
+    v.tip1 = "Back2Hog: back to hog";
+    v.tip2 = "Hog2Hog: hog to far hog";
     drawMain(c, v);
     snprintf(path, sizeof path, "%s/main.pbm", dir);
     writePbm(c, path);

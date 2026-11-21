@@ -116,16 +116,12 @@ A stone gives at most one **BH** (back line to hog line) followed by at most one
 | 1 | Rocker up: made shot | Rocker down: missed |
 | 2 | Hold rocker to undo | keep holding to undo more |
 | 3 | Click at back line, hog | and far hog for BH + HH |
-| 4 | BH: back line to hog | HH: hog line to hog line |
-| 5 | Ring marks the slot your | next shot will fill |
-| 6 | Top or side button both | time. Use either one. |
-| 7 | Two clicks within 1.5 s | count as one |
-| 8 | After an HH, the next | click starts a new stone |
-| 9 | % is made shots out of | rocks thrown tonight |
-| 10 | Each switch-on starts | a new game |
-| 11 | Rated to 0 °C. Keep it | off the ice surface |
-| 12 | Charge at room temp, | never at the rink |
-| 13 | Switches off after 5 min | idle. Hold side to wake |
+| 4 | Back2Hog: back to hog | Hog2Hog: hog to far hog |
+| 5 | Top or side button both | time. Use either one. |
+| 6 | Two clicks within 1.5 s | count as one |
+| 7 | After an HH, the next | click starts a new stone |
+| 8 | Each switch-on starts | a new game |
+| 9 | Switches off after 5 min | idle. Hold side to wake |
 | Warning | Battery low | Charge after this game |
 
 ## 9. Help page (shown while off)
