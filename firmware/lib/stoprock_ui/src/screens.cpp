@@ -233,17 +233,17 @@ void drawHelp(Canvas& c, const char* lastGame, int battery) {
     const char* head = "HOLD SIDE BUTTON TO START";
     c.text(f, (W - static_cast<int>(strlen(head)) * 6) / 2, y, head);
     y += 18;
-    tag("TIMING", "top or side button");
-    line(" click back line, hog, far hog");
+    tag("TIMING", "use top or side button");
     line(" B2H back or tee to hog line");
     line(" H2H hog line to hog line");
-    y += 5;
+    y += 8;
     tag("SHOTS", "rocker");
     line(" up = made     down = missed");
     line(" hold 0.5 s = undo last shot");
-    y += 4;
+    y += 6;
     c.line(4, y, 195, y);
-    y += 4;
+    y += 6;
+    line(lastGame);
     if (battery >= 0) {  // battery at switch-off, bottom right: icon and percentage
         char pct[6];
         snprintf(pct, sizeof pct, "%d%%", battery > 100 ? 100 : battery);
@@ -256,9 +256,8 @@ void drawHelp(Canvas& c, const char* lastGame, int battery) {
         const int fill = pyRound(9.0 * (battery > 100 ? 100 : battery) / 100);
         if (fill > 0) c.fillRect(bx + 2, y + 5, bx + 2 + fill - 1, y + 7);
         c.text(f, bx + 17, y, pct);
+        y += 12;
     }
-    line("Off after 5 min idle");
-    line(lastGame);
 }
 
 }  // namespace stoprock

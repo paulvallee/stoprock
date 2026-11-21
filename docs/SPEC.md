@@ -132,8 +132,7 @@ stoprock logo (176 px), then Spleen 6×12:
 ```
      HOLD SIDE BUTTON TO START
 
- [TIMING] top or side button
-  click back line, hog, far hog
+ [TIMING] use top or side button
   B2H back or tee to hog line
   H2H hog line to hog line
 
@@ -141,8 +140,8 @@ stoprock logo (176 px), then Spleen 6×12:
   up = made     down = missed
   hold 0.5 s = undo last shot
  ─────────────────────────────
- Off after 5 min idle    [▭] 84%
  Last game 21 Nov   9/12   75%
+                       [▭] 84%
 ```
 
 `[TIMING]` and `[SHOTS]` are white-on-black labels. The last line shows the most recent game.

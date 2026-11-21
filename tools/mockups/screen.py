@@ -263,17 +263,17 @@ def help_page(device_logo, last_game, battery=None):
     t = "HOLD SIDE BUTTON TO START"
     d.text(((W - len(t) * 6) // 2, y), t, font=f, fill=0)
     y += 18
-    tag("TIMING", "top or side button")
-    line(" click back line, hog, far hog")
+    tag("TIMING", "use top or side button")
     line(" B2H back or tee to hog line")
     line(" H2H hog line to hog line")
-    y += 5
+    y += 8
     tag("SHOTS", "rocker")
     line(" up = made     down = missed")
     line(" hold 0.5 s = undo last shot")
-    y += 4
+    y += 6
     d.line([(4, y), (195, y)], fill=0)
-    y += 4
+    y += 6
+    line(last_game)
     if battery is not None:  # battery at switch-off, bottom right: icon and percentage
         pct = f"{battery}%"
         bx = W - 4 - (17 + 6 * len(pct))
@@ -283,8 +283,7 @@ def help_page(device_logo, last_game, battery=None):
         if fill > 0:
             d.rectangle([bx + 2, y + 5, bx + 2 + fill - 1, y + 7], fill=0)
         d.text((bx + 17, y), pct, font=f, fill=0)
-    line("Off after 5 min idle")
-    line(last_game)
+        y += 12
     assert y <= H, f"help page overflows: {y}"
     return img
 
