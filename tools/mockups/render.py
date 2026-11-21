@@ -25,7 +25,7 @@ TIPS = [
     ("Two clicks within 1.5 s", "count as one"),
     ("After an HH, the next", "click starts a new stone"),
     ("% is made shots out of", "rocks thrown tonight"),
-    ("New game: hold rocker", "while switching on"),
+    ("Each switch-on starts", "a new game"),
     ("Rated to 0 °C. Keep it", "off the ice surface"),
     ("Charge at room temp,", "never at the rink"),
     ("Switches off after 5 min", "idle. Hold side to wake"),

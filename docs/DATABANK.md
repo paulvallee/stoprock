@@ -1,0 +1,92 @@
+# Game databank
+
+The stoprock keeps every game it records in flash, so a companion app can collect them later. This
+document is the contract between the device and that app. The implementation is
+[`firmware/lib/stoprock_core/src/databank.cpp`](../firmware/lib/stoprock_core/src/databank.cpp), tested in
+[`firmware/test/test_databank`](../firmware/test/test_databank/test_main.cpp).
+
+## What is kept
+
+One record per game:
+
+| Field | Meaning |
+|---|---|
+| `id` | 1, 2, 3, … Never reused, even after games are dropped or erased, so an app can tell new games from old ones by number alone |
+| `started`, `updated` | Clock seconds (Unix time, UTC) when the game started and when it last changed |
+| `clock` | `false` if the device's clock hadn't been set; then `started` and `updated` only make sense relative to each other |
+| `shots` | Your rocks in order: `M` made, `X` missed (up to 16) |
+| `made`, `thrown`, `pct` | Summary of `shots`; `pct` is -1 with no rocks thrown |
+| `stones` | Every timed stone in order, as `[back-to-hog, hog-to-hog]` in seconds; `null` where that split wasn't timed (up to 128) |
+
+Rules:
+
+- **Every switch-on starts a new game.** Light sleep between stones doesn't restart the chip, so a game is
+  never split while you're playing.
+- A game is written only once it has a shot or a time in it.
+- It is rewritten on every change, so a game is complete up to the last press even if the battery dies.
+- Up to **500 games**. When a 501st is stored, the oldest is dropped, synced or not.
+
+## Storage
+
+The databank has its own NVS partition, `games` (256 KB at 0x310000, see
+[`firmware/partitions.csv`](../firmware/partitions.csv)), separate from settings. NVS spreads writes across
+the flash and commits each record atomically.
+
+Keys in the namespace `bank`:
+
+- `meta`: version (1), oldest id, next id, last acknowledged id, as little-endian u32s.
+- `g<id>`: one game, record format version 1:
+
+| Bytes | Field |
+|---|---|
+| 0 | `'G'` |
+| 1 | Format version (1) |
+| 2 | Flags: bit 0 = clock set |
+| 3 | Rocks thrown (0–16) |
+| 4–7 | id |
+| 8–11 | Started |
+| 12–15 | Updated |
+| 16–17 | Shot bits: bit *i* set = rock *i* made |
+| 18–19 | Number of timed stones *n* (0–128) |
+| 20–23 | Reserved (0) |
+| 24 … 24 + 4*n* − 1 | Per stone: back-to-hog, hog-to-hog (u16 hundredths; 0xFFFF = not timed) |
+| last | Checksum of all preceding bytes |
+
+All numbers are little-endian. A record that fails its checks is skipped, not shown as a game.
+
+## Talking to the device
+
+Over the USB serial console (115200 baud) for now; the Bluetooth companion app will carry the same commands
+and replies. One command per line.
+
+| Command | Reply |
+|---|---|
+| `bank` | `@BANK {"first":1,"last":42,"synced":40,"current":42,"version":1}` |
+| `games` | Every stored game |
+| `games new` | Games after the last acknowledged one |
+| `game <id>` | Games from that id on |
+| `ack <id>` | Marks every game up to `id` as collected: `@ACK <id>` |
+| `erase-all yes` | Deletes every stored game (ids keep counting): `@ERASED` |
+| `t <unix seconds>` | Sets the clock (until the app does it) |
+
+Game listings are framed so they can be parsed from a stream that also carries log lines:
+
+```text
+@GAMES 2
+{"id":41,"v":1,"started":1795290802,"updated":1795297990,"clock":true,"shots":"MMXMMMXM","made":6,"thrown":8,"pct":75,"stones":[[3.47,13.92],[3.29,null],[null,14.02]]}
+{"id":42,"v":1,"started":1795377202,"updated":1795377300,"clock":true,"shots":"M","made":1,"thrown":1,"pct":100,"stones":[]}
+@END
+```
+
+`current` in `@BANK` is the id of the game in progress, or 0 if it hasn't been stored yet. Its record keeps
+changing until the device is switched off.
+
+## How an app should sync
+
+1. Set the clock: `t <now>`.
+2. `games new`, and store each game by `id`. Replace any game you already have with the same id: the game in
+   progress can change.
+3. `ack <highest id you stored>`. Don't acknowledge the game in progress (`current` in `@BANK`) until a
+   later sync shows it finished, or you'll miss its last changes.
+
+Acknowledging deletes nothing on the device. It only moves the bookmark that `games new` starts from.

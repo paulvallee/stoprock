@@ -43,7 +43,6 @@ Graphics library: **M5GFX / M5Unified** (has a driver for this screen, `Panel_GD
 | Rocker down | Log a **missed** shot at the cursor |
 | Rocker press, held 0.5 s | **Undo**: cursor steps back one slot and clears it (like backspace). Keep holding to undo another rock every 0.5 s; stops after one error buzz when nothing is left. |
 | Rocker press, short | Nothing |
-| Rocker press, held while switching on | Start a new game |
 
 Timing clicks are timestamped in the interrupt handler, so screen activity never affects timing accuracy.
 
@@ -65,7 +64,7 @@ A stone gives at most one **BH** (back line to hog line) followed by at most one
 
 - After an HH the stone is finished, so the next click always starts the next stone, however soon it comes (an opposing team may throw quickly).
 - The window limits (1.5, 7 and 20 s) are settings, with these values as defaults.
-- Times are kept for the current game only and are not stored long-term or synced.
+- Every result is also saved to the game databank (section 6).
 - The green LED is lit from a stone's first click until it is done or abandoned, as the "timing in progress" sign.
 
 ## 5. Shots
@@ -74,12 +73,15 @@ A stone gives at most one **BH** (back line to hog line) followed by at most one
 - The **cursor** (a thick black ring) sits on the slot the next made/missed entry will fill. At the start of a game it is on end 1, rock 1. When all 16 are filled the cursor disappears.
 - Up/down with all 16 filled, or undo with nothing to undo: error buzz, no change.
 - **Percentage** = made ÷ rocks logged so far this game. Empty slots don't count.
-- Each game is stored with its date and every rock's result, for the season view and the future companion app.
+- Each game is stored in the databank (section 6) with every rock's result.
 
-## 6. Games
+## 6. Games and the databank
 
-- A new game starts automatically when the first entry comes more than 2 hours after the last one, or by holding the rocker press while switching on.
-- The clock is kept by the BM8563 real-time clock and set by the companion app (separate project).
+- **Every switch-on starts a new game.** Light sleep between stones doesn't restart the chip, so it never splits a game. (If the device switches itself off after 5 minutes idle, the next switch-on is a new game.)
+- A game is written to flash only once it has a shot or a time in it, so switching on and off doesn't leave empty games.
+- The **databank** keeps every game in its own flash partition: start time, shots (made/missed in order), and every timed stone's back-to-hog and hog-to-hog times. Up to 500 games; when full, the oldest is dropped. Each game has a number that is never reused.
+- A companion app reads new games and acknowledges them; nothing is deleted on acknowledgement. Format and commands: [`DATABANK.md`](DATABANK.md).
+- The clock is kept by the BM8563 real-time clock and set by the companion app (separate project), or over the serial console for now. Games recorded before the clock is set are marked so; their times are relative.
 
 ## 7. Power
 
@@ -120,7 +122,7 @@ A stone gives at most one **BH** (back line to hog line) followed by at most one
 | 7 | Two clicks within 1.5 s | count as one |
 | 8 | After an HH, the next | click starts a new stone |
 | 9 | % is made shots out of | rocks thrown tonight |
-| 10 | New game: hold rocker | while switching on |
+| 10 | Each switch-on starts | a new game |
 | 11 | Rated to 0 °C. Keep it | off the ice surface |
 | 12 | Charge at room temp, | never at the rink |
 | 13 | Switches off after 5 min | idle. Hold side to wake |

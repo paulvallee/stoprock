@@ -3,9 +3,11 @@
 #include <Arduino.h>
 #include <Preferences.h>
 #include <esp_timer.h>
+#include <nvs_flash.h>
 #include <time.h>
 
 #include "board.h"
+#include "databank.h"
 #include "screens.h"
 #include "shots.h"
 #include "timing.h"
@@ -25,9 +27,7 @@ constexpr int64_t kPowerOffUs = 5 * 60 * kSec;
 constexpr int64_t kCleanAfterHhUs = 5 * kSec;
 constexpr uint8_t kStonesPerClean = 4;         // ghost-clearing full refresh after every 4th timed stone
 constexpr int64_t kBatteryCheckUs = 30 * kSec;
-constexpr uint32_t kNewGameGapS = 2 * 3600;
 constexpr int kMaxStones = 12;
-constexpr int kMaxGames = 64;
 
 const char* const kTips[][2] = {
     {"Rocker up: made shot", "Rocker down: missed"},
@@ -39,7 +39,7 @@ const char* const kTips[][2] = {
     {"Two clicks within 1.5 s", "count as one"},
     {"After an HH, the next", "click starts a new stone"},
     {"% is made shots out of", "rocks thrown tonight"},
-    {"New game: hold rocker", "while switching on"},
+    {"Each switch-on starts", "a new game"},
     {"Rated to 0 \xC2\xB0" "C. Keep it", "off the ice surface"},
     {"Charge at room temp,", "never at the rink"},
     {"Switches off after 5 min", "idle. Hold side to wake"},
@@ -121,51 +121,45 @@ int64_t nextBatteryCheck = 0;
 bool lowBattery = false;
 uint8_t tipIndex = 0;
 
-// games, persisted
-struct GameRec { uint32_t date; uint8_t count; uint8_t pad; uint16_t bits; };
+// settings (tip position) in the default NVS partition
 Preferences prefs;
-GameRec games[kMaxGames];
-uint16_t gameTotal = 0;   // games ever started; current = gameTotal - 1
-uint32_t lastEntry = 0;   // clock seconds of the last entry
 
-GameRec& currentGame() { return games[(gameTotal - 1) % kMaxGames]; }
+// The game databank, in its own NVS partition ("games", see partitions.csv).
+class NvsStore : public KeyValueStore {
+public:
+    bool begin() {
+        if (p_.begin("bank", false, "games")) return true;
+        // Never-used or unreadable partition: format it once and try again.
+        nvs_flash_erase_partition("games");
+        return p_.begin("bank", false, "games");
+    }
+    size_t get(const char* key, void* buf, size_t len) override {
+        if (!p_.isKey(key)) return 0;
+        const size_t n = p_.getBytesLength(key);
+        if (n == 0 || n > len) return 0;
+        return p_.getBytes(key, buf, n);
+    }
+    bool put(const char* key, const void* data, size_t len) override { return p_.putBytes(key, data, len) == len; }
+    bool remove(const char* key) override { return p_.remove(key); }
 
-void saveGames() {
-    prefs.putBytes("games", games, sizeof games);
-    prefs.putUShort("ngames", gameTotal);
-    prefs.putULong("last", lastEntry);
-}
+private:
+    Preferences p_;
+};
+NvsStore bankStore;
+Databank bank(bankStore);
 
-void loadGames() {
-    prefs.begin("stoprock", false);
-    if (prefs.isKey("games") && prefs.getBytesLength("games") == sizeof games) prefs.getBytes("games", games, sizeof games);
-    gameTotal = prefs.getUShort("ngames", 0);
-    lastEntry = prefs.getULong("last", 0);
-    tipIndex = prefs.getUChar("tip", 0) % kTipCount;
-}
-
+// Every switch-on starts a new game; it's stored once it has a shot or a time in it.
 void newGame() {
-    ++gameTotal;
-    currentGame() = GameRec{board::clockNow(), 0, 0, 0};
+    bank.startGame(board::clockNow(), board::clockValid());
     shots.clear();
     stoneCount = 0;
-    saveGames();
     Serial.println("game: new");
 }
 
-void saveShots() {
-    if (gameTotal == 0) return;
-    currentGame().count = shots.count();
-    currentGame().bits = shots.bits();
-    saveGames();
-}
+void saveShots() { bank.setShots(shots.count(), shots.bits(), board::clockNow()); }
 
-// Every entry (a time or a shot) may start a new game after a long gap.
-void noteEntry() {
-    const uint32_t now = board::clockNow();
-    if (gameTotal == 0 || (now > lastEntry && now - lastEntry > kNewGameGapS)) newGame();
-    lastEntry = now;
-    prefs.putULong("last", lastEntry);
+uint16_t toStored(int32_t hundredths) {
+    return hundredths < 0 || hundredths >= StoneTimes::kNoTime ? StoneTimes::kNoTime : static_cast<uint16_t>(hundredths);
 }
 
 // ------------------------------------------------------------------ display task
@@ -280,15 +274,19 @@ void handleOutcome(const Outcome& o, int64_t now) {
         Serial.println("timing: double press, restart");
         break;
     case TimingEvent::BH:
-        noteEntry();
         pushStone(Stone{toHundredths(o.us), -1});
+        bank.addStone(toStored(stones[0].bh), StoneTimes::kNoTime, board::clockNow());
         Serial.printf("timing: BH %.2f\n", o.us / 1e6);
         syncModel();
         break;
     case TimingEvent::HH:
-        noteEntry();
-        if (o.hadBh && stoneCount > 0) stones[0].hh = toHundredths(o.us);
-        else pushStone(Stone{-1, toHundredths(o.us)});
+        if (o.hadBh && stoneCount > 0) {
+            stones[0].hh = toHundredths(o.us);
+            bank.setLastHogToHog(toStored(stones[0].hh), board::clockNow());
+        } else {
+            pushStone(Stone{-1, toHundredths(o.us)});
+            bank.addStone(StoneTimes::kNoTime, toStored(stones[0].hh), board::clockNow());
+        }
         Serial.printf("timing: HH %.2f\n", o.us / 1e6);
         closeStone(now);
         countTimedStone(now, kCleanAfterHhUs);
@@ -316,20 +314,20 @@ void handleOutcome(const Outcome& o, int64_t now) {
 // ------------------------------------------------------------------ power
 void showHelpAndPowerOff() {
     static char line[40];
-    if (gameTotal == 0) {
+    static GameRecord g;  // big (128 stones): keep it off the stack
+    if (!bank.lastGame(g)) {
         snprintf(line, sizeof line, "No games yet");
     } else {
-        const GameRec& g = currentGame();
         char date[12] = "";
-        if (board::clockValid() && g.date > 0) {
-            time_t t = g.date;
+        if (g.clockSet && g.started > 0) {
+            time_t t = g.started;
             struct tm tmv;
             gmtime_r(&t, &tmv);
             strftime(date, sizeof date, "%d %b", &tmv);
         }
         ShotLog s;
-        s.restore(g.count, g.bits);
-        if (s.count() == 0) snprintf(line, sizeof line, "Last game %s   no shots", date);
+        s.restore(g.shotCount, g.shotBits);
+        if (s.count() == 0) snprintf(line, sizeof line, "Last game %s   %u stones", date, g.stoneCount);
         else snprintf(line, sizeof line, "Last game %s   %d/%d   %d%%", date, s.madeCount(), s.count(), s.percent());
     }
     Serial.println("power: off");
@@ -359,7 +357,6 @@ void onTimingPress(int64_t t) {
 }
 
 void onShot(bool made) {
-    noteEntry();
     if (!shots.add(made)) { sound.play(kError); return; }
     if (made) sound.play(kMade); else sound.play(kMissed);
     Serial.printf("shots: %s, %d/%d\n", made ? "made" : "missed", shots.madeCount(), shots.count());
@@ -431,6 +428,21 @@ void pollButtons(int64_t now) {
     }
 }
 
+// Databank export, framed so an app can parse it: "@GAMES n", n JSON lines, "@END".
+void printGames(uint32_t fromId) {
+    static GameRecord g;
+    static char json[2400];
+    uint32_t n = 0;
+    for (uint32_t id = fromId; id <= bank.lastId(); ++id) n += bank.load(id, g) ? 1 : 0;
+    Serial.printf("@GAMES %lu\n", static_cast<unsigned long>(n));
+    for (uint32_t id = fromId; id <= bank.lastId(); ++id) {
+        if (!bank.load(id, g)) continue;
+        Databank::toJson(g, json, sizeof json);
+        Serial.println(json);
+    }
+    Serial.println("@END");
+}
+
 void serialCommands() {
     static char buf[48];
     static uint8_t len = 0;
@@ -442,18 +454,37 @@ void serialCommands() {
         if (buf[0] == 't' && buf[1] == ' ') {
             board::clockSet(strtoul(buf + 2, nullptr, 10));
             Serial.printf("clock: set to %lu\n", static_cast<unsigned long>(board::clockNow()));
+        } else if (!strcmp(buf, "games")) {
+            printGames(bank.firstId());
+        } else if (!strcmp(buf, "games new")) {
+            printGames(bank.syncedId() + 1 > bank.firstId() ? bank.syncedId() + 1 : bank.firstId());
+        } else if (!strncmp(buf, "game ", 5)) {
+            printGames(strtoul(buf + 5, nullptr, 10));  // from that id on
+        } else if (!strncmp(buf, "ack ", 4)) {
+            bank.markSynced(strtoul(buf + 4, nullptr, 10));
+            Serial.printf("@ACK %lu\n", static_cast<unsigned long>(bank.syncedId()));
+        } else if (!strcmp(buf, "bank")) {
+            Serial.printf("@BANK {\"first\":%lu,\"last\":%lu,\"synced\":%lu,\"current\":%lu,\"version\":%u}\n",
+                          static_cast<unsigned long>(bank.firstId()), static_cast<unsigned long>(bank.lastId()),
+                          static_cast<unsigned long>(bank.syncedId()), static_cast<unsigned long>(bank.current().id),
+                          Databank::kVersion);
+        } else if (!strcmp(buf, "erase-all yes")) {
+            bank.eraseAll();
+            Serial.println("@ERASED");
         } else if (!strcmp(buf, "n")) {
             newGame();
             syncModel();
         } else if (!strcmp(buf, "o")) {
             showHelpAndPowerOff();
         } else if (!strcmp(buf, "s")) {
-            Serial.printf("status: board %s, stones %d, shots %d/%d, games %u, battery %d%%, clock %lu%s\n",
-                          board::name(), stoneCount, shots.madeCount(), shots.count(), gameTotal,
+            Serial.printf("status: board %s, stones %d, shots %d/%d, games %lu-%lu, battery %d%%, clock %lu%s\n",
+                          board::name(), stoneCount, shots.madeCount(), shots.count(),
+                          static_cast<unsigned long>(bank.firstId()), static_cast<unsigned long>(bank.lastId()),
                           board::batteryPercent(), static_cast<unsigned long>(board::clockNow()),
                           board::clockValid() ? "" : " (not set)");
         } else if (buf[0]) {
-            Serial.println("commands: t <unix seconds> | n (new game) | o (power off) | s (status)");
+            Serial.println("commands: t <unix seconds> | s | games | games new | game <id> | ack <id> | bank | "
+                           "erase-all yes | n (new game) | o (power off)");
         }
     }
 }
@@ -468,10 +499,11 @@ void setup() {
     modelLock = xSemaphoreCreateMutex();
     xTaskCreatePinnedToCore(displayTask, "display", 8192, nullptr, 1, &displayTaskHandle, 0);
 
-    loadGames();
-    // Holding the rocker press while switching on starts a new game.
-    if (board::held(board::kPress) || gameTotal == 0) newGame();
-    else shots.restore(currentGame().count, currentGame().bits);
+    prefs.begin("stoprock", false);
+    tipIndex = prefs.getUChar("tip", 0) % kTipCount;
+    if (!bankStore.begin()) Serial.println("databank: no \"games\" partition, games won't be kept");
+    bank.begin();
+    newGame();  // every switch-on starts a new game
 
     for (uint8_t b = 0; b < board::kButtonCount; ++b) buttons[b].rawDown = buttons[b].down = board::held(static_cast<board::Button>(b));
     attachInterruptArg(board::pin(board::kTop), onEdge, reinterpret_cast<void*>(board::kTop), FALLING);
