@@ -134,7 +134,7 @@ void saveGames() {
 
 void loadGames() {
     prefs.begin("stoprock", false);
-    if (prefs.getBytesLength("games") == sizeof games) prefs.getBytes("games", games, sizeof games);
+    if (prefs.isKey("games") && prefs.getBytesLength("games") == sizeof games) prefs.getBytes("games", games, sizeof games);
     gameTotal = prefs.getUShort("ngames", 0);
     lastEntry = prefs.getULong("last", 0);
     tipIndex = prefs.getUChar("tip", 0) % kTipCount;

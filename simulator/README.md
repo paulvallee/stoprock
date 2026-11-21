@@ -37,7 +37,8 @@ cd ..
 python3 simulator/run.py
 ```
 
-The first build downloads the ESP32 tools, which takes a few minutes. Then open <http://localhost:8200>. The
+The first build downloads the ESP32 tools, which takes a few minutes. `run.py` then opens
+<http://localhost:8200> in your browser (open it yourself if it doesn't appear). The
 first run also downloads the push-button part (`pushbutton.wasm`) from the esp-emulator examples kit into
 `simulator/parts/`.
 

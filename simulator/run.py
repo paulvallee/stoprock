@@ -20,6 +20,7 @@ import tempfile
 import threading
 import time
 import urllib.request
+import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -198,6 +199,7 @@ def main():
     ap.add_argument("--esp-emu", default=None, help="path to the esp-emu binary")
     ap.add_argument("--port", type=int, default=8200, help="web page port (default: %(default)s)")
     ap.add_argument("--control-port", type=int, default=5556, help="emulator control port (default: %(default)s)")
+    ap.add_argument("--no-browser", action="store_true", help="don't open the page automatically")
     args = ap.parse_args()
 
     firmware = Path(args.firmware)
@@ -208,7 +210,10 @@ def main():
 
     device = Device(esp_emu, firmware, args.control_port)
     server = ThreadingHTTPServer(("127.0.0.1", args.port), make_handler(device))
-    print(f"stoprock simulator: open http://localhost:{args.port}  (Ctrl-C to stop)")
+    url = f"http://localhost:{args.port}"
+    print(f"stoprock simulator: {url}  (Ctrl-C to stop)")
+    if not args.no_browser:
+        threading.Timer(1.0, webbrowser.open, [url]).start()
     try:
         server.serve_forever()
     except KeyboardInterrupt:
