@@ -54,16 +54,16 @@ A stone gives at most one **B2H** (back line, or tee line, to hog line) followed
 |---|---|---|
 | **Idle** (usually asleep) | Click | Start a new stone; record the time; green LED on |
 | **Started** | Click under 1 s later | Double press: restart timing from this click |
-| | Click 1 s to under 7 s later | Log **B2H** → *Waiting for H2H* |
-| | Click 7–20 s later | Log **H2H** on a new row (B2H blank) → *Done* |
+| | Click 1 s to under 5.5 s later | Log **B2H** → *Waiting for H2H* |
+| | Click 5.5–20 s later | Log **H2H** on a new row (B2H blank) → *Done* |
 | | No click for 20 s | Abandon the stone (nothing logged) → *Idle* |
-| **Waiting for H2H** | Click under 7 s after the B2H click | Ignore it (error buzz); keep timing from the B2H click |
-| | Click 7–20 s after the B2H click | Log **H2H** on the same row → *Done* |
+| **Waiting for H2H** | Click under 5.5 s after the B2H click | Ignore it (error buzz); keep timing from the B2H click |
+| | Click 5.5–20 s after the B2H click | Log **H2H** on the same row → *Done* |
 | | No click for 20 s after the B2H click | Keep the B2H-only row → *Idle* |
 | **Done** | — | LED off; sleep at once → *Idle* |
 
 - After an H2H the stone is finished, so the next click always starts the next stone, however soon it comes (an opposing team may throw quickly).
-- The window limits (1, 7 and 20 s) are settings, with these values as defaults. The double-press limit is 1 s, not 1.5 s, because B2H may be timed from the tee line: tee-to-hog is about 0.5 s shorter than back-to-hog, so a peel is about 2 s and big weight can approach 1.6 s.
+- The window limits (1, 5.5 and 20 s) are settings, with these values as defaults. The double-press limit is 1 s, not 1.5 s, because B2H may be timed from the tee line: tee-to-hog is about 0.5 s shorter than back-to-hog, so a peel is about 2 s and big weight can approach 1.6 s. The B2H/H2H boundary is 5.5 s, not 7 s: back-to-hog stays under about 4.8 s even for a light guard on fast ice, while a big-weight peel can cross hog to hog in about 6 s.
 - Every result is also saved to the game databank (section 6).
 - The green LED is lit from a stone's first click until it is done or abandoned, as the "timing in progress" sign.
 

@@ -59,7 +59,16 @@ static void test_window_boundaries() {
     TEST_ASSERT_EQUAL_INT64(sec(1.6), heavy.us);
     t.reset();
     t.click(0);
-    TEST_ASSERT_EQUAL(TimingEvent::HH, t.click(sec(7.0)).event);  // 7 s is H2H
+    TEST_ASSERT_EQUAL(TimingEvent::HH, t.click(sec(5.5)).event);  // 5.5 s is H2H
+    t.reset();
+    t.click(0);
+    TEST_ASSERT_EQUAL(TimingEvent::BH, t.click(sec(5.49)).event); // just under: B2H
+    t.reset();
+    t.click(0);
+    t.click(sec(2.6));                                            // heavy B2H
+    Outcome peel = t.click(sec(2.6 + 6.0));                       // big-weight peel H2H, 6 s
+    TEST_ASSERT_EQUAL(TimingEvent::HH, peel.event);
+    TEST_ASSERT_EQUAL_INT64(sec(6.0), peel.us);
     t.reset();
     t.click(0);
     TEST_ASSERT_EQUAL(TimingEvent::HH, t.click(sec(20.0)).event); // 20 s is still H2H
