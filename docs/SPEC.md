@@ -86,7 +86,7 @@ A stone gives at most one **BH** (back line to hog line) followed by at most one
 | State | Entered when | Woken by |
 |---|---|---|
 | Awake | Any press | — |
-| Light sleep | Straight after an HH; 20 s after a BH with no HH; 20 s after an abandoned start; otherwise 20 s after the last press | Any button (the waking press counts as a normal press), or the ghost-clearing timer |
+| Light sleep | Straight after an HH; 20 s after a BH with no HH; 20 s after an abandoned start; otherwise 20 s after the last press | Any button (the waking press counts as a normal press), or the timer for the next tip or ghost clearing |
 | Off | 5 min with no press, or side button held 3 s | Side button held |
 
 - On switching off, the screen gets one full refresh to the **help page** (section 9), which the e-ink keeps with no power.
@@ -107,7 +107,7 @@ A stone gives at most one **BH** (back line to hog line) followed by at most one
 | Shots | x 152–200 | One row per end (1–8), rock 1 and rock 2 side by side; ✓ made, ✗ missed, empty circle not thrown; ring = cursor. End numbers in drawn segments (9 px, 1 px strokes). |
 | Percentage | bottom of the shots column | DSEG7 16 px digits, packed closely, % sign drawn to match. 100% fits. |
 
-**Tips** rotate in this fixed order, one step per full (ghost-clearing) refresh, so every 4 timed stones. The position is kept across power-offs. A low-battery warning replaces the tip, shown white on black, until the battery is charged.
+**Tips** rotate in this fixed order, one step after each timed stone (a partial update of the strip). The position is kept across power-offs. A low-battery warning replaces the tip, shown white on black, until the battery is charged.
 
 | # | Line 1 | Line 2 |
 |---|---|---|
@@ -158,7 +158,8 @@ The physical update takes about 0.26 s whatever the area changed, so the goal is
 | First result of a stone (BH, or HH with no BH) | Beep. One update: move the previous result into the list, and show the new value in the large row. |
 | HH after a BH | Beep. Only the large HH cell. |
 | Rocker | Beep. That rock, the cursor and the percentage. |
-| Ghost clearing (2 s full refresh, advances the tip) | After **every 4th timed stone** (a setting, to tune on the real panel): **5 s after its HH click**, or **20 s after its BH click** if it has no HH. A timer wakes the chip from light sleep for it. Abandoned starts don't count. If the next stone has already started, it waits for that stone to end. |
+| Next tip (partial update of the tip strip) | After **every timed stone**: **5 s after its HH click**, or **20 s after its BH click** if it has no HH. A timer wakes the chip from light sleep for it. Abandoned starts don't count. If the next stone has already started, it waits for that stone to end. |
+| Ghost clearing (2 s full refresh) | Takes the place of the tip update after **every 4th timed stone** (a setting, to tune on the real panel); it shows the next tip too. |
 
 Rules:
 1. During a stone (first click until done or abandoned), only timing updates run. Rocker entries are logged and beep immediately; their screen update waits.

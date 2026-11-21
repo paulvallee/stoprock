@@ -114,7 +114,8 @@ uint8_t stoneCount = 0;
 
 int64_t lastActivity = 0;
 int64_t sleepAt = 0;
-int64_t cleanAt = -1;
+int64_t refreshAt = -1;          // after a stone: next tip, and every 4th stone a full refresh
+bool refreshFull = false;
 uint8_t stonesSinceClean = 0;
 int64_t nextBatteryCheck = 0;
 bool lowBattery = false;
@@ -256,10 +257,13 @@ void closeStone(int64_t now) {
     sleepAt = now;
 }
 
-// A timed stone finished (with an HH, or a BH only). Every kStonesPerClean-th one gets a
-// ghost-clearing refresh at the safe moment: cleanDelay after it closed.
-void countTimedStone(int64_t now, int64_t cleanDelay) {
-    if (++stonesSinceClean >= kStonesPerClean) cleanAt = now + cleanDelay;
+// A timed stone finished (with an HH, or a BH only). At the safe moment, delay after it
+// closed, the tip moves on with a partial update; every kStonesPerClean-th stone that update
+// is a ghost-clearing full refresh instead.
+void countTimedStone(int64_t now, int64_t delay) {
+    ++stonesSinceClean;
+    refreshAt = now + delay;
+    refreshFull = stonesSinceClean >= kStonesPerClean;
 }
 
 void handleOutcome(const Outcome& o, int64_t now) {
@@ -486,15 +490,16 @@ void loop() {
     sound.update(now);
     serialCommands();
 
-    // ghost clearing between stones; advances the tip. If the next stone has already
-    // started, it waits: that stone's end schedules it again.
-    if (cleanAt >= 0 && now >= cleanAt) {
-        cleanAt = -1;
+    // between stones: next tip (partial update), or a ghost-clearing full refresh every
+    // kStonesPerClean stones. If the next stone has already started, it waits for that
+    // stone to end, which schedules it again.
+    if (refreshAt >= 0 && now >= refreshAt) {
+        refreshAt = -1;
         if (!timing.active()) {
-            stonesSinceClean = 0;
+            if (refreshFull) stonesSinceClean = 0;
             tipIndex = (tipIndex + 1) % kTipCount;
             prefs.putUChar("tip", tipIndex);
-            syncModel(true);
+            syncModel(refreshFull);
         }
     }
 
@@ -512,7 +517,7 @@ void loop() {
     for (const ButtonState& s : buttons) anyDown |= s.down || s.pending || s.rawDown;
     if (!timing.active() && !displayBusy && !anyDown && !sound.playing() && now >= sleepAt) {
         int64_t wake = lastActivity + kPowerOffUs;
-        if (cleanAt >= 0 && cleanAt < wake) wake = cleanAt;
+        if (refreshAt >= 0 && refreshAt < wake) wake = refreshAt;
         if (board::lightSleep(wake)) {
             now = esp_timer_get_time();
             // A timing button that woke us: its press time is the wake-up time.
