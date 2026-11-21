@@ -87,7 +87,7 @@ def main():
     sheet("stoprock screens", [
         ("Switched off: help page", "Shown after power-off; e-ink keeps it with no power",
          screen.help_page(dev, "Last game 21 Nov   9/12   75%")),
-        ("Main screen with a tip", "Tip 5 of 13; changes on each ghost-clearing refresh",
+        ("Main screen with a tip", "Tip 5 of 13; the next tip shows after each timed stone",
          screen.main_screen(STONES, BASE + [False], tip=TIPS[4])),
         ("Low battery", "Warning replaces the tip until charged",
          screen.main_screen(STONES, BASE + [False], tip=WARNING, warn=True)),

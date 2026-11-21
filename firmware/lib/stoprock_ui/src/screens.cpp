@@ -117,8 +117,8 @@ void drawMain(Canvas& c, const MainView& v) {
     const int bottom = tip ? H - TIP_H : H;
     const Font& label = kFontSpleen6x12;
 
-    textInBox(c, label, "BH", BH_X0, HH_X0, 0, LABEL_H, kCentre, 4);
-    textInBox(c, label, "HH", HH_X0, SH_X0, 0, LABEL_H, kCentre, 4);
+    textInBox(c, label, "Back2Hog", BH_X0, HH_X0, 0, LABEL_H, kCentre, 4);
+    textInBox(c, label, "Hog2Hog", HH_X0, SH_X0, 0, LABEL_H, kCentre, 4);
     textInBox(c, label, "SHOTS", SH_X0, W, 0, LABEL_H, kCentre, 4);
     hline(c, 0, W - 1, LABEL_H);
     vline(c, HH_X0, 0, bottom - 1);

@@ -159,7 +159,7 @@ def main_screen(stones, shots, tip=None, warn=False):
     d.fontmode = "1"
     bottom = H - TIP_H if tip else H
 
-    for label, x0, x1 in (("BH", BH_X0, HH_X0), ("HH", HH_X0, SH_X0), ("SHOTS", SH_X0, W)):
+    for label, x0, x1 in (("Back2Hog", BH_X0, HH_X0), ("Hog2Hog", HH_X0, SH_X0), ("SHOTS", SH_X0, W)):
         text_in_box(d, label, fs["label"], x0, x1, 0, LABEL_H, align="center")
     d.line([(0, LABEL_H), (W - 1, LABEL_H)], fill=0)
     d.line([(HH_X0, 0), (HH_X0, bottom - 1)], fill=0)
