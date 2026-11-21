@@ -41,14 +41,14 @@ Type into the serial console:
 
 While a stone is timed the chip sleeps between clicks, and time asleep is counted by a less precise backup
 clock. The firmware measures that clock against the real-time clock's crystal throughout the game. After the
-game, plug the CoreInk into your Mac **without switching it off and on first** (that starts a new audit), open the
-serial console and type `audit`:
+game, switch it off as usual (hold the side button 3 s; that takes the audit's final sample). Then plug it into
+your Mac, open the serial console (which switches it on, starting a new audit) and type `audit`:
 
 ```sh
 pio device monitor -e coreink      # then type: audit
 ```
 
-Each line is one switch-on, the current one first:
+Each line is one switch-on, the current one first; your game is the line after it (`"current":false`):
 
 ```text
 @AUDIT
