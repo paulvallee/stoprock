@@ -114,7 +114,7 @@ A stone gives at most one **BH** (back line to hog line) followed by at most one
 | # | Line 1 | Line 2 |
 |---|---|---|
 | 1 | Rocker up: made shot | Rocker down: missed |
-| 2 | Hold rocker 0.5 s to undo | keep holding to undo more |
+| 2 | Hold rocker to undo | keep holding to undo more |
 | 3 | Click at back line, hog | and far hog for BH + HH |
 | 4 | BH: back line to hog | HH: hog line to hog line |
 | 5 | Ring marks the slot your | next shot will fill |

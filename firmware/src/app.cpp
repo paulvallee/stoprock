@@ -31,7 +31,7 @@ constexpr int kMaxStones = 12;
 
 const char* const kTips[][2] = {
     {"Rocker up: made shot", "Rocker down: missed"},
-    {"Hold rocker 0.5 s to undo", "keep holding to undo more"},
+    {"Hold rocker to undo", "keep holding to undo more"},
     {"Click at back line, hog", "and far hog for BH + HH"},
     {"BH: back line to hog", "HH: hog line to hog line"},
     {"Ring marks the slot your", "next shot will fill"},
