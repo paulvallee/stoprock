@@ -3,6 +3,5 @@
     "side":   { "module": "parts/pushbutton.wasm", "pins": { "A": 5 } },
     "up":     { "module": "parts/pushbutton.wasm", "pins": { "A": 6 } },
     "press":  { "module": "parts/pushbutton.wasm", "pins": { "A": 7 } },
-    "down":   { "module": "parts/pushbutton.wasm", "pins": { "A": 15 } },
-    "lowbat": { "module": "parts/pushbutton.wasm", "pins": { "A": 16 } }
+    "down":   { "module": "parts/pushbutton.wasm", "pins": { "A": 15 } }
 } }

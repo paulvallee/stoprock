@@ -55,7 +55,11 @@ first run also downloads the push-button part (`pushbutton.wasm`) from the esp-e
 | <kbd>↓</kbd> | rocker **▼** | Missed shot |
 | <kbd>Enter</kbd> | rocker **●** | Hold 0.5 s to undo the last shot; keep holding to undo another every 0.5 s |
 
-The **Low battery** box holds down a sixth virtual button that the simulator board reads as a low battery.
+The **Battery** slider sets the battery level the firmware reads (`run.py` sends it to the emulated chip's
+second serial port). Below 15% the tip strip shows the low-battery warning, within about 2 s. To try the battery
+drain log and the "~N games battery left" estimate on the off screen: set a level, switch on, log a shot or a
+time, wait at least a minute, lower the slider, then hold the side button 3 s to switch off. In the simulator a
+game of 1 minute or more counts towards the estimate (on the CoreInk: 20 minutes), so a few short games are enough.
 
 ## What it doesn't show
 
@@ -68,7 +72,7 @@ The **Low battery** box holds down a sixth virtual button that the simulator boa
 
 | File | What |
 |---|---|
-| `run.py` | Starts esp-emu with the board, serves the page, relays button presses over esp-emu's control channel |
+| `run.py` | Starts esp-emu with the board, serves the page, relays button presses over esp-emu's control channel and the battery slider over UART1 |
 | `viewer.html` | The page: device, screen, keys, sound |
-| `board.json` | esp-emulator board: six push-button parts on GPIO 4, 5, 6, 7, 15 and 16 |
+| `board.json` | esp-emulator board: five push-button parts on GPIO 4, 5, 6, 7 and 15 |
 | `parts/` | Downloaded parts (not committed) |

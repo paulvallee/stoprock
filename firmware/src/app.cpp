@@ -28,7 +28,15 @@ constexpr int64_t kAuditEveryUs = 10 * 60 * kSec;   // clock audit sample interv
 constexpr int64_t kPowerOffUs = 5 * 60 * kSec;
 constexpr int64_t kCleanAfterHhUs = 5 * kSec;
 constexpr uint8_t kStonesPerClean = 4;         // ghost-clearing full refresh after every 4th timed stone
+#ifdef STOPROCK_BOARD_EMU
+// Simulator: react to the battery slider quickly, and let 1-minute games count towards the
+// games-left estimate so it can be tried without playing 20-minute games.
+constexpr int64_t kBatteryCheckUs = 2 * kSec;
+constexpr uint32_t kMinGameSecondsForBattery = 60;
+#else
 constexpr int64_t kBatteryCheckUs = 30 * kSec;
+constexpr uint32_t kMinGameSecondsForBattery = 20 * 60;
+#endif
 constexpr int kMaxStones = 12;
 
 const char* const kTips[][2] = {
@@ -431,7 +439,7 @@ void showHelpAndPowerOff() {
     shotPct = -1;
     battery = board::batteryPercent();
     bank.endGame(battery, board::clockNow());  // log the battery at the end of this game
-    const int left = bank.gamesLeft(battery);
+    const int left = bank.gamesLeft(battery, kMinGameSecondsForBattery);
     if (left < 0) note[0] = 0;
     else if (left == 0) snprintf(note, sizeof note, "Charge before next game");
     else snprintf(note, sizeof note, "~%d game%s battery left", left, left == 1 ? "" : "s");

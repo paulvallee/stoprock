@@ -56,7 +56,8 @@
     <tr><td><kbd>↑</kbd> / <kbd>↓</kbd></td><td>rocker up: made / rocker down: missed</td></tr>
     <tr><td><kbd>Enter</kbd></td><td>rocker press: hold 0.5 s to undo; keep holding to undo more</td></tr>
   </table>
-  <label><input type="checkbox" id="lowbat"> Low battery</label>
+  <label>Battery <input type="range" id="battery" min="0" max="100" value="100"> <span id="battery-value">100%</span></label>
+  <br>
   <label><input type="checkbox" id="sound" checked> Sound</label>
   <div id="log"></div>
 </div>
@@ -122,6 +123,10 @@ events.onmessage = (m) => {
   else if (e.type === "tone") tone(e.hz);
   else if (e.type === "led") document.getElementById("led").classList.toggle("on", e.on);
   else if (e.type === "log") addLog(e.text);
+  else if (e.type === "battery") {
+    document.getElementById("battery").value = e.value;
+    document.getElementById("battery-value").textContent = e.value + "%";
+  }
 };
 
 // buttons
@@ -159,7 +164,11 @@ document.addEventListener("keyup", (e) => {
   const name = KEYS[e.key] || KEYS[e.key.toLowerCase()];
   if (name) { e.preventDefault(); release(name); }
 });
-document.getElementById("lowbat").addEventListener("change", (e) => send("lowbat", e.target.checked ? "press" : "release"));
+const slider = document.getElementById("battery");
+slider.addEventListener("input", () => {
+  document.getElementById("battery-value").textContent = slider.value + "%";
+  fetch("/battery", { method: "POST", body: JSON.stringify({ value: Number(slider.value) }) });
+});
 </script>
 </body>
 </html>

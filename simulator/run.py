@@ -28,7 +28,7 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 DEFAULT_FIRMWARE = ROOT / "firmware" / ".pio" / "build" / "emu" / "stoprock-emu.bin"
 PART = HERE / "parts" / "pushbutton.wasm"
-BUTTONS = ("top", "side", "up", "press", "down", "lowbat")
+BUTTONS = ("top", "side", "up", "press", "down")
 W = H = 200
 STRIDE = W // 8
 
@@ -36,22 +36,38 @@ STRIDE = W // 8
 class Device:
     """The emulator process, its control channel and what it last drew."""
 
-    def __init__(self, esp_emu, firmware, control_port):
+    def __init__(self, esp_emu, firmware, control_port, uart1_port):
         self.fb = bytearray(STRIDE * H)
         self.lock = threading.Lock()
         self.listeners = []
         self.history = []  # recent console lines, replayed to a page that connects later
         self.control_port = control_port
+        self.uart1_port = uart1_port
+        self.battery = 100                # the page's slider
         self.control = None
         cmd = [esp_emu, "--chip", "esp32s3", "--firmware", str(firmware),
                "--cosim-board", str(HERE / "board.json"),
                "--control-tcp", f"127.0.0.1:{control_port}",
+               "--uart1-tcp", f"127.0.0.1:{uart1_port}",  # battery level, from the slider
                # set the clock once the firmware is up
                "--inject-on", "stoprock ready", "--inject", f"t {int(time.time())}\\n"]
         print("starting:", " ".join(cmd))
         self.proc = subprocess.Popen(cmd, cwd=HERE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                      text=True, bufsize=1)
         threading.Thread(target=self._read, daemon=True).start()
+        threading.Thread(target=self._battery_feed, daemon=True).start()
+
+    # -- battery level: sent to the firmware's UART1 twice a second
+    def _battery_feed(self):
+        sock = None
+        while self.proc.poll() is None:
+            try:
+                if sock is None:
+                    sock = socket.create_connection(("127.0.0.1", self.uart1_port), timeout=2)
+                sock.sendall(f"battery {self.battery}\n".encode())
+            except OSError:
+                sock = None
+            time.sleep(0.5)
 
     # -- emulator output
     def _read(self):
@@ -134,6 +150,7 @@ def make_handler(device):
                 device.listeners.append(q)
                 for text in device.history:
                     q.put({"type": "log", "text": text})
+                q.put({"type": "battery", "value": device.battery})
                 with device.lock:
                     q.put({"type": "fb", "full": False, "data": device.fb.hex()})
                 try:
@@ -152,10 +169,15 @@ def make_handler(device):
                 self.send_error(404)
 
         def do_POST(self):
+            body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
+            if self.path == "/battery":
+                device.battery = max(0, min(100, int(body.get("value", 100))))
+                self.send_response(204)
+                self.end_headers()
+                return
             if self.path != "/button":
                 self.send_error(404)
                 return
-            body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
             name, action = body.get("name"), body.get("action")
             if name not in BUTTONS or action not in ("press", "release"):
                 self.send_error(400)
@@ -205,6 +227,7 @@ def main():
     ap.add_argument("--esp-emu", default=None, help="path to the esp-emu binary")
     ap.add_argument("--port", type=int, default=8200, help="web page port (default: %(default)s)")
     ap.add_argument("--control-port", type=int, default=5556, help="emulator control port (default: %(default)s)")
+    ap.add_argument("--uart1-port", type=int, default=5557, help="emulator UART1 port, for the battery level (default: %(default)s)")
     ap.add_argument("--no-browser", action="store_true", help="don't open the page automatically")
     args = ap.parse_args()
 
@@ -214,7 +237,7 @@ def main():
     esp_emu = find_esp_emu(args.esp_emu)
     ensure_part()
 
-    device = Device(esp_emu, firmware, args.control_port)
+    device = Device(esp_emu, firmware, args.control_port, args.uart1_port)
     server = ThreadingHTTPServer(("127.0.0.1", args.port), make_handler(device))
     url = f"http://localhost:{args.port}"
     print(f"stoprock simulator: {url}  (Ctrl-C to stop)")

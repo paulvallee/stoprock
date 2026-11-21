@@ -9,8 +9,10 @@
 //   @LED 0|1                 green LED
 //
 // Buttons are esp-emulator push-button parts on the pins below (simulator/board.json).
-// A sixth button part on GPIO 16 stands in for a low battery while held.
+// The battery level comes from the viewer's slider: run.py sends "battery N" lines to UART1,
+// which esp-emulator bridges to a TCP port (--uart1-tcp).
 #include <Arduino.h>
+#include <esp_attr.h>
 
 #include "board.h"
 
@@ -24,7 +26,8 @@ constexpr int kPins[kButtonCount] = {
     7,   // rocker press
     15,  // rocker down
 };
-constexpr int kLowBatteryPin = 16;
+constexpr int kUart1Rx = 17, kUart1Tx = 18;
+constexpr uint32_t kBatteryMagic = 0xBA77E21;
 constexpr int64_t kPartialUs = 260000;   // GDEY0154D67 partial refresh
 constexpr int64_t kFullUs = 2000000;     // full refresh
 
@@ -32,11 +35,43 @@ uint32_t clockBase = 0;   // seconds at clockBaseMs
 uint32_t clockBaseMs = 0;
 bool clockIsSet = false;
 
+// Battery level from the slider. Kept in RTC memory so a restart (switch-off and on in the
+// simulator) still knows it before the next "battery" line arrives.
+RTC_NOINIT_ATTR int savedBattery;
+RTC_NOINIT_ATTR uint32_t savedBatteryMagic;
+int battery = -1;
+
+// Read any "battery N" lines waiting on UART1; returns true if one arrived.
+bool readBatteryLines() {
+    static char line[24];
+    static uint8_t len = 0;
+    bool got = false;
+    while (Serial1.available()) {
+        const char c = static_cast<char>(Serial1.read());
+        if (c != '\n' && c != '\r') { if (len < sizeof line - 1) line[len++] = c; continue; }
+        line[len] = 0;
+        len = 0;
+        if (!strncmp(line, "battery ", 8)) {
+            battery = constrain(atoi(line + 8), 0, 100);
+            savedBattery = battery;
+            savedBatteryMagic = kBatteryMagic;
+            got = true;
+        }
+    }
+    return got;
+}
+
 }  // namespace
 
 void begin() {
     for (int p : kPins) pinMode(p, INPUT_PULLUP);
-    pinMode(kLowBatteryPin, INPUT_PULLUP);
+    Serial1.begin(115200, SERIAL_8N1, kUart1Rx, kUart1Tx);
+    if (savedBatteryMagic == kBatteryMagic) {
+        battery = savedBattery;
+    } else {  // first start: wait briefly for the viewer's slider value
+        const uint32_t start = millis();
+        while (!readBatteryLines() && millis() - start < 1500) delay(10);
+    }
 }
 
 bool held(Button b) { return digitalRead(kPins[b]) == LOW; }
@@ -69,7 +104,10 @@ void show(const stoprock::Canvas& c, stoprock::Rect r, bool full) {
 void tone(uint16_t hz) { Serial.printf("@TONE %u\n", hz); }
 void led(bool on) { Serial.printf("@LED %d\n", on ? 1 : 0); }
 
-int batteryPercent() { return digitalRead(kLowBatteryPin) == LOW ? 10 : 80; }
+int batteryPercent() {
+    readBatteryLines();
+    return battery;  // -1 until the viewer has sent a value
+}
 
 uint32_t clockNow() { return clockBase + (millis() - clockBaseMs) / 1000; }
 bool clockValid() { return clockIsSet; }
