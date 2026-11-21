@@ -12,25 +12,34 @@ delayed to match the CoreInk's e-ink: 0.26 s, or 2 s for a full refresh.
 
 ## Setup (macOS Apple Silicon or Linux, once)
 
-```sh
-# 1. esp-emulator (installs to ~/.local/bin/esp-emu)
-curl -fsSL https://raw.githubusercontent.com/espressif/esp-emulator/main/install.sh | sh
+1. Install esp-emulator (it goes to `~/.local/bin/esp-emu`):
 
-# 2. PlatformIO, to build the firmware
-python3 -m pip install --user platformio
-```
+   ```sh
+   curl -fsSL https://raw.githubusercontent.com/espressif/esp-emulator/main/install.sh | sh
+   ```
+
+2. Install PlatformIO, to build the firmware. On a Mac with Homebrew:
+
+   ```sh
+   brew install platformio
+   ```
+
+   Elsewhere, `pipx install platformio` works. Plain `pip install` is refused by Homebrew's Python.
 
 ## Run
 
+From the repository's top folder:
+
 ```sh
 cd firmware
-python3 -m platformio run -e emu   # first build downloads the ESP32 tools (a few minutes)
+pio run -e emu
 cd ..
 python3 simulator/run.py
 ```
 
-Then open <http://localhost:8200>. The first run downloads the push-button part (`pushbutton.wasm`) from the
-esp-emulator examples kit into `simulator/parts/`.
+The first build downloads the ESP32 tools, which takes a few minutes. Then open <http://localhost:8200>. The
+first run also downloads the push-button part (`pushbutton.wasm`) from the esp-emulator examples kit into
+`simulator/parts/`.
 
 ## Controls
 
