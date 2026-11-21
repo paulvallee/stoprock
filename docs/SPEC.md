@@ -140,11 +140,11 @@ stoprock logo (176 px), then Spleen 6×12:
   up = made     down = missed
   hold 0.5 s = undo last shot
  ─────────────────────────────
- Last game 21 Nov   9/12   75%
-                       [▭] 84%
+ Last game 21 Nov   9/12  (◔) 75%
+                          [▭] 84%
 ```
 
-`[TIMING]` and `[SHOTS]` are white-on-black labels. The last line shows the most recent game.
+`[TIMING]` and `[SHOTS]` are white-on-black labels. The last rows show the most recent game, with its shot percentage beside a small pie, and the battery charge at switch-off beside a battery icon; the two percentages are right-aligned.
 
 ## 10. Screen update plan (responsiveness)
 

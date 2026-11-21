@@ -192,6 +192,7 @@ struct Model {
     bool help = false;
     bool full = false;      // next update is a ghost-clearing full refresh
     char lastGame[40] = "";
+    int shotPct = -1;       // help page: last game's shot percentage
     int battery = -1;       // help page: charge at switch-off
 };
 
@@ -220,7 +221,7 @@ void displayTask(void*) {
         xSemaphoreGive(modelLock);
 
         if (m.help) {
-            drawHelp(next, m.lastGame, m.battery);
+            drawHelp(next, m.lastGame, m.shotPct, m.battery);
         } else {
             MainView v;
             v.stones = m.stones;
@@ -424,6 +425,8 @@ void printAudit(const ClockAudit& a, bool current) {
 // ------------------------------------------------------------------ power
 void showHelpAndPowerOff() {
     static char line[40];
+    static int shotPct;
+    shotPct = -1;
     static GameRecord g;  // big (128 stones): keep it off the stack
     if (!bank.lastGame(g)) {
         snprintf(line, sizeof line, "No games yet");
@@ -438,12 +441,16 @@ void showHelpAndPowerOff() {
         ShotLog s;
         s.restore(g.shotCount, g.shotBits);
         if (s.count() == 0) snprintf(line, sizeof line, "Last game %s   %u stones", date, g.stoneCount);
-        else snprintf(line, sizeof line, "Last game %s   %d/%d   %d%%", date, s.madeCount(), s.count(), s.percent());
+        else {
+            snprintf(line, sizeof line, "Last game %s   %d/%d", date, s.madeCount(), s.count());
+            shotPct = s.percent();
+        }
     }
     auditSampleNow();
     Serial.println("power: off");
     publish([](Model& m) {
         strncpy(m.lastGame, line, sizeof m.lastGame - 1);
+        m.shotPct = shotPct;
         m.battery = board::batteryPercent();
         m.help = true;
         m.full = true;

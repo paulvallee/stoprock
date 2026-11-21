@@ -215,7 +215,23 @@ void drawMain(Canvas& c, const MainView& v) {
     }
 }
 
-void drawHelp(Canvas& c, const char* lastGame, int battery) {
+// 11 px pie: a 1-px ring and, inside a 1-px gap, a wedge filled clockwise from 12 o'clock.
+static void drawPie(Canvas& c, int cx, int cy, int pct) {
+    for (int dy = -6; dy <= 6; ++dy) {
+        for (int dx = -6; dx <= 6; ++dx) {
+            const int d2 = dx * dx + dy * dy;
+            if (d2 > 20 && d2 <= 30) {
+                c.set(cx + dx, cy + dy);
+            } else if (d2 <= 13 && pct > 0) {  // 1-px gap between wedge and ring
+                double a = atan2(static_cast<double>(dx), static_cast<double>(-dy));
+                if (a < 0) a += 2 * M_PI;
+                if (pct >= 100 || a < pct / 100.0 * 2 * M_PI) c.set(cx + dx, cy + dy);
+            }
+        }
+    }
+}
+
+void drawHelp(Canvas& c, const char* lastGame, int shotPct, int battery) {
     c.clear();
     const Font& f = kFontSpleen6x12;
     c.blit(kLogo, (W - kLogo.w) / 2, 4);
@@ -243,11 +259,22 @@ void drawHelp(Canvas& c, const char* lastGame, int battery) {
     y += 6;
     c.line(4, y, 195, y);
     y += 6;
-    line(lastGame);
-    if (battery >= 0) {  // battery at switch-off, bottom right: icon and percentage
+    // Bottom right: shot percentage with a pie, battery with its icon. Icons share a
+    // column (room for "100%"); the percentages are right-aligned so the % signs line up.
+    const int ix = W - 4 - 6 * 4 - 17;
+    auto percent = [&](int value) {
         char pct[6];
-        snprintf(pct, sizeof pct, "%d%%", battery > 100 ? 100 : battery);
-        const int bx = W - 4 - (17 + 6 * static_cast<int>(strlen(pct)));
+        snprintf(pct, sizeof pct, "%d%%", value < 0 ? 0 : value > 100 ? 100 : value);
+        c.text(f, W - 4 - 6 * static_cast<int>(strlen(pct)), y, pct);
+    };
+    c.text(f, 4, y, lastGame);
+    if (shotPct >= 0) {
+        drawPie(c, ix + 7, y + 6, shotPct);
+        percent(shotPct);
+    }
+    y += 12;
+    if (battery >= 0) {
+        const int bx = ix;
         c.fillRect(bx, y + 3, bx + 12, y + 3);       // outline
         c.fillRect(bx, y + 9, bx + 12, y + 9);
         c.fillRect(bx, y + 3, bx, y + 9);
@@ -255,7 +282,7 @@ void drawHelp(Canvas& c, const char* lastGame, int battery) {
         c.fillRect(bx + 13, y + 5, bx + 14, y + 7);  // terminal
         const int fill = pyRound(9.0 * (battery > 100 ? 100 : battery) / 100);
         if (fill > 0) c.fillRect(bx + 2, y + 5, bx + 2 + fill - 1, y + 7);
-        c.text(f, bx + 17, y, pct);
+        percent(battery);
         y += 12;
     }
 }

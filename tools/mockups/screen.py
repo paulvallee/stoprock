@@ -239,7 +239,23 @@ def main_screen(stones, shots, tip=None, warn=False):
 
 
 # --------------------------------------------------------------------------- help page
-def help_page(device_logo, last_game, battery=None):
+def draw_pie(d, cx, cy, pct):
+    """11 px pie: a 1-px ring and, inside a 1-px gap, a wedge filled clockwise from 12 o'clock."""
+    import math
+    for dy in range(-6, 7):
+        for dx in range(-6, 7):
+            d2 = dx * dx + dy * dy
+            if 20 < d2 <= 30:
+                d.point((cx + dx, cy + dy), fill=0)
+            elif d2 <= 13 and pct > 0:  # 1-px gap between wedge and ring
+                a = math.atan2(dx, -dy)
+                if a < 0:
+                    a += 2 * math.pi
+                if pct >= 100 or a < pct / 100 * 2 * math.pi:
+                    d.point((cx + dx, cy + dy), fill=0)
+
+
+def help_page(device_logo, last_game, shot_pct=None, battery=None):
     img = Image.new("1", (W, H), 1)
     d = ImageDraw.Draw(img)
     d.fontmode = "1"
@@ -273,16 +289,27 @@ def help_page(device_logo, last_game, battery=None):
     y += 6
     d.line([(4, y), (195, y)], fill=0)
     y += 6
-    line(last_game)
-    if battery is not None:  # battery at switch-off, bottom right: icon and percentage
-        pct = f"{battery}%"
-        bx = W - 4 - (17 + 6 * len(pct))
+    # Bottom right: shot percentage with a pie, battery with its icon. Icons share a
+    # column (room for "100%"); the percentages are right-aligned so the % signs line up.
+    ix = W - 4 - 6 * 4 - 17
+
+    def percent(value):
+        pct = f"{min(100, max(0, value))}%"
+        d.text((W - 4 - 6 * len(pct), y), pct, font=f, fill=0)
+
+    d.text((4, y), last_game, font=f, fill=0)
+    if shot_pct is not None:
+        draw_pie(d, ix + 7, y + 6, shot_pct)
+        percent(shot_pct)
+    y += 12
+    if battery is not None:
+        bx = ix
         d.rectangle([bx, y + 3, bx + 12, y + 9], outline=0)
         d.rectangle([bx + 13, y + 5, bx + 14, y + 7], fill=0)
         fill = round(9 * max(0, min(100, battery)) / 100)
         if fill > 0:
             d.rectangle([bx + 2, y + 5, bx + 2 + fill - 1, y + 7], fill=0)
-        d.text((bx + 17, y), pct, font=f, fill=0)
+        percent(battery)
         y += 12
     assert y <= H, f"help page overflows: {y}"
     return img
