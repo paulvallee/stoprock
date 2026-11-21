@@ -59,6 +59,8 @@ class Device:
             line = line.rstrip("\n")
             if line.startswith("@FB "):
                 self._framebuffer(line)
+            elif line.startswith("@FLASH "):
+                self.emit({"type": "flash", "ms": int(line.split()[1])})
             elif line.startswith("@TONE "):
                 self.emit({"type": "tone", "hz": int(line.split()[1])})
             elif line.startswith("@LED "):

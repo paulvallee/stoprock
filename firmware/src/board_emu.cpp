@@ -2,7 +2,9 @@
 // screen, so this board sends the screen, beeps and LED to the console as lines the
 // viewer in simulator/ draws and plays:
 //
-//   @FB x y w h full HEX     a screen region (x, w multiples of 8; HEX = rows of w/8 bytes, 1 = black)
+//   @FLASH ms                a full refresh has started; it flashes for ms milliseconds
+//   @FB x y w h full HEX     a screen region, sent when the panel would have finished drawing it
+//                            (x, w multiples of 8; HEX = rows of w/8 bytes, 1 = black)
 //   @TONE hz                 buzzer frequency, 0 = silent
 //   @LED 0|1                 green LED
 //
@@ -41,7 +43,13 @@ bool held(Button b) { return digitalRead(kPins[b]) == LOW; }
 int pin(Button b) { return kPins[b]; }
 
 void show(const stoprock::Canvas& c, stoprock::Rect r, bool full) {
+    // Behave like the e-ink: a full refresh flashes for its whole duration, and the new
+    // image only becomes visible when the panel has finished (0.26 s or 2 s from now).
     const int64_t t0 = esp_timer_get_time();
+    if (full) Serial.printf("@FLASH %d\n", static_cast<int>(kFullUs / 1000));
+    const int64_t wait = (full ? kFullUs : kPartialUs) - (esp_timer_get_time() - t0);
+    if (wait > 0) delay(wait / 1000);
+
     static const char hex[] = "0123456789ABCDEF";
     Serial.printf("@FB %d %d %d %d %d ", r.x, r.y, r.w, r.h, full ? 1 : 0);
     char line[2 * stoprock::Canvas::STRIDE + 1];
@@ -56,9 +64,6 @@ void show(const stoprock::Canvas& c, stoprock::Rect r, bool full) {
         Serial.print(line);
     }
     Serial.println();
-    // Take as long as the real screen would.
-    const int64_t wait = (full ? kFullUs : kPartialUs) - (esp_timer_get_time() - t0);
-    if (wait > 0) delay(wait / 1000);
 }
 
 void tone(uint16_t hz) { Serial.printf("@TONE %u\n", hz); }

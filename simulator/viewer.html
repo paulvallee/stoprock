@@ -48,8 +48,8 @@
 
 <div class="panel">
   <h1>stoprock simulator</h1>
-  <p>The real firmware, running in Espressif's esp-emulator on an ESP32-S3. Screen updates take as long as
-     the CoreInk's e-ink (0.26 s, or 2 s for a full refresh). Hold a button with the mouse or a key.</p>
+  <p>The real firmware, running in Espressif's esp-emulator on an ESP32-S3. Screen updates appear when the
+     CoreInk's e-ink would finish them: 0.26 s after the press, or after a 2 s flashing full refresh. Hold a button with the mouse or a key.</p>
   <table class="keys">
     <tr><td><kbd>Space</kbd> or <kbd>T</kbd></td><td>top button: timing click</td></tr>
     <tr><td><kbd>S</kbd></td><td>side button: timing click; hold 3 s to switch off</td></tr>
@@ -83,10 +83,11 @@ function draw(hex) {
   ctx.putImageData(img, 0, 0);
 }
 
-function flashThen(hex) {           // a full e-ink refresh flashes black, then white
-  ctx.fillStyle = "rgb(25,25,25)"; ctx.fillRect(0, 0, 200, 200);
-  setTimeout(() => { ctx.fillStyle = "rgb(222,218,214)"; ctx.fillRect(0, 0, 200, 200); }, 500);
-  setTimeout(() => draw(hex), 1000);
+function flash(ms) {               // a full e-ink refresh: black, white, black, white, then the image
+  const fill = (c) => { ctx.fillStyle = c; ctx.fillRect(0, 0, 200, 200); };
+  const black = "rgb(25,25,25)", white = "rgb(222,218,214)";
+  const steps = [black, white, black, white];
+  steps.forEach((c, i) => setTimeout(() => fill(c), (ms / steps.length) * i));
 }
 
 // sound
@@ -116,7 +117,8 @@ function addLog(text) {
 const events = new EventSource("/events");
 events.onmessage = (m) => {
   const e = JSON.parse(m.data);
-  if (e.type === "fb") e.full ? flashThen(e.data) : draw(e.data);
+  if (e.type === "fb") draw(e.data);
+  else if (e.type === "flash") flash(e.ms);
   else if (e.type === "tone") tone(e.hz);
   else if (e.type === "led") document.getElementById("led").classList.toggle("on", e.on);
   else if (e.type === "log") addLog(e.text);
