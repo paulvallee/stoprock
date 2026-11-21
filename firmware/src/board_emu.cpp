@@ -79,7 +79,8 @@ void clockSet(uint32_t unixSeconds) {
     clockIsSet = true;
 }
 
-bool lightSleep(int64_t) { return false; }  // the emulator doesn't model light sleep on the S3
+bool lightSleep(int64_t) { return false; }
+bool rtcSeconds(uint32_t*) { return false; }  // no real-time clock chip  // the emulator doesn't model light sleep on the S3
 
 void powerOff() {
     // Nothing to switch off: wait for the side button to be let go (it was held to switch

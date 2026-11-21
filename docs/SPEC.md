@@ -88,12 +88,14 @@ A stone gives at most one **B2H** (back line, or tee line, to hog line) followed
 | State | Entered when | Woken by |
 |---|---|---|
 | Awake | Any press | — |
-| Light sleep | Straight after an H2H; 20 s after a B2H with no H2H; 20 s after an abandoned start; otherwise 20 s after the last press | Any button (the waking press counts as a normal press), or the timer for the next tip or ghost clearing |
+| Light sleep | Whenever nothing is happening: straight after each timing click once its beep and any screen update are done (including between the clicks of a stone), and 2 s after a rocker press | Any button (the waking press counts as a normal press and is timed from the moment of waking), or a timer: the next tip or ghost clearing, a stone's 20 s timeout, the clock audit |
 | Off | 5 min with no press, or side button held 3 s | Side button held |
 
 - On switching off, the screen gets one full refresh to the **help page** (section 9), which the e-ink keeps with no power.
 - The screen controller stays awake (not in its deep sleep) during a game so updates start immediately; it goes into deep sleep only at power-off.
-- The chip stays fully awake from a stone's first click until it is done or abandoned.
+- The chip runs at 80 MHz, plenty for this app and roughly half the current of full speed.
+- **Sleeping while a stone is timed** (setting `sleeptiming`, default on). In light sleep the main crystal stops and the chip's less precise backup clock counts the time asleep, so a 15 s H2H spent asleep is only as accurate as that clock. The **clock audit** measures it during real use: every 10 minutes, and at switch-off, it pairs a tick of the real-time clock (which has its own crystal) with the chip's timer, and reports the backup clock's error and the error it implies for a 15 s H2H (serial command `audit`, last 8 switch-ons kept). If the error would show in the hundredths, turn the setting off (`sleeptiming off`): the chip then stays awake from a stone's first click until it is done.
+- Expected use over a 2-hour, 128-stone game (`tools/game_sim.py`): awake about 3% of the time, about 2% of the battery (estimated currents; to be measured). With sleeptiming off: about 40% and 5%.
 - Charge at room temperature only: lithium batteries must not be charged below 0 °C.
 
 ## 8. Main screen
@@ -200,7 +202,8 @@ Rules:
 2. Side power button: hardware behaviour when held, to settle the 3 s power-off.
 3. Measured click-to-visible time, at room temperature and on the ice.
 4. Battery life in real use.
-5. Trademark check for "stoprock".
+5. Clock audit after a real game: is sleeping while timing accurate enough (section 7)?
+6. Trademark check for "stoprock".
 
 ## 16. First firmware milestone
 

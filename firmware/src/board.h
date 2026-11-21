@@ -31,6 +31,10 @@ uint32_t clockNow();
 bool clockValid();
 void clockSet(uint32_t unixSeconds);
 
+// The real-time clock's current second (one quick I2C read). False if this board has no
+// real-time clock chip. The clock audit watches for it to tick over.
+bool rtcSeconds(uint32_t* seconds);
+
 // Light sleep until a button is pressed or wakeAtUs (esp_timer time; -1 = none) passes.
 // Returns false if this board doesn't sleep (the app then just idles).
 bool lightSleep(int64_t wakeAtUs);

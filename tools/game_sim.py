@@ -3,13 +3,15 @@ refreshes, awake time and battery use.
 
     python3 tools/game_sim.py
 
-Rules modelled (docs/SPEC.md sections 4, 7, 10):
-- A stone's first click wakes the chip; it stays fully awake until the stone is done.
-- B2H result: one partial update. H2H result: one partial update, then sleep at once.
+Rules modelled (docs/SPEC.md sections 4, 7, 10), with sleep-while-timing on (the default):
+- Each click wakes the chip just long enough to confirm the press and beep; a B2H or H2H
+  result also waits for its partial update. In between, it sleeps.
 - 5 s after each H2H the chip wakes for the next tip: a partial update, or a full
   (ghost-clearing) refresh after every 4th stone. Then it sleeps again.
 - A rocker press wakes it, logs the shot (one partial update when no stone is being
-  timed) and keeps it awake 20 s.
+  timed) and keeps it awake 2 s.
+- Every 10 minutes a clock-audit sample keeps it awake up to ~1 s (0.5 s on average).
+- The chip runs at 80 MHz.
 - Switching on is a full refresh. Switching off (help page) is one more, after the game.
 """
 
@@ -18,14 +20,16 @@ ENDS, STONES_PER_END = 8, 16
 B2H_S, H2H_S = 4.0, 15.0
 PARTIAL_S, FULL_S = 0.26, 2.0
 STONES_PER_CLEAN = 4
-SHOT_AWAKE_S = 20.0
+SHOT_AWAKE_S = 2.0
+CLICK_AWAKE_S = 0.05          # confirm the press (15 ms) and beep (30 ms)
+AUDIT_EVERY_S, AUDIT_AWAKE_S = 600, 0.5
 REFRESH_DELAY_S = 5.0
 OWN_ROCKS = (0, 2)           # your two rocks in each end (as lead: stones 1 and 3)
 SHOT_LOGGED_AFTER_S = 35.0   # you log your rock ~35 s after its back-line click, once it stops
 WAKE_OVERHEAD_S = 0.02       # wake-up, run the loop, go back to sleep
 
 # Estimated currents at 3.7 V (to be measured on a real CoreInk), low / typical / high
-AWAKE_MA = (25, 35, 50)      # ESP32 at 240 MHz, radio off, mostly waiting
+AWAKE_MA = (15, 20, 30)      # ESP32 at 80 MHz, radio off, mostly waiting
 SLEEP_MA = (1.0, 2.0, 3.0)   # ESP32 light sleep plus the board's own draw
 LED_MA = (2, 3, 5)           # green LED, lit while a stone is timed
 PANEL_EXTRA_MA = 5           # e-ink panel while it updates
@@ -45,8 +49,11 @@ def simulate():
         # timing: start, B2H, H2H; awake until the H2H update has drawn
         partial += 2
         beeps += 3
-        wakes += 1
-        awake.append((t0, t0 + B2H_S + H2H_S + PARTIAL_S))
+        wakes += 3
+        awake.append((t0, t0 + CLICK_AWAKE_S))                                  # start
+        awake.append((t0 + B2H_S, t0 + B2H_S + CLICK_AWAKE_S + PARTIAL_S))      # B2H
+        t_h2h = t0 + B2H_S + H2H_S
+        awake.append((t_h2h, t_h2h + CLICK_AWAKE_S + PARTIAL_S))                # H2H
         led_s += B2H_S + H2H_S
         # next tip, or ghost clearing every 4th stone
         stones_since_clean += 1
@@ -66,6 +73,10 @@ def simulate():
             beeps += 1
             wakes += 1
             awake.append((t_shot, t_shot + SHOT_AWAKE_S))
+
+    for k in range(int(GAME_S // AUDIT_EVERY_S)):
+        awake.append((k * AUDIT_EVERY_S, k * AUDIT_EVERY_S + AUDIT_AWAKE_S))
+        wakes += 1
 
     # merge overlapping awake intervals
     awake.sort()

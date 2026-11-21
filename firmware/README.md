@@ -32,8 +32,35 @@ Type into the serial console:
 | `t <unix seconds>` | Set the clock, e.g. `t 1795000000` (until the companion app does this) |
 | `s` | Status |
 | `bank`, `games`, `games new`, `game <id>`, `ack <id>`, `erase-all yes` | Game databank, see [`docs/DATABANK.md`](../docs/DATABANK.md) |
+| `audit` | Clock audit: how accurate timing is while the chip sleeps between clicks (see below) |
+| `sleeptiming on` / `off` | Sleep between the clicks of a stone (default on) |
 | `n` | Start a new game now (switching on also does) |
 | `o` | Switch off (shows the help page) |
+
+## After a real game: the clock audit
+
+While a stone is timed the chip sleeps between clicks, and time asleep is counted by a less precise backup
+clock. The firmware measures that clock against the real-time clock's crystal throughout the game. After the
+game, plug the CoreInk into your Mac **without switching it off and on first** (that starts a new audit), open the
+serial console and type `audit`:
+
+```sh
+pio device monitor -e coreink      # then type: audit
+```
+
+Each line is one switch-on, the current one first:
+
+```text
+@AUDIT
+{"current":true,"game":12,"sleep_while_timing":true,"samples":13,"span_s":7210,"slept_s":6980,
+ "timer_minus_rtc_ms":-410.0,"sleep_clock_ppm":-59,"results":256,"results_asleep_pct":97.9,
+ "est_error_ms_15s_h2h":-0.9}
+@END
+```
+
+(The numbers above are made up, to show the format.) `est_error_ms_15s_h2h` is what matters: the typical error in
+a 15 s H2H caused by sleeping. Under about 3 ms is invisible in hundredths; past about 5 ms, turn sleeping
+while timing off with `sleeptiming off`. Send me the output and I'll interpret it.
 
 ## Not yet checked on hardware
 

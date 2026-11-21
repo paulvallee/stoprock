@@ -30,6 +30,7 @@ void begin() {
     auto cfg = M5.config();
     cfg.clear_display = false;
     M5.begin(cfg);
+    setCpuFrequencyMhz(80);  // plenty for this app; roughly halves the current while awake
     M5.Display.setAutoDisplay(false);
     M5.Display.setRotation(0);
 
@@ -94,6 +95,12 @@ void clockSet(uint32_t unixSeconds) {
     struct tm tmv;
     gmtime_r(&t, &tmv);
     M5.Rtc.setDateTime(&tmv);
+}
+
+bool rtcSeconds(uint32_t* seconds) {
+    if (!M5.Rtc.isEnabled()) return false;
+    *seconds = clockNow();
+    return true;
 }
 
 bool lightSleep(int64_t wakeAtUs) {

@@ -22,7 +22,9 @@ constexpr int64_t kEdgeGapUs = 30000;          // ignore further edges of the sa
 constexpr int64_t kStableUs = 20000;           // rocker debounce
 constexpr int64_t kUndoHoldUs = kSec / 2;   // 0.5 s
 constexpr int64_t kPowerHoldUs = 3 * kSec;
-constexpr int64_t kIdleSleepUs = 20 * kSec;
+constexpr int64_t kAwakeAfterPressUs = 2 * kSec;    // stay awake this long after a rocker press
+constexpr int64_t kAwakeAfterWakeUs = 40000;        // time to confirm the button that woke us
+constexpr int64_t kAuditEveryUs = 10 * 60 * kSec;   // clock audit sample interval
 constexpr int64_t kPowerOffUs = 5 * 60 * kSec;
 constexpr int64_t kCleanAfterHhUs = 5 * kSec;
 constexpr uint8_t kStonesPerClean = 4;         // ghost-clearing full refresh after every 4th timed stone
@@ -112,6 +114,29 @@ int64_t sleepAt = 0;
 int64_t refreshAt = -1;          // after a stone: next tip, and every 4th stone a full refresh
 bool refreshFull = false;
 uint8_t stonesSinceClean = 0;
+
+// Sleeping while a stone is timed (setting "sleeptiming", default on). Light sleep stops the
+// main crystal, so time asleep is counted by the chip's less precise backup clock. The clock
+// audit measures how far that drifts, against the real-time clock's crystal, during real use.
+bool sleepWhileTiming = true;
+int64_t sleptUs = 0;            // total time in light sleep since switch-on (chip timer)
+int64_t sleptAtAnchor = 0;      // sleptUs at the click the current interval is measured from
+
+struct ClockAudit {
+    uint32_t gameId = 0;
+    uint8_t sleepWhileTiming = 1;
+    uint8_t pad[3] = {};
+    uint32_t samples = 0;
+    uint32_t rtc0 = 0, rtcLast = 0;      // real-time clock seconds at the first and last sample
+    int64_t timer0 = 0, timerLast = 0;   // chip timer at those second edges
+    int64_t slept0 = 0, sleptLast = 0;   // sleptUs at those samples
+    uint32_t results = 0;                // B2H and H2H times recorded
+    int64_t resultUs = 0;                // their total length
+    int64_t resultSleptUs = 0;           // ... of which the chip was asleep
+};
+ClockAudit audit;
+int64_t nextAuditAt = 0;
+constexpr int kAuditHistory = 8;
 int64_t nextBatteryCheck = 0;
 bool lowBattery = false;
 uint8_t tipIndex = 0;
@@ -255,6 +280,16 @@ void countTimedStone(int64_t now, int64_t delay) {
     refreshFull = stonesSinceClean >= kStonesPerClean;
 }
 
+// A B2H or H2H was measured: note how much of it the chip spent asleep, for the clock audit.
+void noteResult(int64_t us) {
+    const int64_t asleep = sleptUs - sleptAtAnchor;
+    ++audit.results;
+    audit.resultUs += us;
+    audit.resultSleptUs += asleep;
+    sleptAtAnchor = sleptUs;  // the next interval (H2H after B2H) starts at this click
+    Serial.printf("timing: %.0f%% of it asleep\n", us > 0 ? 100.0 * asleep / us : 0.0);
+}
+
 void handleOutcome(const Outcome& o, int64_t now) {
     if (o.closedFirst == TimingEvent::BhClosed) {
         Serial.println("timing: B2H-only stone closed");
@@ -262,19 +297,23 @@ void handleOutcome(const Outcome& o, int64_t now) {
     }
     switch (o.event) {
     case TimingEvent::Started:
+        sleptAtAnchor = sleptUs;
         board::led(true);
         Serial.println("timing: start");
         break;
     case TimingEvent::Restarted:
+        sleptAtAnchor = sleptUs;
         Serial.println("timing: double press, restart");
         break;
     case TimingEvent::BH:
+        noteResult(o.us);
         pushStone(Stone{toHundredths(o.us), -1});
         bank.addStone(toStored(stones[0].bh), StoneTimes::kNoTime, board::clockNow());
         Serial.printf("timing: B2H %.2f\n", o.us / 1e6);
         syncModel();
         break;
     case TimingEvent::HH:
+        noteResult(o.us);
         if (o.hadBh && stoneCount > 0) {
             stones[0].hh = toHundredths(o.us);
             bank.setLastHogToHog(toStored(stones[0].hh), board::clockNow());
@@ -306,6 +345,81 @@ void handleOutcome(const Outcome& o, int64_t now) {
     }
 }
 
+// ------------------------------------------------------------------ clock audit
+void auditSave() {
+    audit.gameId = bank.current().id;
+    audit.sleepWhileTiming = sleepWhileTiming;
+    ClockAudit history[kAuditHistory] = {};
+    if (prefs.getBytesLength("audits") == sizeof history) prefs.getBytes("audits", history, sizeof history);
+    // slot 0 is this switch-on's audit: shift the others down when a new one starts
+    static bool shifted = false;
+    if (!shifted) {
+        memmove(&history[1], &history[0], sizeof(ClockAudit) * (kAuditHistory - 1));
+        shifted = true;
+    }
+    history[0] = audit;
+    prefs.putBytes("audits", history, sizeof history);
+}
+
+// A sample pairs a real-time clock second edge with the chip timer. Waiting for the edge
+// takes up to ~1 s, so it runs a step per loop pass (buttons keep working meanwhile) and the
+// chip doesn't sleep until it's done.
+bool auditWaiting = false;
+uint32_t auditFrom = 0;
+int64_t auditGiveUpAt = 0;
+
+void auditRecord(uint32_t rtc, int64_t timer) {
+    if (audit.samples == 0) {
+        audit.rtc0 = rtc;
+        audit.timer0 = timer;
+        audit.slept0 = sleptUs;
+    }
+    audit.rtcLast = rtc;
+    audit.timerLast = timer;
+    audit.sleptLast = sleptUs;
+    ++audit.samples;
+    auditSave();
+}
+
+void auditStart(int64_t now) {
+    if (board::rtcSeconds(&auditFrom)) {
+        auditWaiting = true;
+        auditGiveUpAt = now + 1500000;
+    }
+}
+
+void auditStep() {
+    if (!auditWaiting) return;
+    const int64_t before = esp_timer_get_time();
+    uint32_t sec;
+    if (!board::rtcSeconds(&sec) || before > auditGiveUpAt) { auditWaiting = false; return; }
+    if (sec != auditFrom) {  // ticked between the previous read and this one (a loop pass, ~2 ms)
+        auditWaiting = false;
+        auditRecord(sec, before);
+    }
+}
+
+// Blocking version, for switch-off.
+void auditSampleNow() {
+    auditStart(esp_timer_get_time());
+    while (auditWaiting) { auditStep(); delay(1); }
+}
+
+void printAudit(const ClockAudit& a, bool current) {
+    const double span = static_cast<double>(a.rtcLast - a.rtc0);              // seconds
+    const double errMs = ((a.timerLast - a.timer0) - span * 1e6) / 1000.0;    // timer minus RTC
+    const double sleptS = (a.sleptLast - a.slept0) / 1e6;
+    const double ppm = sleptS > 1 ? errMs * 1000.0 / sleptS : 0;               // error per second asleep
+    const double asleepPct = a.resultUs > 0 ? 100.0 * a.resultSleptUs / a.resultUs : 0;
+    Serial.printf("{\"current\":%s,\"game\":%lu,\"sleep_while_timing\":%s,\"samples\":%lu,"
+                  "\"span_s\":%.0f,\"slept_s\":%.0f,\"timer_minus_rtc_ms\":%.1f,\"sleep_clock_ppm\":%.0f,"
+                  "\"results\":%lu,\"results_asleep_pct\":%.1f,\"est_error_ms_15s_h2h\":%.1f}\n",
+                  current ? "true" : "false", static_cast<unsigned long>(a.gameId),
+                  a.sleepWhileTiming ? "true" : "false", static_cast<unsigned long>(a.samples), span, sleptS,
+                  errMs, ppm, static_cast<unsigned long>(a.results), asleepPct,
+                  15.0 * (asleepPct / 100.0) * ppm / 1000.0);
+}
+
 // ------------------------------------------------------------------ power
 void showHelpAndPowerOff() {
     static char line[40];
@@ -325,6 +439,7 @@ void showHelpAndPowerOff() {
         if (s.count() == 0) snprintf(line, sizeof line, "Last game %s   %u stones", date, g.stoneCount);
         else snprintf(line, sizeof line, "Last game %s   %d/%d   %d%%", date, s.madeCount(), s.count(), s.percent());
     }
+    auditSampleNow();
     Serial.println("power: off");
     publish([](Model& m) {
         strncpy(m.lastGame, line, sizeof m.lastGame - 1);
@@ -341,7 +456,7 @@ void showHelpAndPowerOff() {
 // ------------------------------------------------------------------ input actions
 void activity(int64_t now) {
     lastActivity = now;
-    if (sleepAt < now + kIdleSleepUs) sleepAt = now + kIdleSleepUs;
+    if (sleepAt < now + kAwakeAfterPressUs) sleepAt = now + kAwakeAfterPressUs;
 }
 
 void onTimingPress(int64_t t) {
@@ -349,6 +464,8 @@ void onTimingPress(int64_t t) {
     if (o.event == TimingEvent::IgnoredTooSoon) sound.play(kError);
     else sound.play(kClick);
     handleOutcome(o, t);
+    // Nothing to wait for between clicks: sleep as soon as the beep and screen are done.
+    if (sleepWhileTiming || !timing.active()) sleepAt = t;
 }
 
 void onShot(bool made) {
@@ -466,6 +583,18 @@ void serialCommands() {
         } else if (!strcmp(buf, "erase-all yes")) {
             bank.eraseAll();
             Serial.println("@ERASED");
+        } else if (!strcmp(buf, "audit")) {
+            ClockAudit history[kAuditHistory] = {};
+            if (prefs.getBytesLength("audits") == sizeof history) prefs.getBytes("audits", history, sizeof history);
+            Serial.println("@AUDIT");
+            printAudit(audit, true);
+            for (int i = 1; i < kAuditHistory; ++i)
+                if (history[i].samples > 0) printAudit(history[i], false);
+            Serial.println("@END");
+        } else if (!strncmp(buf, "sleeptiming ", 12)) {
+            sleepWhileTiming = !strcmp(buf + 12, "on");
+            prefs.putBool("sleeptim", sleepWhileTiming);
+            Serial.printf("sleep while timing: %s\n", sleepWhileTiming ? "on" : "off");
         } else if (!strcmp(buf, "n")) {
             newGame();
             syncModel();
@@ -479,7 +608,7 @@ void serialCommands() {
                           board::clockValid() ? "" : " (not set)");
         } else if (buf[0]) {
             Serial.println("commands: t <unix seconds> | s | games | games new | game <id> | ack <id> | bank | "
-                           "erase-all yes | n (new game) | o (power off)");
+                           "erase-all yes | audit | sleeptiming on|off | n (new game) | o (power off)");
         }
     }
 }
@@ -496,6 +625,7 @@ void setup() {
 
     prefs.begin("stoprock", false);
     tipIndex = prefs.getUChar("tip", 0) % kTipCount;
+    sleepWhileTiming = prefs.getBool("sleeptim", true);
     if (!bankStore.begin()) Serial.println("databank: no \"games\" partition, games won't be kept");
     bank.begin();
     newGame();  // every switch-on starts a new game
@@ -513,6 +643,8 @@ void setup() {
     const int64_t now = esp_timer_get_time();
     activity(now);
     syncModel(true);
+    auditStart(esp_timer_get_time());  // first clock audit sample
+    nextAuditAt = esp_timer_get_time() + kAuditEveryUs;
     Serial.printf("stoprock ready (%s)\n", board::name());
 }
 
@@ -545,14 +677,26 @@ void loop() {
 
     if (now - lastActivity >= kPowerOffUs) showHelpAndPowerOff();
 
+    // clock audit: start a sample every 10 minutes, then step it each pass
+    if (now >= nextAuditAt && !auditWaiting) {
+        nextAuditAt = now + kAuditEveryUs;
+        auditStart(now);
+    }
+    auditStep();
+
     // light sleep when nothing is going on
     bool anyDown = false;
     for (const ButtonState& s : buttons) anyDown |= s.down || s.pending || s.rawDown;
-    if (!timing.active() && !displayBusy && !anyDown && !sound.playing() && now >= sleepAt) {
+    const bool mayTime = !timing.active() || sleepWhileTiming;
+    if (mayTime && !displayBusy && !anyDown && !sound.playing() && !auditWaiting && now >= sleepAt) {
         int64_t wake = lastActivity + kPowerOffUs;
         if (refreshAt >= 0 && refreshAt < wake) wake = refreshAt;
+        if (nextAuditAt < wake) wake = nextAuditAt;
+        if (timing.active() && timing.deadline() + 1000 < wake) wake = timing.deadline() + 1000;
+        const int64_t before = esp_timer_get_time();
         if (board::lightSleep(wake)) {
             now = esp_timer_get_time();
+            sleptUs += now - before;
             // A timing button that woke us: its press time is the wake-up time.
             for (uint8_t b : {board::kTop, board::kSide}) {
                 if (board::held(static_cast<board::Button>(b)) && !buttons[b].pending) {
@@ -561,7 +705,7 @@ void loop() {
                     buttons[b].pendingT = now;
                 }
             }
-            sleepAt = now + kIdleSleepUs;
+            sleepAt = now + kAwakeAfterWakeUs;
             return;
         }
     }
