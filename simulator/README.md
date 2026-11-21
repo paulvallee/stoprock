@@ -24,7 +24,7 @@ python3 -m pip install --user platformio
 
 ```sh
 cd firmware
-~/.local/bin/pio run -e emu       # or `pio run -e emu` if pio is on your PATH
+python3 -m platformio run -e emu   # first build downloads the ESP32 tools (a few minutes)
 cd ..
 python3 simulator/run.py
 ```
