@@ -37,6 +37,8 @@ extern const Sprite kRockSmall;     // a rock slot (radius 5)
 extern const Sprite kCursorSmall;   // cursor: the slot drawn bold
 extern const Sprite kCheckSmall;    // made
 extern const Sprite kCrossSmall;    // missed
+extern const Sprite kStopwatch;      // where a time is awaited, in the large row (ring radius 10)
+extern const Sprite kStopwatchSmall; // ... and in coach page 2's smaller row (radius 6)
 
 // Slash of the drawn % sign, for each digit height; sprite origin = top-left of the sign.
 struct PercentSlash {

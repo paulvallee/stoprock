@@ -117,6 +117,9 @@ def main():
     emit_sprite("kCheckSmall", lambda d, c: d.line([(c - 3, c), (c - 1, c + 2), (c + 3, c - 3)], fill=0, width=2), 15, out)
     emit_sprite("kCrossSmall", lambda d, c: (d.line([(c - 2, c - 2), (c + 2, c + 2)], fill=0, width=2),
                                              d.line([(c - 2, c + 2), (c + 2, c - 2)], fill=0, width=2)), 15, out)
+    # the stopwatch shown where a time is awaited: in the large row, and coach page 2's small one
+    emit_sprite("kStopwatch", lambda d, c: screen.stopwatch(d, c, c, screen.STOPWATCH_BIG), 31, out)
+    emit_sprite("kStopwatchSmall", lambda d, c: screen.stopwatch(d, c, c, screen.STOPWATCH_SMALL), 23, out)
     # Percent-sign slashes: one per possible digit height (the "1" is shorter in DSEG).
     pct = f["pct"]
     boxes = {ch: screen.ink(ch, pct) for ch in "0123456789"}

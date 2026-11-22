@@ -284,24 +284,37 @@ void timesGrid(Canvas& c, const Stone* stones, int count, int mid, int me, int a
     }
 }
 
+// The current stone across both halves; a stopwatch where an awaited time will appear.
+// Awaiting the B2H, the row is still empty (the new stone has no time yet).
+void newestRow(Canvas& c, const Stone* stones, int count, Waiting waiting, int mid, const Font& font, int y0,
+               int y1, int margin, const Sprite& watch, int cy) {
+    const Stone* cur = waiting == Waiting::BackToHog || count == 0 ? nullptr : &stones[0];
+    const int32_t vals[2] = {cur ? cur->bh : -1, cur ? cur->hh : -1};
+    const Waiting want[2] = {Waiting::BackToHog, Waiting::HogToHog};
+    for (int k = 0; k < 2; ++k) {
+        const int x0 = k == 0 ? 0 : mid, x1 = k == 0 ? mid : W;
+        if (vals[k] >= 0) dsegNumber(c, vals[k], x0, x1, y0, y1, margin, font);
+        else if (waiting == want[k]) c.sprite(watch, (x0 + x1) / 2, cy);
+    }
+}
+
 // Back2Hog | Hog2Hog across the full width: header, newest large, older below
 // (one to a row, or with grid three to a row).
 void timesWide(Canvas& c, const Stone* stones, int count, int bottom, int labelRight, bool grid = false,
-               int mid = WIDE_MID, int me = 0, int active = 0, int rowsMax = kGridRows) {
+               int mid = WIDE_MID, int me = 0, int active = 0, int rowsMax = kGridRows,
+               Waiting waiting = Waiting::None) {
     const Font& label = kFontSpleen6x12;
     textInBox(c, label, "Back2Hog", 0, mid, 0, LABEL_H, kCentre, 4);
     textInBox(c, label, "Hog2Hog", mid, labelRight, 0, LABEL_H, kCentre, 4);
     hline(c, 0, W - 1, LABEL_H);
-    if (count > 0) {
-        if (stones[0].bh >= 0) dsegNumber(c, stones[0].bh, 0, mid, 13, 47);
-        if (stones[0].hh >= 0) dsegNumber(c, stones[0].hh, mid, W, 13, 47);
-    }
+    newestRow(c, stones, count, waiting, mid, kFontDseg25, 13, 47, 3, kStopwatch, 30);
     hline(c, 0, W - 1, 47, 2);
     vline(c, mid, 0, bottom - 1);
     if (grid) { timesGrid(c, stones, count, mid, me, active, rowsMax); return; }
     char buf[12];
-    for (int i = 1; i < count; ++i) {
-        const int ry = 50 + (i - 1) * 14;
+    const int first = waiting == Waiting::BackToHog ? 0 : 1;  // a new stone under way: the last one is older now
+    for (int i = first; i < count; ++i) {
+        const int ry = 50 + (i - first) * 14;
         if (ry + 14 > bottom) break;
         if (stones[i].bh >= 0) {
             formatTime(stones[i].bh, buf, sizeof buf);
@@ -358,11 +371,11 @@ static void tooltip(Canvas& c, const char* const* lines, int n) {
 static const char* const kPositionTip[2] = {"Double click rocker", "to change position"};
 
 void drawCompetition(Canvas& c, const Stone* stones, uint8_t count, uint8_t me, uint8_t activeCol,
-                     bool lowBattery, bool tip) {
+                     bool lowBattery, bool tip, Waiting waiting) {
     c.clear();
     const Font& label = kFontSpleen6x12;
     const int strip = H - TIP_H;
-    timesWide(c, stones, count, strip, W, true, COMP_MID, me, activeCol);
+    timesWide(c, stones, count, strip, W, true, COMP_MID, me, activeCol, kGridRows, waiting);
     c.fillRect(0, strip, W - 1, H - 1);
     textInBox(c, label, "COMPETITION", 0, W, strip + 1, strip + 13, kCentre, 4, false);
     textInBox(c, label, lowBattery ? "Battery low" : "STOPWATCH FEATURES ONLY", 0, W, strip + 13, strip + 25,
@@ -371,11 +384,11 @@ void drawCompetition(Canvas& c, const Stone* stones, uint8_t count, uint8_t me, 
 }
 
 void drawLeague(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& shots, uint8_t me, uint8_t activeCol,
-                bool lowBattery, bool tip) {
+                bool lowBattery, bool tip, Waiting waiting) {
     c.clear();
     const int top = 159;    // 2 px line under the times
     const int split = 134;  // 2 px divider left of the percentage
-    timesWide(c, stones, count, top, W, true, COMP_MID, me, activeCol, kLeagueRows);
+    timesWide(c, stones, count, top, W, true, COMP_MID, me, activeCol, kLeagueRows, waiting);
     hline(c, 0, W - 1, top, 2);
     vline(c, split, top, H - 1, 2);
     // your rocks like a scoreboard: ends across, rock 1 over rock 2
@@ -403,12 +416,12 @@ void drawLeague(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& sh
     if (tip) tooltip(c, kPositionTip, 2);
 }
 
-void drawCoachTimer(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& shots) {
+void drawCoachTimer(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& shots, Waiting waiting) {
     c.clear();
     const Font& label = kFontSpleen6x12;
     pageMarks(c, 0);
     const int bottom = 150;
-    timesWide(c, stones, count, bottom, W - 18);
+    timesWide(c, stones, count, bottom, W - 18, false, WIDE_MID, 0, 0, kGridRows, waiting);
     hline(c, 0, W - 1, bottom, 2);
     for (int p = 0; p < 4; ++p) {
         if (p) vline(c, COACH_GX[p], bottom, H - 1);
@@ -427,17 +440,14 @@ void drawCoachTimer(Canvas& c, const Stone* stones, uint8_t count, const ShotLog
     for (int row = 0; row < 2; ++row) endRow(c, shots, first + row, bottom + 24 + row * 15);
 }
 
-void drawCoachRocks(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& shots) {
+void drawCoachRocks(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& shots, Waiting waiting) {
     c.clear();
     const Font& label = kFontSpleen6x12;
     textInBox(c, label, "Back2Hog", 0, WIDE_MID, 0, LABEL_H, kCentre, 4);
     textInBox(c, label, "Hog2Hog", WIDE_MID, W - 18, 0, LABEL_H, kCentre, 4);
     hline(c, 0, W - 1, LABEL_H);
     pageMarks(c, 1);
-    if (count > 0) {
-        if (stones[0].bh >= 0) dsegNumber(c, stones[0].bh, 0, WIDE_MID, 13, 33, 20, kFontDseg16);
-        if (stones[0].hh >= 0) dsegNumber(c, stones[0].hh, WIDE_MID, W, 13, 33, 20, kFontDseg16);
-    }
+    newestRow(c, stones, count, waiting, WIDE_MID, kFontDseg16, 13, 33, 20, kStopwatchSmall, 25);
     vline(c, WIDE_MID, 0, 33);
     hline(c, 0, W - 1, 33, 2);
     for (int p = 0; p < 4; ++p) {

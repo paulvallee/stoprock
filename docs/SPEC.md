@@ -166,9 +166,9 @@ The physical update takes about 0.26 s whatever the area changed, so the goal is
 
 | Event | Update |
 |---|---|
-| Start click | Beep and LED on. **No screen update.** |
-| First result of a stone (B2H, or H2H with no B2H) | Beep. One update: move the previous result into the list, and show the new value in the large row. |
-| H2H after a B2H | Beep. Only the large H2H cell. |
+| Start click | Beep and LED on. One update: the large row clears and a **stopwatch** appears in the Back2Hog box, where the time will appear (the last stone stays in the history). |
+| First result of a stone (B2H, or H2H with no B2H) | Beep. One update: the new value in the large row; after a B2H the stopwatch moves to the Hog2Hog box. |
+| H2H after a B2H | Beep. Only the large H2H cell (replacing the stopwatch, which moved there with the B2H). |
 | Rocker | Beep. That rock, the cursor and the percentage. |
 | Ghost clearing (2 s full refresh) | After **every 4th timed stone** (a setting, to tune on the real panel): **5 s after its H2H click**, or **20 s after its B2H click** if it has no H2H. A timer wakes the chip from light sleep for it. Abandoned starts don't count. If the next stone has already started, it waits for that stone to end. |
 

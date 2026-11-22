@@ -27,6 +27,12 @@ def main():
     }
     refs["competition-tip"] = screen.competition_screen([], 0, 0, tip=True)
     refs["league-tip"] = screen.league_screen([], [], 2, 0, tip=True)
+    half = [(st[0][0], None, st[0][2])] + list(st[1:])  # the newest stone awaiting its H2H
+    refs["competition-wait-b2h"] = screen.competition_screen(st, 0, 1, waiting="b2h")
+    refs["league-wait-h2h"] = screen.league_screen(half, shots, 0, 1, waiting="h2h")
+    cs = render.COACH_STONES
+    refs["coach1-wait-b2h"] = screen.coach_timer_screen(cs, render.COACH_SHOTS, waiting="b2h")
+    refs["coach2-wait-h2h"] = screen.coach_rocks_screen([(cs[0][0], None)] + cs[1:], render.COACH_SHOTS, waiting="h2h")
     for n in range(17):  # the cursor at every position; each position as yours, each column active
         refs[f"league{n:02d}"] = screen.league_screen(st, [i % 3 != 2 for i in range(n)], n % 4, n % 3)
     refs["competition"] = screen.competition_screen(render.COMP_STONES, render.COMP_ME, render.COMP_ACTIVE)

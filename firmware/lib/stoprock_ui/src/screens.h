@@ -15,6 +15,10 @@ struct Stone {
     static constexpr uint8_t kNoPlayer = 0xFF;
 };
 
+// While a stone is being timed: which time is awaited. The screens show a stopwatch where it will
+// appear; awaiting the B2H, the large row is the new stone's (empty) and the last stone counts as older.
+enum class Waiting : uint8_t { None, BackToHog, HogToHog };
+
 // lastGame: e.g. "Last game 21 Nov   9/12". shotPct: shown with a pie, -1 = none.
 // battery: charge at switch-off, -1 = unknown. batteryNote: left of the battery, e.g.
 // "~11 games battery left"; nullptr or "" = none.
@@ -28,7 +32,7 @@ void drawHelp(Canvas& c, const char* lastGame, int shotPct = -1, int battery = -
 constexpr uint8_t kGridColumns = 3, kGridRows = 8;
 // tip: the switch-on tip, "Double click rocker to change position", in a box over the times.
 void drawCompetition(Canvas& c, const Stone* stones, uint8_t count, uint8_t me, uint8_t activeCol,
-                     bool lowBattery, bool tip = false);
+                     bool lowBattery, bool tip = false, Waiting waiting = Waiting::None);
 // The position shown in column k (0-2) for a player at position me.
 inline uint8_t teammate(uint8_t me, uint8_t k) { return k < me ? k : k + 1; }
 
@@ -37,7 +41,7 @@ inline uint8_t teammate(uint8_t me, uint8_t k) { return k < me ? k : k + 1; }
 // lowBattery puts a "Batt low" bar over the percentage.
 constexpr uint8_t kLeagueRows = 7;
 void drawLeague(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& shots, uint8_t me, uint8_t activeCol,
-                bool lowBattery, bool tip = false);
+                bool lowBattery, bool tip = false, Waiting waiting = Waiting::None);
 
 // Put a stone at the front of a newest-first list. When the list is full, the stone dropped is
 // the oldest of a player with more than a screenful (kGridRows), so a player who has thrown
@@ -46,9 +50,11 @@ void addStone(Stone* list, uint8_t& count, uint8_t capacity, const Stone& s);
 
 // Coach (side button + rocker up), 64 rocks: 8 ends x 4 positions x 2.
 // Page 1, timer priority: wide times, % per position, the previous and current end.
-void drawCoachTimer(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& shots);
+void drawCoachTimer(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& shots,
+                    Waiting waiting = Waiting::None);
 // Page 2, rock priority: the newest times only, all 64 rocks, a pie and % per position.
-void drawCoachRocks(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& shots);
+void drawCoachRocks(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& shots,
+                    Waiting waiting = Waiting::None);
 
 // Hundredths of a second from microseconds, rounded.
 inline int32_t toHundredths(int64_t us) { return static_cast<int32_t>((us + 5000) / 10000); }

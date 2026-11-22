@@ -212,6 +212,7 @@ struct Model {
     bool help = false;
     bool full = false;      // next update is a ghost-clearing full refresh
     bool tip = false;       // the switch-on position tip
+    Waiting waiting = Waiting::None;  // a stone being timed: the stopwatch shows where its time will go
     char lastGame[40] = "";
     int shotPct = -1;       // help page: last game's shot percentage
     int battery = -1;       // help page: charge at switch-off
@@ -245,12 +246,12 @@ void displayTask(void*) {
         if (m.help) {
             drawHelp(next, m.lastGame, m.shotPct, m.battery, m.batteryNote);
         } else if (m.mode == GameMode::Competition) {
-            drawCompetition(next, m.stones, m.stoneCount, m.me, m.activeCol, m.warning, m.tip);
+            drawCompetition(next, m.stones, m.stoneCount, m.me, m.activeCol, m.warning, m.tip, m.waiting);
         } else if (m.mode == GameMode::Coach) {
-            if (m.page == 0) drawCoachTimer(next, m.stones, m.stoneCount, m.shots);
-            else drawCoachRocks(next, m.stones, m.stoneCount, m.shots);
+            if (m.page == 0) drawCoachTimer(next, m.stones, m.stoneCount, m.shots, m.waiting);
+            else drawCoachRocks(next, m.stones, m.stoneCount, m.shots, m.waiting);
         } else {
-            drawLeague(next, m.stones, m.stoneCount, m.shots, m.me, m.activeCol, m.warning, m.tip);
+            drawLeague(next, m.stones, m.stoneCount, m.shots, m.me, m.activeCol, m.warning, m.tip, m.waiting);
         }
         const int64_t t0 = esp_timer_get_time();
         if (m.full) {
@@ -282,6 +283,9 @@ void syncModel(bool full = false) {
         m.help = false;
         m.full = m.full || sFull;
         m.tip = tipWaiting || tipUntil >= 0;
+        m.waiting = timing.state() == TimingState::Started     ? Waiting::BackToHog
+                    : timing.state() == TimingState::WaitingHH ? Waiting::HogToHog
+                                                               : Waiting::None;
     });
 }
 
@@ -332,6 +336,7 @@ void handleOutcome(const Outcome& o, int64_t now) {
         sleptAtAnchor = sleptUs;
         board::led(true);
         Serial.println("timing: start");
+        syncModel();  // a stopwatch where the time will appear
         break;
     case TimingEvent::Restarted:
         sleptAtAnchor = sleptUs;

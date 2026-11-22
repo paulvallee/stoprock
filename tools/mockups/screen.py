@@ -336,23 +336,44 @@ def times_grid(d, f, stones, bottom, mid, me, active, rows_max=GRID_ROWS):
                 text_in_box(d, f"{val:.2f}", f["grid"], x0, x1, ry, ry + GRID_PITCH, margin=margin)
 
 
+def stopwatch(d, cx, cy, r):
+    """A stopwatch: a 2 px ring of radius r, the crown on top, one hand at about 1 o'clock."""
+    d.ellipse([cx - r, cy - r, cx + r, cy + r], outline=0, width=2)
+    d.rectangle([cx - 1, cy - r - 2, cx + 1, cy - r - 1], fill=0)   # stem
+    d.rectangle([cx - 3, cy - r - 4, cx + 3, cy - r - 3], fill=0)   # button
+    d.line([(cx, cy), (cx + r // 2, cy - r // 2 - 1)], fill=0, width=2)
+    d.rectangle([cx - 1, cy - 1, cx + 1, cy + 1], fill=0)           # centre
+
+
+STOPWATCH_BIG, STOPWATCH_SMALL = 10, 6  # ring radius: in the large row, and coach page 2's
+
+
+def newest_row(d, f, stones, waiting, mid, font, y0, y1, margin, r, cy):
+    """The current stone across both halves. waiting: "b2h" or "h2h" while it's being timed
+    (a stopwatch where that time will appear; for "b2h" the row is still empty)."""
+    cur = None if waiting == "b2h" or not stones else stones[0]
+    for k, (x0, x1) in enumerate(((0, mid), (mid, W))):
+        if cur is not None and cur[k] is not None:
+            dseg_number(d, cur[k], font, x0, x1, y0, y1, margin=margin)
+        elif waiting == ("b2h", "h2h")[k]:
+            stopwatch(d, (x0 + x1) // 2, cy, r)
+
+
 def times_wide(d, f, stones, bottom, label_right=W, grid=False, mid=WIDE_MID, me=0, active=0,
-               rows_max=GRID_ROWS):
+               rows_max=GRID_ROWS, waiting=None):
     """Back2Hog | Hog2Hog across the full width: header, newest large, older below
     (one to a row, or with grid=True three to a row).
     label_right: where the Hog2Hog label's box ends (left of the page marks in coach mode)."""
     text_in_box(d, "Back2Hog", f["label"], 0, mid, 0, 12, align="center")
     text_in_box(d, "Hog2Hog", f["label"], mid, label_right, 0, 12, align="center")
     d.line([(0, 12), (W - 1, 12)], fill=0)
-    if stones:
-        for val, x0, x1 in zip(stones[0], (0, mid), (mid, W)):
-            if val is not None:
-                dseg_number(d, val, f["big"], x0, x1, 13, 47)
+    newest_row(d, f, stones, waiting, mid, f["big"], 13, 47, 3, STOPWATCH_BIG, 30)
     d.line([(0, 47), (W - 1, 47)], fill=0, width=2)
     d.line([(mid, 0), (mid, bottom - 1)], fill=0)
     if grid:
         return times_grid(d, f, stones, bottom, mid, me, active, rows_max)
-    for i, stone in enumerate(stones[1:]):
+    older = stones if waiting == "b2h" else stones[1:]  # a new stone under way: the last one is older now
+    for i, stone in enumerate(older):
         ry = 50 + i * 14
         if ry + 14 > bottom:
             break
@@ -374,7 +395,7 @@ def tooltip(d, f, lines):
         d.text(((W - 6 * len(t)) // 2, y0 + 7 + 12 * i), t, font=f["label"], fill=0)
 
 
-def competition_screen(stones, me=0, active=0, low_battery=False, tip=False):
+def competition_screen(stones, me=0, active=0, low_battery=False, tip=False, waiting=None):
     """Times only, full width, with a badge strip an umpire can read at a glance.
     stones: (b2h, h2h, position 0-3) newest first; me: your position; active: the column (0-2)
     with the cursor, the player whose stones are being timed."""
@@ -383,7 +404,7 @@ def competition_screen(stones, me=0, active=0, low_battery=False, tip=False):
     d = ImageDraw.Draw(img)
     d.fontmode = "1"
     strip = H - TIP_H
-    times_wide(d, f, stones, strip, grid=True, mid=COMP_MID, me=me, active=active)
+    times_wide(d, f, stones, strip, grid=True, mid=COMP_MID, me=me, active=active, waiting=waiting)
     d.rectangle([0, strip, W - 1, H - 1], fill=0)
     text_in_box(d, "COMPETITION", f["label"], 0, W, strip + 1, strip + 13, align="center", fill=1)
     sub = "Battery low" if low_battery else "STOPWATCH FEATURES ONLY"
@@ -400,7 +421,7 @@ LEAGUE_PCT_X = 134           # 2 px divider left of the percentage
 LEAGUE_SLOTS = 16
 
 
-def league_screen(stones, shots, me=0, active=0, low_battery=False, tip=False):
+def league_screen(stones, shots, me=0, active=0, low_battery=False, tip=False, waiting=None):
     """stones: (b2h, h2h, position) newest first; shots: True made / False missed, in order;
     me: your position; active: the teammate column (0-2) with the cursor."""
     f = fonts()
@@ -408,7 +429,7 @@ def league_screen(stones, shots, me=0, active=0, low_battery=False, tip=False):
     d = ImageDraw.Draw(img)
     d.fontmode = "1"
     top = LEAGUE_ROWS_BOTTOM
-    times_wide(d, f, stones, top, grid=True, mid=COMP_MID, me=me, active=active, rows_max=7)
+    times_wide(d, f, stones, top, grid=True, mid=COMP_MID, me=me, active=active, rows_max=7, waiting=waiting)
     d.line([(0, top), (W - 1, top)], fill=0, width=2)
     split = LEAGUE_PCT_X
     d.line([(split, top), (split, H - 1)], fill=0, width=2)
@@ -464,7 +485,7 @@ def coach_rock(d, i, shots, cx, cy):
     small_rock(d, cx, cy, state, i == len(shots))
 
 
-def coach_timer_screen(stones, shots):
+def coach_timer_screen(stones, shots, waiting=None):
     """Coach page 1, timer priority: wide times, the previous and current end below."""
     f = fonts()
     img = Image.new("1", (W, H), 1)
@@ -472,7 +493,7 @@ def coach_timer_screen(stones, shots):
     d.fontmode = "1"
     page_marks(d, 0)
     bottom = 150
-    times_wide(d, f, stones, bottom, label_right=W - 18)
+    times_wide(d, f, stones, bottom, label_right=W - 18, waiting=waiting)
     d.line([(0, bottom), (W - 1, bottom)], fill=0, width=2)
     gx = COACH_GX
     for p in range(4):
@@ -492,7 +513,7 @@ def coach_timer_screen(stones, shots):
     return img
 
 
-def coach_rocks_screen(stones, shots):
+def coach_rocks_screen(stones, shots, waiting=None):
     """Coach page 2, rock priority: newest times only, all 64 rocks, % per position."""
     f = fonts()
     img = Image.new("1", (W, H), 1)
@@ -503,10 +524,7 @@ def coach_rocks_screen(stones, shots):
     text_in_box(d, "Hog2Hog", f["label"], mid, W - 18, 0, 12, align="center")
     d.line([(0, 12), (W - 1, 12)], fill=0)
     page_marks(d, 1)
-    if stones:
-        for val, x0, x1 in zip(stones[0], (0, mid), (mid, W)):
-            if val is not None:
-                dseg_number(d, val, f["pct"], x0, x1, 13, 33, margin=20)
+    newest_row(d, f, stones, waiting, mid, f["pct"], 13, 33, 20, STOPWATCH_SMALL, 25)
     d.line([(mid, 0), (mid, 33)], fill=0)
     d.line([(0, 33), (W - 1, 33)], fill=0, width=2)
     gx = COACH_GX

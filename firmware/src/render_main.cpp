@@ -79,6 +79,30 @@ int main(int argc, char** argv) {
     snprintf(path, sizeof path, "%s/league-tip.pbm", dir);
     writePbm(c, path);
 
+    // a stone being timed: the stopwatch where the awaited time will appear
+    Stone half[25];  // the newest stone has its B2H, awaiting the H2H
+    for (int i = 0; i < 25; ++i) half[i] = comp[i];
+    half[0].hh = -1;
+    drawCompetition(c, comp, 25, 0, 1, false, false, Waiting::BackToHog);
+    snprintf(path, sizeof path, "%s/competition-wait-b2h.pbm", dir);
+    writePbm(c, path);
+    drawLeague(c, half, 25, shots, 0, 1, false, false, Waiting::HogToHog);
+    snprintf(path, sizeof path, "%s/league-wait-h2h.pbm", dir);
+    writePbm(c, path);
+    {
+        ShotLog s(ShotLog::kCoachSlots);
+        for (int i = 0; i < 35; ++i) s.add(i % 5 != 3 && i % 7 != 5);
+        Stone coach[12];
+        for (int i = 0; i < 12; ++i) coach[i] = many[i];
+        drawCoachTimer(c, coach, 12, s, Waiting::BackToHog);
+        snprintf(path, sizeof path, "%s/coach1-wait-b2h.pbm", dir);
+        writePbm(c, path);
+        coach[0].hh = -1;
+        drawCoachRocks(c, coach, 12, s, Waiting::HogToHog);
+        snprintf(path, sizeof path, "%s/coach2-wait-h2h.pbm", dir);
+        writePbm(c, path);
+    }
+
     drawHelp(c, "Last game 9/12 shots made", 75, 84, "~11 games battery left");
     snprintf(path, sizeof path, "%s/help.pbm", dir);
     writePbm(c, path);
