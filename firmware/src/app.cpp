@@ -560,6 +560,8 @@ void onRockerPress(ButtonState& s, int64_t t) {
             activeCol = 0;
             rocksForActive = 0;
             Serial.printf("position: you are %s\n", kPositionNames[myPosition]);
+            tipWaiting = false;  // show "You are ..." (the switch-on tip) for 5 s
+            tipUntil = t + kTipUs;
         }
         syncModel();  // shows at once, even while a stone is timed
         return;

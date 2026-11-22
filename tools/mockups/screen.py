@@ -383,17 +383,20 @@ def times_wide(d, f, stones, bottom, label_right=W, grid=False, mid=WIDE_MID, me
                 text_in_box(d, f"{val:.2f}", f["row"], x0, x1, ry, ry + 14, margin=14)
 
 
-# Switch-on tips ("" = a half-line gap). Competition has no focus, so only the first.
+# Switch-on tips ("" = a half-line gap): your position, how to change it, and in league (not
+# competition, which has no focus) how to move the focus. Also shown when you change position.
+YOU_ARE = ("LEAD", "SECOND", "THIRD", "SKIP")
 POSITION_TIP = ("Double click rocker to", "change your position")
 FOCUS_TIP = ("Long hold rocker to", "change focus players/rocks")
 
 
-def tooltip(d, f, lines):
-    """A bordered box in the middle of the times area (empty at switch-on), lines centred;
-    an empty line is a half-line gap."""
+def tooltip(d, f, lines, top, bottom):
+    """A bordered box centred in the times area (top..bottom), lines centred; an empty line is
+    a half-line gap."""
     w = 6 * max(len(t) for t in lines) + 16
-    x0, y0 = (W - w) // 2, 86
-    y1 = y0 + sum(12 if t else 6 for t in lines) + 13
+    h = sum(12 if t else 6 for t in lines) + 14
+    x0, y0 = (W - w) // 2, top + (bottom - top - h) // 2
+    y1 = y0 + h - 1
     d.rectangle([x0, y0, x0 + w - 1, y1], fill=1, outline=0, width=2)
     y = y0 + 7
     for t in lines:
@@ -417,7 +420,7 @@ def competition_screen(stones, me=0, active=0, low_battery=False, tip=False, wai
     sub = "Battery low" if low_battery else "STOPWATCH FEATURES ONLY"
     text_in_box(d, sub, f["label"], 0, W, strip + 13, strip + 25, align="center", fill=1)
     if tip:
-        tooltip(d, f, POSITION_TIP)
+        tooltip(d, f, (f"You are {YOU_ARE[me]}", "") + POSITION_TIP, 49, strip)
     return img
 
 
@@ -463,7 +466,7 @@ def league_screen(stones, shots, me=0, active=0, low_battery=False, tip=False, w
     if shots:
         big_percent(d, f["pct"], percent_of(sum(shots), len(shots)), x0, W, y0, H)
     if tip:
-        tooltip(d, f, POSITION_TIP + ("",) + FOCUS_TIP)
+        tooltip(d, f, (f"You are {YOU_ARE[me]}", "") + POSITION_TIP + ("",) + FOCUS_TIP, 49, top)
     return img
 
 

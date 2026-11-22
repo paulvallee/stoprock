@@ -354,16 +354,17 @@ void endRow(Canvas& c, const ShotLog& shots, int end, int cy) {
 
 }  // namespace
 
-// A bordered box in the middle of the times area (empty at switch-on), lines centred; an empty
-// line is a half-line gap.
-static void tooltip(Canvas& c, const char* const* lines, int n) {
+// A bordered box centred in the times area (top..bottom), lines centred; an empty line is a
+// half-line gap.
+static void tooltip(Canvas& c, const char* const* lines, int n, int top, int bottom) {
     int longest = 0, height = 0;
     for (int i = 0; i < n; ++i) {
         const int len = static_cast<int>(strlen(lines[i]));
         if (len > longest) longest = len;
         height += len ? 12 : 6;
     }
-    const int w = 6 * longest + 16, x0 = (W - w) / 2, y0 = 86, y1 = y0 + height + 13;
+    const int w = 6 * longest + 16, h = height + 14;
+    const int x0 = (W - w) / 2, y0 = top + (bottom - top - h) / 2, y1 = y0 + h - 1;
     c.fillRect(x0, y0, x0 + w - 1, y1, false);
     rectOutline(c, x0, y0, x0 + w - 1, y1);
     rectOutline(c, x0 + 1, y0 + 1, x0 + w - 2, y1 - 1);
@@ -375,9 +376,14 @@ static void tooltip(Canvas& c, const char* const* lines, int n) {
     }
 }
 
-// Switch-on tips. Competition has no focus, so it shows only the first two lines.
-static const char* const kSwitchOnTip[5] = {"Double click rocker to", "change your position", "",
-                                            "Long hold rocker to", "change focus players/rocks"};
+// Switch-on tips: your position, how to change it, and in league (not competition, which has no
+// focus) how to move the focus. Also shown when you change position.
+static const char* const kYouAre[4] = {"You are LEAD", "You are SECOND", "You are THIRD", "You are SKIP"};
+static void switchOnTip(Canvas& c, uint8_t me, bool focusToo, int top, int bottom) {
+    const char* lines[7] = {kYouAre[me % 4], "", "Double click rocker to", "change your position",
+                            "", "Long hold rocker to", "change focus players/rocks"};
+    tooltip(c, lines, focusToo ? 7 : 4, top, bottom);
+}
 
 void drawCompetition(Canvas& c, const Stone* stones, uint8_t count, uint8_t me, uint8_t activeCol,
                      bool lowBattery, bool tip, Waiting waiting) {
@@ -389,7 +395,7 @@ void drawCompetition(Canvas& c, const Stone* stones, uint8_t count, uint8_t me, 
     textInBox(c, label, "COMPETITION", 0, W, strip + 1, strip + 13, kCentre, 4, false);
     textInBox(c, label, lowBattery ? "Battery low" : "STOPWATCH FEATURES ONLY", 0, W, strip + 13, strip + 25,
               kCentre, 4, false);
-    if (tip) tooltip(c, kSwitchOnTip, 2);
+    if (tip) switchOnTip(c, me, false, 49, strip);
 }
 
 void drawLeague(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& shots, uint8_t me, uint8_t activeCol,
@@ -430,7 +436,7 @@ void drawLeague(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& sh
         y0 += 13;
     }
     if (shots.count() > 0) bigPercent(c, shots.percent(), x0, W, y0, H);
-    if (tip) tooltip(c, kSwitchOnTip, 5);
+    if (tip) switchOnTip(c, me, true, 49, top);
 }
 
 void drawCoachTimer(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& shots, Waiting waiting) {
