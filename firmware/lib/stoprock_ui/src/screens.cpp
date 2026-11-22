@@ -421,7 +421,7 @@ void drawCompetition(Canvas& c, const Stone* stones, uint8_t count, uint8_t me, 
     timesWide(c, stones, count, strip, W, true, COMP_MID, me, activeCol);
     c.fillRect(0, strip, W - 1, H - 1);
     textInBox(c, label, "COMPETITION", 0, W, strip + 1, strip + 13, kCentre, 4, false);
-    textInBox(c, label, lowBattery ? "Battery low" : "times only, radio off", 0, W, strip + 13, strip + 25,
+    textInBox(c, label, lowBattery ? "Battery low" : "STOPWATCH FEATURES ONLY", 0, W, strip + 13, strip + 25,
               kCentre, 4, false);
 }
 

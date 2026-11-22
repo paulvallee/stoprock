@@ -455,7 +455,7 @@ def competition_screen(stones, me=0, active=0, low_battery=False):
     times_wide(d, f, stones, strip, grid=True, mid=COMP_MID, me=me, active=active)
     d.rectangle([0, strip, W - 1, H - 1], fill=0)
     text_in_box(d, "COMPETITION", f["label"], 0, W, strip + 1, strip + 13, align="center", fill=1)
-    sub = "Battery low" if low_battery else "times only, radio off"
+    sub = "Battery low" if low_battery else "STOPWATCH FEATURES ONLY"
     text_in_box(d, sub, f["label"], 0, W, strip + 13, strip + 25, align="center", fill=1)
     return img
 
