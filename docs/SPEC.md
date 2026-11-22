@@ -137,8 +137,8 @@ stoprock logo (176 px), then Spleen 6×12:
   H2H hog line to hog line
 
  [SHOTS]  use rocker
-  up   = made   down = missed
-  hold = undo last shot
+  up/down = made/missed
+  hold    = undo last shot
  ─────────────────────────────
  Last game 9/12 shots made (◔) 75%
  ~11 games battery left   [▭] 84%

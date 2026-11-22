@@ -256,8 +256,8 @@ void drawHelp(Canvas& c, const char* lastGame, int shotPct, int battery, const c
     line(" H2H hog line to hog line");
     y += 8;
     tag("SHOTS", "use rocker");
-    line(" up   = made   down = missed");
-    line(" hold = undo last shot");
+    line(" up/down = made/missed");
+    line(" hold    = undo last shot");
     y += 6;
     c.line(4, y, 195, y);
     y += 6;
