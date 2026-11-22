@@ -233,9 +233,9 @@ def help_page(device_logo, last_game, shot_pct=None, battery=None, battery_note=
         y += 12
 
     tag("START", "hold side button, plus:")
-    eq_line("nothing     = competition")
-    eq_line("rocker down = league")
-    eq_line("rocker up   = coach")
+    eq_line("nothing     = competition mode")
+    eq_line("rocker down = league mode")
+    eq_line("rocker up   = coach mode")
     y += 5
     tag("TIMING", "use top or side button")
     y += 3

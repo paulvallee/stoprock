@@ -145,9 +145,9 @@ stoprock logo (176 px), then Spleen 6×12:
 
 ```
  [START] hold side button, plus:
-     nothing     = competition
-     rocker down = league
-     rocker up   = coach
+     nothing     = competition mode
+     rocker down = league mode
+     rocker up   = coach mode
 
  [TIMING] use top or side button
 

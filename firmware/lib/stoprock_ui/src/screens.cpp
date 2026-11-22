@@ -184,9 +184,9 @@ void drawHelp(Canvas& c, const char* lastGame, int shotPct, int battery, const c
         y += 12;
     };
     tag("START", "hold side button, plus:");
-    eqLine("nothing     = competition");
-    eqLine("rocker down = league");
-    eqLine("rocker up   = coach");
+    eqLine("nothing     = competition mode");
+    eqLine("rocker down = league mode");
+    eqLine("rocker up   = coach mode");
     y += 5;
     tag("TIMING", "use top or side button");
     y += 3;
