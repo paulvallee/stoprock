@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "shots.h"
+
 namespace stoprock {
 namespace {
 
@@ -18,6 +20,14 @@ uint32_t get32(const uint8_t* p) {
            (static_cast<uint32_t>(p[2]) << 16) | (static_cast<uint32_t>(p[3]) << 24);
 }
 
+void put64(uint8_t* p, uint64_t v) { for (int i = 0; i < 8; ++i) p[i] = static_cast<uint8_t>(v >> (8 * i)); }
+uint64_t get64(const uint8_t* p) {
+    uint64_t v = 0;
+    for (int i = 7; i >= 0; --i) v = v << 8 | p[i];
+    return v;
+}
+uint64_t lowMask(uint8_t n) { return n >= 64 ? ~0ull : ((1ull << n) - 1); }
+
 uint8_t checksum(const uint8_t* p, size_t n) {  // simple, enough to catch a torn or foreign value
     uint8_t c = 0x5A;
     for (size_t i = 0; i < n; ++i) c = static_cast<uint8_t>((c << 1 | c >> 7) ^ p[i]);
@@ -26,6 +36,23 @@ uint8_t checksum(const uint8_t* p, size_t n) {  // simple, enough to catch a tor
 
 }  // namespace
 
+const char* modeName(GameMode m) {
+    switch (m) {
+        case GameMode::Competition: return "competition";
+        case GameMode::Coach: return "coach";
+        default: return "league";
+    }
+}
+
+// Layout, version 3: a 32-byte header, 4 bytes per timed stone, then a checksum byte.
+//   0 'G'   1 version   2 flags (bit 0: clock set)   3 shot count (0-64)
+//   4-7 id   8-11 started   12-15 updated   16-17 stone count
+//   18 battery % at start   19 battery % at end (0xFF = unknown)   20 mode (0 league, 1 competition, 2 coach)
+//   21-23 reserved (0)   24-31 shot bits (u64)
+//   then per stone: back-to-hog (u16), hog-to-hog (u16), hundredths, 0xFFFF = not timed
+//   last byte: checksum of everything before it
+//
+// Older versions (read only; their games read back as league):
 // Layout, version 2: a 24-byte header, 4 bytes per timed stone, then a checksum byte.
 //   0 'G'   1 version   2 flags (bit 0: clock set)   3 shot count
 //   4-7 id   8-11 started   12-15 updated   16-17 shot bits   18-19 stone count
@@ -35,18 +62,20 @@ uint8_t checksum(const uint8_t* p, size_t n) {  // simple, enough to catch a tor
 //   last byte: checksum of everything before it
 size_t Databank::encode(const GameRecord& r, uint8_t* out) {
     const uint16_t n = r.stoneCount > GameRecord::kMaxStones ? GameRecord::kMaxStones : r.stoneCount;
+    const uint8_t shots = r.shotCount > 64 ? 64 : r.shotCount;
     memset(out, 0, kHeaderSize);
     out[0] = kMagic;
     out[1] = kVersion;
     out[2] = r.clockSet ? 1 : 0;
-    out[3] = r.shotCount;
+    out[3] = shots;
     put32(out + 4, r.id);
     put32(out + 8, r.started);
     put32(out + 12, r.updated);
-    put16(out + 16, r.shotBits);
-    put16(out + 18, n);
-    out[20] = r.batteryStart;
-    out[21] = r.batteryEnd;
+    put16(out + 16, n);
+    out[18] = r.batteryStart;
+    out[19] = r.batteryEnd;
+    out[20] = static_cast<uint8_t>(r.mode);
+    put64(out + 24, r.shotBits & lowMask(shots));
     uint8_t* p = out + kHeaderSize;
     for (uint16_t i = 0; i < n; ++i, p += 4) {
         put16(p, r.stones[i].backToHog);
@@ -57,9 +86,12 @@ size_t Databank::encode(const GameRecord& r, uint8_t* out) {
 }
 
 bool Databank::decode(const uint8_t* in, size_t len, GameRecord& r) {
-    if (len < kHeaderSize + 1 || in[0] != kMagic || in[1] < 1 || in[1] > kVersion || in[3] > 16) return false;
-    const uint16_t n = get16(in + 18);
-    if (n > GameRecord::kMaxStones || len != kHeaderSize + 4u * n + 1) return false;
+    if (len < kOldHeaderSize + 1 || in[0] != kMagic || in[1] < 1 || in[1] > kVersion) return false;
+    const bool v3 = in[1] >= 3;
+    const size_t header = v3 ? kHeaderSize : kOldHeaderSize;
+    if (len < header + 1 || in[3] > (v3 ? 64 : 16) || (v3 && in[20] > 2)) return false;
+    const uint16_t n = get16(in + (v3 ? 16 : 18));
+    if (n > GameRecord::kMaxStones || len != header + 4u * n + 1) return false;
     if (in[len - 1] != checksum(in, len - 1)) return false;
     r = GameRecord();
     r.clockSet = in[2] & 1;
@@ -67,13 +99,20 @@ bool Databank::decode(const uint8_t* in, size_t len, GameRecord& r) {
     r.id = get32(in + 4);
     r.started = get32(in + 8);
     r.updated = get32(in + 12);
-    r.shotBits = get16(in + 16) & static_cast<uint16_t>(r.shotCount >= 16 ? 0xFFFF : (1u << r.shotCount) - 1);
     r.stoneCount = n;
-    if (in[1] >= 2) {
-        r.batteryStart = in[20];
-        r.batteryEnd = in[21];
+    if (v3) {
+        r.batteryStart = in[18];
+        r.batteryEnd = in[19];
+        r.mode = static_cast<GameMode>(in[20]);
+        r.shotBits = get64(in + 24) & lowMask(r.shotCount);
+    } else {
+        r.shotBits = get16(in + 16) & lowMask(r.shotCount);
+        if (in[1] == 2) {
+            r.batteryStart = in[20];
+            r.batteryEnd = in[21];
+        }
     }
-    const uint8_t* p = in + kHeaderSize;
+    const uint8_t* p = in + header;
     for (uint16_t i = 0; i < n; ++i, p += 4) {
         r.stones[i].backToHog = get16(p);
         r.stones[i].hogToHog = get16(p + 2);
@@ -87,7 +126,7 @@ static int appendTime(char* out, size_t len, uint16_t t) {
 }
 
 int Databank::toJson(const GameRecord& r, char* out, size_t len) {
-    char shots[17];
+    char shots[65];
     uint8_t made = 0;
     for (uint8_t i = 0; i < r.shotCount; ++i) {
         const bool m = (r.shotBits >> i) & 1;
@@ -95,14 +134,14 @@ int Databank::toJson(const GameRecord& r, char* out, size_t len) {
         made += m;
     }
     shots[r.shotCount] = 0;
-    const int pct = r.shotCount ? (made * 200 + r.shotCount) / (2 * r.shotCount) : -1;
+    const int pct = roundedPercent(made, r.shotCount);
     size_t n = 0;
     auto room = [&]() { return n < len ? len - n : 0; };
     auto add = [&](int w) { if (w > 0) n += static_cast<size_t>(w); };
     add(snprintf(out, len,
-                 "{\"id\":%lu,\"v\":%u,\"started\":%lu,\"updated\":%lu,\"clock\":%s,"
+                 "{\"id\":%lu,\"v\":%u,\"mode\":\"%s\",\"started\":%lu,\"updated\":%lu,\"clock\":%s,"
                  "\"shots\":\"%s\",\"made\":%u,\"thrown\":%u,\"pct\":%d,\"stones\":[",
-                 static_cast<unsigned long>(r.id), kVersion, static_cast<unsigned long>(r.started),
+                 static_cast<unsigned long>(r.id), kVersion, modeName(r.mode), static_cast<unsigned long>(r.started),
                  static_cast<unsigned long>(r.updated), r.clockSet ? "true" : "false", shots, made,
                  r.shotCount, pct));
     for (uint16_t i = 0; i < r.stoneCount; ++i) {
@@ -148,15 +187,16 @@ static uint8_t toBattery(int pct) {
     return pct < 0 ? GameRecord::kNoBattery : static_cast<uint8_t>(pct > 100 ? 100 : pct);
 }
 
-void Databank::startGame(uint32_t now, bool clockSet, int batteryPercent) {
+void Databank::startGame(uint32_t now, bool clockSet, int batteryPercent, GameMode mode) {
     current_ = GameRecord();
+    current_.mode = mode;
     current_.started = current_.updated = now;
     current_.clockSet = clockSet;
     current_.batteryStart = toBattery(batteryPercent);
     currentStored_ = false;
 }
 
-void Databank::setShots(uint8_t count, uint16_t bits, uint32_t now) {
+void Databank::setShots(uint8_t count, uint64_t bits, uint32_t now) {
     current_.shotCount = count;
     current_.shotBits = bits;
     current_.updated = now;
@@ -186,7 +226,7 @@ void Databank::endGame(int batteryPercent, uint32_t now) {
 
 int Databank::gamesLeft(int batteryPercent, uint32_t minSeconds, uint8_t recent) {
     if (batteryPercent < 0) return -1;
-    static GameRecord g;  // ~540 bytes: keep it off the stack
+    static GameRecord g;  // ~550 bytes: keep it off the stack
     uint32_t drained = 0, games = 0;
     for (uint32_t id = next_; id-- > first_ && games < recent;) {
         if (!load(id, g)) continue;

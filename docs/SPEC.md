@@ -1,8 +1,8 @@
 # stoprock: device specification
 
-A pocket curling stopwatch with a shot-percentage tracker. Version 0.2 (design agreed; firmware in `firmware/`, not yet run on hardware).
+A pocket curling stopwatch with a shot-percentage tracker. Version 0.3 (design agreed; firmware in `firmware/`, not yet run on hardware).
 
-Mockups: [`mockups/screens.png`](mockups/screens.png) (help page, main screen, low battery) and [`mockups/rocker-storyboard.png`](mockups/rocker-storyboard.png). Regenerate them with `python tools/mockups/render.py`.
+Mockups: [`mockups/screens.png`](mockups/screens.png) (help page, main screen, low battery), [`mockups/modes.png`](mockups/modes.png) (the three start-up modes) and [`mockups/rocker-storyboard.png`](mockups/rocker-storyboard.png). Regenerate them with `python tools/mockups/render.py`.
 
 ## 1. Purpose
 
@@ -38,13 +38,30 @@ Graphics library: **M5GFX / M5Unified** (has a driver for this screen, `Panel_GD
 | Input | Action |
 |---|---|
 | Top button **or** side button (short press) | Timing click. Either works; the user picks whichever is comfortable. |
-| Side button, held | Power on (from off). Power off when held 3 s while on (to confirm against the hardware's own power-button behaviour). |
+| Side button, held | Power on (from off), in the mode the rocker picks (below). Power off when held 3 s while on (to confirm against the hardware's own power-button behaviour). |
 | Rocker up | Log a **made** shot at the cursor |
 | Rocker down | Log a **missed** shot at the cursor |
 | Rocker press, held 0.5 s | **Undo**: cursor steps back one slot and clears it (like backspace). Keep holding to undo another rock every 0.5 s; stops after one error buzz when nothing is left. |
-| Rocker press, short | Nothing |
+| Rocker press, short | Nothing. In coach mode, two presses within 0.4 s switch page. |
+
+In competition mode the rocker does nothing at all.
 
 Timing clicks are timestamped in the interrupt handler, so screen activity never affects timing accuracy.
+
+### Start-up modes
+
+What the rocker is doing while the side button switches the device on picks the mode for that game:
+
+| Switch on with | Mode | Screen | Rocker |
+|---|---|---|---|
+| Side button only | **Competition** | Times only, full width (Back2Hog and Hog2Hog 100 px each); a black badge strip at the bottom reads `COMPETITION` / `times only, radio off`, for an umpire | Does nothing |
+| Side button + rocker **down** | **League** | The main screen (section 8): times and your own 16 rocks | Made / missed / undo |
+| Side button + rocker **up** | **Coach** | Two pages (section 8a): the whole team's 64 rocks | Made / missed / undo; double press switches page |
+
+- Competition is the default because it is what a tournament allows: World Curling's rules (R11(c)) limit stopwatches to giving time data only, and forbid electronic communication. Competition mode shows and records times only, and never uses the radio (the radio isn't used in any mode yet).
+- The mode lasts until the device switches off; every switch-on is a new game in the mode chosen then. The databank records each game's mode.
+- Coach mode will be unlocked by the paid companion app ([`PRO_MODE.md`](PRO_MODE.md)); until the licence check exists it is open to all.
+- The rocker is read once, when the firmware starts (about a second after the side button is pressed): hold it before pressing the side button and keep holding until the screen changes.
 
 ## 4. Timing
 
@@ -69,10 +86,10 @@ A stone gives at most one **B2H** (back line, or tee line, to hog line) followed
 
 ## 5. Shots
 
-- 8 ends × 2 rocks = 16 slots, filled in order.
-- The **cursor** (the slot's own circle drawn bold, 3 px, so it never reaches past its slot) sits on the slot the next made/missed entry will fill. At the start of a game it is on end 1, rock 1. When all 16 are filled the cursor disappears.
-- Up/down with all 16 filled, or undo with nothing to undo: error buzz, no change.
-- **Percentage** = made ÷ rocks logged so far this game. Empty slots don't count.
+- League: 8 ends × 2 rocks = 16 slots, filled in order. Coach: 8 ends × 4 positions × 2 rocks = 64 slots, in throwing order (lead, lead, second, second, third, third, skip, skip). Competition: no shots.
+- The **cursor** (the slot's own circle drawn bold, 3 px, so it never reaches past its slot) sits on the slot the next made/missed entry will fill. At the start of a game it is on end 1, rock 1. When all slots are filled the cursor disappears.
+- Up/down with all slots filled, or undo with nothing to undo: error buzz, no change.
+- **Percentage** = made ÷ rocks logged so far this game. Empty slots don't count. Coach mode shows one per position.
 - Each game is stored in the databank (section 6) with every rock's result.
 
 ## 6. Games and the databank
@@ -125,26 +142,36 @@ A stone gives at most one **B2H** (back line, or tee line, to hog line) followed
 | 8 | Off after 5 min idle. | Hold side to switch on |
 | Warning | Battery low | Charge after this game |
 
+## 8a. Competition and coach screens
+
+**Competition.** Labels y 0–12, newest result y 13–47 (DSEG7 25 px) in two 100 px columns, older results below in 14 px rows (the same drawn digits as the main screen), and the badge strip in the bottom 26 px, white on black. A low battery replaces `times only, radio off` with `Battery low`.
+
+**Coach, page 1 (timer priority).** The competition layout's times down to y 150, then the previous and current end: four columns (L, 2, 3, S), each headed with that position's running percentage, two rows of rocks (radius 5) with the end number on the left. Two small squares top right show which page is up.
+
+**Coach, page 2 (rock priority).** The newest times only (DSEG7 16 px) in y 13–33, position names, all 8 ends × 4 positions × 2 rocks, and along the bottom each position's percentage with a small pie.
+
+Coach mode has no tip strip.
+
 ## 9. Help page (shown while off)
 
 stoprock logo (176 px), then Spleen 6×12:
 
 ```
-     HOLD SIDE BUTTON TO START
+ [START] hold side button, plus:
+     nothing     = competition
+     rocker down = league
+     rocker up   = coach
 
  [TIMING] use top or side button
-  B2H back or tee to hog line
-  H2H hog line to hog line
 
- [SHOTS]  use rocker
-  up/down = made/missed
-  hold    = undo last shot
+ [SHOTS] up/down = made/missed
+            hold = undo last shot
  ─────────────────────────────
  Last game 9/12 shots made (◔) 75%
  ~11 games battery left   [▭] 84%
 ```
 
-`[TIMING]` and `[SHOTS]` are white-on-black labels. The last rows show the most recent game, with its shot percentage beside a small pie, and the battery charge at switch-off beside a battery icon; the two percentages are right-aligned. Once at least one game has been completed, the battery row starts with an estimate: "~N games battery left" (from the average drain of the last 10 completed games of 20 minutes or more, rounded down), or "Charge before next game" below one game.
+`[START]`, `[TIMING]` and `[SHOTS]` are white-on-black labels; every `=` sits in one column. A competition game's row reads "Last game N stones timed". The last rows show the most recent game, with its shot percentage beside a small pie, and the battery charge at switch-off beside a battery icon; the two percentages are right-aligned. Once at least one game has been completed, the battery row starts with an estimate: "~N games battery left" (from the average drain of the last 10 completed games of 20 minutes or more, rounded down), or "Charge before next game" below one game.
 
 ## 10. Screen update plan (responsiveness)
 

@@ -29,6 +29,9 @@
   kbd { background: #fff; border: 1px solid #bbb; border-radius: 4px; padding: 0 5px; font-size: 12px; }
   #log { height: 260px; overflow: auto; background: #1d1f22; color: #cfd6dc; font: 12px/1.35 ui-monospace, monospace;
          padding: 8px; border-radius: 6px; white-space: pre-wrap; }
+  .modes { margin: 8px 0; }
+  button.mode { padding: 4px 10px; border-radius: 6px; margin-left: 4px; }
+  button.mode:disabled { background: #999; cursor: default; }
   label { display: inline-flex; gap: 6px; align-items: center; margin: 8px 0; }
 </style>
 </head>
@@ -54,8 +57,18 @@
     <tr><td><kbd>Space</kbd> or <kbd>T</kbd></td><td>top button: timing click</td></tr>
     <tr><td><kbd>S</kbd></td><td>side button: timing click; hold 3 s to switch off</td></tr>
     <tr><td><kbd>↑</kbd> / <kbd>↓</kbd></td><td>rocker up: made / rocker down: missed</td></tr>
-    <tr><td><kbd>Enter</kbd></td><td>rocker press: hold 0.5 s to undo; keep holding to undo more</td></tr>
+    <tr><td><kbd>Enter</kbd></td><td>rocker press: hold 0.5 s to undo; keep holding to undo more;
+      coach mode: press twice quickly to switch page</td></tr>
+    <tr><td>switched off: <kbd>S</kbd></td><td>switch on in competition mode</td></tr>
+    <tr><td>hold <kbd>↓</kbd> + <kbd>S</kbd></td><td>switch on in league mode</td></tr>
+    <tr><td>hold <kbd>↑</kbd> + <kbd>S</kbd></td><td>switch on in coach mode</td></tr>
   </table>
+  <div class="modes">Restart in
+    <button class="mode" data-mode="competition">competition</button>
+    <button class="mode" data-mode="league">league</button>
+    <button class="mode" data-mode="coach">coach</button>
+    <span id="mode-status"></span>
+  </div>
   <label>Battery <input type="range" id="battery" min="0" max="100" value="100"> <span id="battery-value">100%</span></label>
   <br>
   <label><input type="checkbox" id="sound" checked> Sound</label>
@@ -109,7 +122,10 @@ function tone(hz) {
 }
 function unlockAudio() { if (!audio) audio = new AudioContext(); }
 
+let poweredOn = true;  // from the console: "stoprock ready" / "power: off"
 function addLog(text) {
+  if (text.includes("stoprock ready")) poweredOn = true;
+  else if (text.includes("power: off")) poweredOn = false;
   log.textContent += text + "\n";
   if (log.textContent.length > 20000) log.textContent = log.textContent.slice(-15000);
   log.scrollTop = log.scrollHeight;
@@ -164,6 +180,38 @@ document.addEventListener("keyup", (e) => {
   const name = KEYS[e.key] || KEYS[e.key.toLowerCase()];
   if (name) { e.preventDefault(); release(name); }
 });
+// Restart in a mode: what you'd do with the device. If it's on, hold the side button 3 s to
+// switch it off; then hold the rocker (down = league, up = coach, nothing = competition) while
+// the side button switches it on, and let go once it's up.
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+async function restartIn(mode) {
+  const rocker = { league: "down", coach: "up" }[mode];
+  const status = document.getElementById("mode-status");
+  const buttons = document.querySelectorAll("button.mode");
+  buttons.forEach(b => b.disabled = true);
+  try {
+    if (poweredOn) {
+      status.textContent = "switching off…";
+      press("side"); await sleep(3400); release("side");
+      for (let i = 0; i < 40 && poweredOn; i++) await sleep(250);  // until the help page is up
+      await sleep(600);
+    }
+    status.textContent = `switching on (${mode})…`;
+    if (rocker) { press(rocker); await sleep(200); }
+    press("side");
+    for (let i = 0; i < 40 && !poweredOn; i++) await sleep(250);  // until the firmware is up
+    await sleep(300);
+    release("side");
+    if (rocker) release(rocker);
+    status.textContent = "";
+  } finally {
+    buttons.forEach(b => b.disabled = false);
+  }
+}
+document.querySelectorAll("button.mode").forEach(b => b.addEventListener("click", () => {
+  unlockAudio(); b.blur(); restartIn(b.dataset.mode);
+}));
+
 const slider = document.getElementById("battery");
 // Let go of focus after using a control, so arrow keys and Space don't move or toggle it.
 document.querySelectorAll("input").forEach(el => el.addEventListener("change", () => el.blur()));

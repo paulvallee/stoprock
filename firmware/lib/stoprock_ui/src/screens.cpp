@@ -88,8 +88,8 @@ void formatTime(int32_t hundredths, char* out, size_t n) {
 }
 
 // Right-aligned DSEG7 number with a small square decimal point.
-void dsegNumber(Canvas& c, int32_t hundredths, double x0, double x1, double y0, double y1, double margin = 3) {
-    const Font& f = kFontDseg25;
+void dsegNumber(Canvas& c, int32_t hundredths, double x0, double x1, double y0, double y1, double margin = 3,
+                const Font& f = kFontDseg25) {
     char ip[12], fp[4];
     snprintf(ip, sizeof ip, "%ld", static_cast<long>(hundredths / 100));
     snprintf(fp, sizeof fp, "%02ld", static_cast<long>(hundredths % 100));
@@ -239,7 +239,6 @@ void drawHelp(Canvas& c, const char* lastGame, int shotPct, int battery, const c
     c.blit(kLogo, (W - kLogo.w) / 2, 4);
     int y = 4 + kLogo.h + 6;
 
-    auto line = [&](const char* s) { c.text(f, 4, y, s); y += 12; };
     auto tag = [&](const char* labelText, const char* rest) {
         const int w = static_cast<int>(strlen(labelText)) * 6;
         c.fillRect(3, y, 4 + w + 2, y + 12);
@@ -248,19 +247,25 @@ void drawHelp(Canvas& c, const char* lastGame, int shotPct, int battery, const c
         y += 14;
     };
 
-    const char* head = "HOLD SIDE BUTTON TO START";
-    c.text(f, (W - static_cast<int>(strlen(head)) * 6) / 2, y, head);
-    y += 18;
+    // every "=" on the page sits in one column, where SHOTS' "up/down = " puts it
+    const int eqX = 5 + 6 * 5 + 8 + 6 * 8;
+    auto eqLine = [&](const char* s) {
+        const char* eq = strchr(s, '=');
+        c.text(f, eqX - 6 * static_cast<int>(eq ? eq - s : 0), y, s);
+        y += 12;
+    };
+    tag("START", "hold side button, plus:");
+    eqLine("nothing     = competition");
+    eqLine("rocker down = league");
+    eqLine("rocker up   = coach");
+    y += 5;
     tag("TIMING", "use top or side button");
-    line(" B2H back or tee to hog line");
-    line(" H2H hog line to hog line");
-    y += 8;
-    tag("SHOTS", "use rocker");
-    line(" up/down = made/missed");
-    line(" hold    = undo last shot");
-    y += 6;
+    y += 3;
+    tag("SHOTS", "up/down = made/missed");
+    eqLine("hold = undo last shot");
+    y += 4;
     c.line(4, y, 195, y);
-    y += 6;
+    y += 5;
     // Bottom right: shot percentage with a pie, battery with its icon. The icons end at the
     // same x (room for "100%" after them), and the percentages are right-aligned so the
     // % signs line up. That leaves 26 characters for "Last game 16/16 shots made".
@@ -288,6 +293,142 @@ void drawHelp(Canvas& c, const char* lastGame, int shotPct, int battery, const c
         if (fill > 0) c.fillRect(bx + 2, y + 5, bx + 2 + fill - 1, y + 7);
         percent(battery);
         y += 12;
+    }
+}
+
+// ------------------------------------------------------------------ start-up modes
+namespace {
+
+constexpr int WIDE_MID = 100;                         // times split in competition and coach page 1
+constexpr int COACH_GX[5] = {12, 59, 106, 153, 200};  // coach position columns
+const char* const kPositions[4] = {"Lead", "2nd", "3rd", "Skip"};
+const char* const kPositionShort[4] = {"L", "2", "3", "S"};
+
+void rectOutline(Canvas& c, int x0, int y0, int x1, int y1) {
+    c.fillRect(x0, y0, x1, y0);
+    c.fillRect(x0, y1, x1, y1);
+    c.fillRect(x0, y0, x0, y1);
+    c.fillRect(x1, y0, x1, y1);
+}
+
+// Back2Hog | Hog2Hog across the full width: header, newest large, older below.
+void timesWide(Canvas& c, const Stone* stones, int count, int bottom, int labelRight) {
+    const Font& label = kFontSpleen6x12;
+    textInBox(c, label, "Back2Hog", 0, WIDE_MID, 0, LABEL_H, kCentre, 4);
+    textInBox(c, label, "Hog2Hog", WIDE_MID, labelRight, 0, LABEL_H, kCentre, 4);
+    hline(c, 0, W - 1, LABEL_H);
+    if (count > 0) {
+        if (stones[0].bh >= 0) dsegNumber(c, stones[0].bh, 0, WIDE_MID, 13, 47);
+        if (stones[0].hh >= 0) dsegNumber(c, stones[0].hh, WIDE_MID, W, 13, 47);
+    }
+    hline(c, 0, W - 1, 47, 2);
+    vline(c, WIDE_MID, 0, bottom - 1);
+    char buf[12];
+    for (int i = 1; i < count; ++i) {
+        const int ry = 50 + (i - 1) * 14;
+        if (ry + 14 > bottom) break;
+        if (stones[i].bh >= 0) {
+            formatTime(stones[i].bh, buf, sizeof buf);
+            segInBox(c, kRowFont, buf, 0, WIDE_MID, ry, ry + 14, kRight, 14);
+        }
+        if (stones[i].hh >= 0) {
+            formatTime(stones[i].hh, buf, sizeof buf);
+            segInBox(c, kRowFont, buf, WIDE_MID, W, ry, ry + 14, kRight, 14);
+        }
+    }
+}
+
+// Two small squares top right: filled = the page showing.
+void pageMarks(Canvas& c, int page) {
+    for (int k = 0; k < 2; ++k) {
+        const int x = W - 16 + k * 8;
+        if (k == page) c.fillRect(x, 3, x + 5, 8);
+        else rectOutline(c, x, 3, x + 5, 8);
+    }
+}
+
+// Coach-mode rock i of the game: empty, made or missed; bold ring = cursor.
+void coachRock(Canvas& c, const ShotLog& shots, int i, int cx, int cy) {
+    c.sprite(kRockSmall, cx, cy);
+    if (i < shots.count()) c.sprite(shots.made(i) ? kCheckSmall : kCrossSmall, cx, cy);
+    if (i == shots.cursor()) c.sprite(kCursorSmall, cx, cy);
+}
+
+void endRow(Canvas& c, const ShotLog& shots, int end, int cy) {
+    char n[3];
+    snprintf(n, sizeof n, "%d", end + 1);
+    kEndFont.draw(c, n, 3, cy - 4);
+    for (int p = 0; p < 4; ++p)
+        for (int r = 0; r < 2; ++r) coachRock(c, shots, end * 8 + p * 2 + r, COACH_GX[p] + 15 + r * 17, cy);
+}
+
+}  // namespace
+
+void drawCompetition(Canvas& c, const Stone* stones, uint8_t count, bool lowBattery) {
+    c.clear();
+    const Font& label = kFontSpleen6x12;
+    const int strip = H - TIP_H;
+    timesWide(c, stones, count, strip, W);
+    c.fillRect(0, strip, W - 1, H - 1);
+    textInBox(c, label, "COMPETITION", 0, W, strip + 1, strip + 13, kCentre, 4, false);
+    textInBox(c, label, lowBattery ? "Battery low" : "times only, radio off", 0, W, strip + 13, strip + 25,
+              kCentre, 4, false);
+}
+
+void drawCoachTimer(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& shots) {
+    c.clear();
+    const Font& label = kFontSpleen6x12;
+    pageMarks(c, 0);
+    const int bottom = 150;
+    timesWide(c, stones, count, bottom, W - 18);
+    hline(c, 0, W - 1, bottom, 2);
+    for (int p = 0; p < 4; ++p) {
+        if (p) vline(c, COACH_GX[p], bottom, H - 1);
+        const int v = shots.positionPercent(p);
+        char text[8];
+        if (v >= 0) snprintf(text, sizeof text, "%s %d%%", kPositionShort[p], v);
+        else snprintf(text, sizeof text, "%s", kPositionShort[p]);
+        textInBox(c, label, text, COACH_GX[p], COACH_GX[p + 1], bottom + 2, bottom + 14, kCentre, 4);
+    }
+    // the previous end and the one under way
+    const int slots = shots.capacity();
+    int current = (shots.count() < slots - 1 ? shots.count() : slots - 1) / 8;
+    int first = current - 1;
+    if (first > 6) first = 6;
+    if (first < 0) first = 0;
+    for (int row = 0; row < 2; ++row) endRow(c, shots, first + row, bottom + 24 + row * 15);
+}
+
+void drawCoachRocks(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& shots) {
+    c.clear();
+    const Font& label = kFontSpleen6x12;
+    textInBox(c, label, "Back2Hog", 0, WIDE_MID, 0, LABEL_H, kCentre, 4);
+    textInBox(c, label, "Hog2Hog", WIDE_MID, W - 18, 0, LABEL_H, kCentre, 4);
+    hline(c, 0, W - 1, LABEL_H);
+    pageMarks(c, 1);
+    if (count > 0) {
+        if (stones[0].bh >= 0) dsegNumber(c, stones[0].bh, 0, WIDE_MID, 13, 33, 20, kFontDseg16);
+        if (stones[0].hh >= 0) dsegNumber(c, stones[0].hh, WIDE_MID, W, 13, 33, 20, kFontDseg16);
+    }
+    vline(c, WIDE_MID, 0, 33);
+    hline(c, 0, W - 1, 33, 2);
+    for (int p = 0; p < 4; ++p) {
+        textInBox(c, label, kPositions[p], COACH_GX[p], COACH_GX[p + 1], 35, 47, kCentre, 4);
+        if (p) vline(c, COACH_GX[p], 35, 185);
+    }
+    hline(c, 0, W - 1, 47);
+    for (int end = 0; end < 8; ++end) endRow(c, shots, end, 55 + end * 16);
+    hline(c, 0, W - 1, 185, 2);
+    for (int p = 0; p < 4; ++p) {
+        if (p) vline(c, COACH_GX[p], 185, H - 1);
+        const int v = shots.positionPercent(p);
+        if (v < 0) continue;
+        char text[6];
+        snprintf(text, sizeof text, "%d%%", v);
+        const int w = 13 + 6 * static_cast<int>(strlen(text));
+        const int x = (COACH_GX[p] + COACH_GX[p + 1] - w) / 2;  // both positive: / floors like //
+        drawPie(c, x + 5, 193, v);
+        c.text(label, x + 13, 187, text);
     }
 }
 

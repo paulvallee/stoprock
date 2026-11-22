@@ -30,6 +30,16 @@ void drawMain(Canvas& c, const MainView& v);
 void drawHelp(Canvas& c, const char* lastGame, int shotPct = -1, int battery = -1,
               const char* batteryNote = nullptr);
 
+// Competition (switched on with the side button alone): times only, full width, and a badge
+// strip an umpire can read. lowBattery replaces the strip's second line.
+void drawCompetition(Canvas& c, const Stone* stones, uint8_t count, bool lowBattery);
+
+// Coach (side button + rocker up), 64 rocks: 8 ends x 4 positions x 2.
+// Page 1, timer priority: wide times, % per position, the previous and current end.
+void drawCoachTimer(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& shots);
+// Page 2, rock priority: the newest times only, all 64 rocks, a pie and % per position.
+void drawCoachRocks(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& shots);
+
 // Hundredths of a second from microseconds, rounded.
 inline int32_t toHundredths(int64_t us) { return static_cast<int32_t>((us + 5000) / 10000); }
 

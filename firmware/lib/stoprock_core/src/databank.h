@@ -24,6 +24,10 @@ struct StoneTimes {
     uint16_t hogToHog = kNoTime;
 };
 
+// How the device was switched on (see docs/SPEC.md). 0 = league, so older records read as league.
+enum class GameMode : uint8_t { League = 0, Competition = 1, Coach = 2 };
+const char* modeName(GameMode m);  // "league", "competition", "coach"
+
 struct GameRecord {
     static constexpr uint16_t kMaxStones = 128;  // 8 ends x 16 stones
 
@@ -31,8 +35,9 @@ struct GameRecord {
     uint32_t started = 0;     // clock seconds when the game started (see clockSet)
     uint32_t updated = 0;     // clock seconds of the last change
     bool clockSet = false;    // false: the clock hadn't been set, so the times are only relative
-    uint8_t shotCount = 0;    // rocks logged, 0-16
-    uint16_t shotBits = 0;    // bit i set = rock i made
+    GameMode mode = GameMode::League;
+    uint8_t shotCount = 0;    // rocks logged: 0-16 in league, 0-64 in coach, 0 in competition
+    uint64_t shotBits = 0;    // bit i set = rock i made
     uint16_t stoneCount = 0;  // timed stones, oldest first
     static constexpr uint8_t kNoBattery = 0xFF;
     uint8_t batteryStart = kNoBattery;  // charge % at switch-on
@@ -44,8 +49,9 @@ struct GameRecord {
 
 class Databank {
 public:
-    static constexpr uint8_t kVersion = 2;            // record format version (1 still readable)
-    static constexpr size_t kHeaderSize = 24;
+    static constexpr uint8_t kVersion = 3;            // record format version (1 and 2 still readable)
+    static constexpr size_t kHeaderSize = 32;
+    static constexpr size_t kOldHeaderSize = 24;      // versions 1 and 2
     static constexpr size_t kMaxRecordSize = kHeaderSize + 4 * GameRecord::kMaxStones + 1;
     static constexpr uint32_t kDefaultCapacity = 500;
 
@@ -57,11 +63,11 @@ public:
 
     // Start a new game (every switch-on). It is only written to flash once it has
     // something in it, so switching on and off doesn't fill the databank with empty games.
-    void startGame(uint32_t now, bool clockSet, int batteryPercent = -1);
+    void startGame(uint32_t now, bool clockSet, int batteryPercent = -1, GameMode mode = GameMode::League);
 
     // The game in progress. Change it through the calls below.
     const GameRecord& current() const { return current_; }
-    void setShots(uint8_t count, uint16_t bits, uint32_t now);
+    void setShots(uint8_t count, uint64_t bits, uint32_t now);
     // A stone's first result: a B2H (hogToHog = kNoTime), or an H2H with no B2H.
     void addStone(uint16_t backToHog, uint16_t hogToHog, uint32_t now);
     // The H2H that completes the last stone's B2H.

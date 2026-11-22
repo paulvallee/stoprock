@@ -24,6 +24,13 @@ def main():
         "battery": screen.main_screen(render.STONES, shots, tip=render.WARNING, warn=True),
         "help": screen.help_page(logo.device_logo(), "Last game 9/12 shots made", shot_pct=75, battery=84, battery_note="~11 games battery left"),
     }
+    refs["competition"] = screen.competition_screen(render.COACH_STONES)
+    refs["competition-battery"] = screen.competition_screen(render.COACH_STONES, low_battery=True)
+    for n in (0, 8, 35, 63, 64):
+        coach = [i % 5 != 3 and i % 7 != 5 for i in range(n)]
+        st = render.COACH_STONES if n else []
+        refs[f"coach1-{n:02d}"] = screen.coach_timer_screen(st, coach)
+        refs[f"coach2-{n:02d}"] = screen.coach_rocks_screen(st, coach)
     for n in range(17):
         refs[f"cursor{n:02d}"] = screen.main_screen(render.STONES, [i % 3 != 2 for i in range(n)], tip=render.TIPS[0])
     rows, worst = [], 0
@@ -40,7 +47,7 @@ def main():
                 elif a:
                     diff.putpixel((x, y), (190, 190, 190))
         worst = max(worst, n)
-        print(f"{name:8s} {n:5d} pixels differ")
+        print(f"{name:20s} {n:5d} pixels differ")
         rows.append((ref.convert("RGB"), fw.convert("RGB"), diff))
     if out:
         z = 2

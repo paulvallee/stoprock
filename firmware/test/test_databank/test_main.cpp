@@ -101,7 +101,7 @@ static void test_each_boot_is_a_new_game_and_survives_restart() {
     TEST_ASSERT_TRUE(db.lastGame(g));
     TEST_ASSERT_EQUAL_UINT32(2, g.id);
     TEST_ASSERT_TRUE(db.load(1, g));
-    TEST_ASSERT_EQUAL_UINT16(0x3, g.shotBits);
+    TEST_ASSERT_TRUE(g.shotBits == 0x3);
     db.startGame(300, true);
     db.addStone(300, NONE, 301);
     TEST_ASSERT_EQUAL_UINT32(3, db.current().id);  // ids carry on
@@ -177,7 +177,7 @@ static void test_encode_decode_round_trip_and_corruption() {
     GameRecord back;
     TEST_ASSERT_TRUE(Databank::decode(buf, n, back));
     TEST_ASSERT_EQUAL_UINT32(77, back.id);
-    TEST_ASSERT_EQUAL_UINT16(0b0111011, back.shotBits);
+    TEST_ASSERT_TRUE(back.shotBits == 0b0111011);
     TEST_ASSERT_EQUAL_UINT16(1402, back.stones[1].hogToHog);
     buf[10] ^= 0x40;                                   // flip a bit
     TEST_ASSERT_FALSE(Databank::decode(buf, n, back));
@@ -234,25 +234,65 @@ static void test_games_left_estimate() {
     TEST_ASSERT_EQUAL_INT(-1, db.gamesLeft(-1));        // battery unknown
 }
 
-static void test_reads_version_1_records() {
-    GameRecord r;
-    r.id = 5;
-    r.shotCount = 2;
-    r.shotBits = 1;
-    r.batteryStart = 50;
-    r.batteryEnd = 40;
-    uint8_t buf[Databank::kMaxRecordSize];
-    const size_t n = Databank::encode(r, buf);
-    buf[1] = 1;                             // as an older firmware wrote it: bytes 20-23 reserved
-    buf[20] = buf[21] = 0;
-    uint8_t c = 0x5A;                       // recompute the checksum the same way encode() does
+// A record as firmware before version 3 wrote it: a 24-byte header, shot bits at 16-17.
+static size_t oldRecord(uint8_t version, uint8_t* buf) {
+    memset(buf, 0, 24);
+    buf[0] = 'G';
+    buf[1] = version;
+    buf[2] = 1;                             // clock set
+    buf[3] = 3;                             // shots
+    buf[4] = 5;                             // id 5
+    buf[16] = 0b101;                        // shot bits
+    buf[18] = 1;                            // one stone
+    if (version >= 2) { buf[20] = 50; buf[21] = 40; }
+    buf[24] = 0x5B; buf[25] = 0x01;         // B2H 3.47
+    buf[26] = 0x70; buf[27] = 0x05;         // H2H 13.92
+    const size_t n = 24 + 4 + 1;
+    uint8_t c = 0x5A;                       // the checksum, the same way encode() does it
     for (size_t i = 0; i + 1 < n; ++i) c = static_cast<uint8_t>((c << 1 | c >> 7) ^ buf[i]);
     buf[n - 1] = c;
+    return n;
+}
+
+static void test_reads_version_1_and_2_records() {
+    uint8_t buf[Databank::kMaxRecordSize];
     GameRecord back;
+    size_t n = oldRecord(1, buf);
     TEST_ASSERT_TRUE(Databank::decode(buf, n, back));
-    TEST_ASSERT_EQUAL_UINT8(2, back.shotCount);
+    TEST_ASSERT_EQUAL_UINT32(5, back.id);
+    TEST_ASSERT_EQUAL_UINT8(3, back.shotCount);
+    TEST_ASSERT_TRUE(back.shotBits == 0b101);
+    TEST_ASSERT_EQUAL_UINT16(1392, back.stones[0].hogToHog);
     TEST_ASSERT_EQUAL_UINT8(GameRecord::kNoBattery, back.batteryStart);
-    TEST_ASSERT_EQUAL_UINT8(GameRecord::kNoBattery, back.batteryEnd);
+    TEST_ASSERT_TRUE(back.mode == GameMode::League);
+    n = oldRecord(2, buf);
+    TEST_ASSERT_TRUE(Databank::decode(buf, n, back));
+    TEST_ASSERT_EQUAL_UINT8(50, back.batteryStart);
+    TEST_ASSERT_EQUAL_UINT8(40, back.batteryEnd);
+    TEST_ASSERT_TRUE(back.mode == GameMode::League);
+    TEST_ASSERT_EQUAL_UINT16(347, back.stones[0].backToHog);
+}
+
+static void test_coach_game_of_64_shots_and_mode() {
+    MemStore st;
+    Databank db(st);
+    db.begin();
+    db.startGame(10, true, 80, GameMode::Coach);
+    const uint64_t bits = 0xF0F0F0F0A5A5A5A5ull;
+    db.setShots(64, bits, 20);
+    GameRecord g;
+    TEST_ASSERT_TRUE(db.load(1, g));
+    TEST_ASSERT_TRUE(g.mode == GameMode::Coach);
+    TEST_ASSERT_EQUAL_UINT8(64, g.shotCount);
+    TEST_ASSERT_TRUE(g.shotBits == bits);
+    db.setShots(40, bits, 30);              // undone back to 40: the bits above are dropped
+    TEST_ASSERT_TRUE(db.load(1, g));
+    TEST_ASSERT_TRUE(g.shotBits == (bits & ((1ull << 40) - 1)));
+    db.startGame(100, true, 79, GameMode::Competition);
+    db.addStone(347, 1392, 110);
+    TEST_ASSERT_TRUE(db.load(2, g));
+    TEST_ASSERT_TRUE(g.mode == GameMode::Competition);
+    TEST_ASSERT_EQUAL_UINT8(0, g.shotCount);
 }
 
 static void test_json_line() {
@@ -269,7 +309,7 @@ static void test_json_line() {
     char out[256];
     Databank::toJson(r, out, sizeof out);
     TEST_ASSERT_EQUAL_STRING(
-        "{\"id\":12,\"v\":2,\"started\":100,\"updated\":200,\"clock\":true,\"shots\":\"MXM\","
+        "{\"id\":12,\"v\":3,\"mode\":\"league\",\"started\":100,\"updated\":200,\"clock\":true,\"shots\":\"MXM\","
         "\"made\":2,\"thrown\":3,\"pct\":67,\"stones\":[[3.47,13.92],[null,14.02]],"
         "\"battery_start\":null,\"battery_end\":null}",
         out);
@@ -292,7 +332,8 @@ int main() {
     RUN_TEST(test_full_game_of_stones);
     RUN_TEST(test_battery_is_logged_per_game);
     RUN_TEST(test_games_left_estimate);
-    RUN_TEST(test_reads_version_1_records);
+    RUN_TEST(test_reads_version_1_and_2_records);
+    RUN_TEST(test_coach_game_of_64_shots_and_mode);
     RUN_TEST(test_json_line);
     return UNITY_END();
 }

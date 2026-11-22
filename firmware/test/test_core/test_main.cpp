@@ -172,7 +172,32 @@ static void test_restore() {
     ShotLog s;
     s.restore(3, 0xFFFF);
     TEST_ASSERT_EQUAL_UINT8(3, s.count());
-    TEST_ASSERT_EQUAL_UINT16(0x0007, s.bits());
+    TEST_ASSERT_TRUE(s.bits() == 0x0007);
+}
+
+static void test_coach_capacity_and_positions() {
+    ShotLog s(ShotLog::kCoachSlots);
+    TEST_ASSERT_EQUAL_UINT8(64, s.capacity());
+    // end 1: lead made, made; second missed, made; third made, missed; skip missed, missed
+    const bool end1[8] = {true, true, false, true, true, false, false, false};
+    for (bool m : end1) TEST_ASSERT_TRUE(s.add(m));
+    TEST_ASSERT_EQUAL_INT(100, s.positionPercent(0));
+    TEST_ASSERT_EQUAL_INT(50, s.positionPercent(1));
+    TEST_ASSERT_EQUAL_INT(50, s.positionPercent(2));
+    TEST_ASSERT_EQUAL_INT(0, s.positionPercent(3));
+    s.add(false);                            // end 2, lead's first: missed
+    TEST_ASSERT_EQUAL_INT(67, s.positionPercent(0));
+    for (int i = 9; i < 64; ++i) TEST_ASSERT_TRUE(s.add(true));
+    TEST_ASSERT_FALSE(s.add(true));          // 64 rocks: full
+    TEST_ASSERT_EQUAL_INT(-1, s.cursor());
+    TEST_ASSERT_TRUE(s.made(63));
+    TEST_ASSERT_TRUE(s.undo());
+    TEST_ASSERT_EQUAL_INT(63, s.cursor());
+    TEST_ASSERT_FALSE(s.made(63));
+    ShotLog l;                               // league: 16
+    TEST_ASSERT_EQUAL_INT(-1, l.positionPercent(0));
+    l.restore(40, ~0ull);
+    TEST_ASSERT_EQUAL_UINT8(16, l.count());
 }
 
 int main() {
@@ -191,5 +216,6 @@ int main() {
     RUN_TEST(test_full_and_empty_limits);
     RUN_TEST(test_percent_rounding);
     RUN_TEST(test_restore);
+    RUN_TEST(test_coach_capacity_and_positions);
     return UNITY_END();
 }

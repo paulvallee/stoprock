@@ -53,7 +53,19 @@ first run also downloads the push-button part (`pushbutton.wasm`) from the esp-e
 | <kbd>S</kbd> | **side / power** | Timing click; hold 3 s to switch off (shows the help page; press it again to switch back on) |
 | <kbd>↑</kbd> | rocker **▲** | Made shot |
 | <kbd>↓</kbd> | rocker **▼** | Missed shot |
-| <kbd>Enter</kbd> | rocker **●** | Hold 0.5 s to undo the last shot; keep holding to undo another every 0.5 s |
+| <kbd>Enter</kbd> | rocker **●** | Hold 0.5 s to undo the last shot; keep holding to undo another every 0.5 s. Coach mode: press twice quickly to switch page |
+
+**Start-up modes.** The simulator starts in **competition** mode (switched on with the side button alone). To
+pick another, use the **Restart in competition / league / coach** buttons: they switch the device off (side
+button held 3 s) and back on with the rocker held, as you would on the device. By keyboard: switch off, then
+hold <kbd>↓</kbd> (league) or <kbd>↑</kbd> (coach) and press <kbd>S</kbd>, keeping both held until the screen
+changes.
+
+| Mode | Switch on with | What to try |
+|---|---|---|
+| Competition | <kbd>S</kbd> | Times only, full width, the badge strip at the bottom; the rocker does nothing |
+| League | <kbd>↓</kbd> + <kbd>S</kbd> | The main screen: times, your 16 rocks and tips |
+| Coach | <kbd>↑</kbd> + <kbd>S</kbd> | 64 rocks for the whole team; <kbd>Enter</kbd> twice quickly switches between the timer page and the rocks page |
 
 The **Battery** slider sets the battery level the firmware reads (`run.py` sends it to the emulated chip's
 second serial port). Below 15% the tip strip shows the low-battery warning, within about 2 s. To try the battery

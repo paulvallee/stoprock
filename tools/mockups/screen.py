@@ -49,14 +49,14 @@ def ink(s, font):
     return _ink[key]
 
 
-def text_in_box(d, s, font, x0, x1, y0, y1, align="right", margin=4):
+def text_in_box(d, s, font, x0, x1, y0, y1, align="right", margin=4, fill=0):
     if isinstance(font, SegFont):
         return font.draw_in_box(d, s, x0, x1, y0, y1, align, margin)
     l, t, r, b = ink(s, font)
     w = r - l
     x = {"right": x1 - margin - w - l, "left": x0 + margin - l}.get(align, (x0 + x1 - w) / 2 - l)
     y = (y0 + y1 - (b - t)) / 2 - t
-    d.text((round(x), round(y)), s, font=font, fill=0)
+    d.text((round(x), round(y)), s, font=font, fill=fill)
 
 
 def dseg_number(d, val, font, x0, x1, y0, y1, margin=3):
@@ -69,11 +69,19 @@ def dseg_number(d, val, font, x0, x1, y0, y1, margin=3):
     total = (ri - li) + gap + dot + gap + (rf - lf)
     x = x1 - margin - total
     y = (y0 + y1 - (b - t)) / 2 - t
-    d.text((round(x - li), round(y)), ip, font=font, fill=0)
+    glyphs(d, ip, font, round(x - li), round(y))
     xd = x + (ri - li) + gap
     yb = y + b
     d.rectangle([round(xd), round(yb - dot), round(xd + dot - 1), round(yb - 1)], fill=0)
-    d.text((round(xd + dot + gap - lf), round(y)), fp, font=font, fill=0)
+    glyphs(d, fp, font, round(xd + dot + gap - lf), round(y))
+
+
+def glyphs(d, s, font, x, y):
+    """Draw s one glyph at a time, each at a whole-pixel advance: as the firmware does.
+    (Pillow lays a string out at fractional advances, which can shift a glyph by a pixel.)"""
+    for ch in s:
+        d.text((x, y), ch, font=font, fill=0)
+        x += round(font.getlength(ch))
 
 
 # --------------------------------------------------------------------------- drawn segments
@@ -155,6 +163,11 @@ def _make_fonts():
 
 
 # --------------------------------------------------------------------------- main screen
+def percent_of(made, n):
+    """Rounded percentage, half up (as the firmware rounds; Python's round() rounds half to even)."""
+    return (made * 200 + n) // (2 * n)
+
+
 def rock_xy(k):
     top = LABEL_H + 1
     pitch = (ROCKS_BOTTOM - top) / 8
@@ -224,7 +237,7 @@ def main_screen(stones, shots, tip=None, warn=False, show_cursor=True):
     y9 = ROCKS_BOTTOM
     d.line([(0, y9), (W - 1, y9)], fill=0, width=2)
     if shots:
-        n = str(round(100 * sum(shots) / len(shots)))
+        n = str(percent_of(sum(shots), len(shots)))
         f = fs["pct"]
         boxes = [ink(c, f) for c in n]
         t, b = min(bx[1] for bx in boxes), max(bx[3] for bx in boxes)
@@ -269,6 +282,9 @@ def draw_pie(d, cx, cy, pct):
                     d.point((cx + dx, cy + dy), fill=0)
 
 
+HELP_EQ_X = 5 + 6 * len("SHOTS") + 8 + 6 * len("up/down ")  # x of every "=" on the help page
+
+
 def help_page(device_logo, last_game, shot_pct=None, battery=None, battery_note=None):
     img = Image.new("1", (W, H), 1)
     d = ImageDraw.Draw(img)
@@ -290,19 +306,26 @@ def help_page(device_logo, last_game, shot_pct=None, battery=None, battery_note=
         d.text((5 + w + 8, y + 1), rest, font=f, fill=0)
         y += 14
 
-    t = "HOLD SIDE BUTTON TO START"
-    d.text(((W - len(t) * 6) // 2, y), t, font=f, fill=0)
-    y += 18
+    # every "=" on the page sits in one column, where SHOTS' "up/down = " puts it
+    eq_x = HELP_EQ_X
+
+    def eq_line(txt):
+        nonlocal y
+        d.text((eq_x - 6 * txt.index("="), y), txt, font=f, fill=0)
+        y += 12
+
+    tag("START", "hold side button, plus:")
+    eq_line("nothing     = competition")
+    eq_line("rocker down = league")
+    eq_line("rocker up   = coach")
+    y += 5
     tag("TIMING", "use top or side button")
-    line(" B2H back or tee to hog line")
-    line(" H2H hog line to hog line")
-    y += 8
-    tag("SHOTS", "use rocker")
-    line(" up/down = made/missed")
-    line(" hold    = undo last shot")
-    y += 6
+    y += 3
+    tag("SHOTS", "up/down = made/missed")
+    eq_line("hold = undo last shot")
+    y += 4
     d.line([(4, y), (195, y)], fill=0)
-    y += 6
+    y += 5
     # Bottom right: shot percentage with a pie, battery with its icon. The icons end at the
     # same x (room for "100%" after them), and the percentages are right-aligned so the
     # % signs line up. That leaves 26 characters for "Last game 16/16 shots made".
@@ -329,6 +352,155 @@ def help_page(device_logo, last_game, shot_pct=None, battery=None, battery_note=
         percent(battery)
         y += 12
     assert y <= H, f"help page overflows: {y}"
+    return img
+
+
+# --------------------------------------------------------------------------- start-up modes
+COACH_SLOTS = 64             # 8 ends x 4 positions x 2 rocks
+POSITIONS = ("Lead", "2nd", "3rd", "Skip")
+POSITION_SHORT = ("L", "2", "3", "S")
+WIDE_MID = 100               # times split in competition and coach page 1
+COACH_GX = [12 + k * 47 for k in range(5)]  # coach position columns
+
+
+def times_wide(d, f, stones, bottom, label_right=W):
+    """Back2Hog | Hog2Hog across the full width: header, newest large, older below.
+    label_right: where the Hog2Hog label's box ends (left of the page marks in coach mode)."""
+    mid = WIDE_MID
+    text_in_box(d, "Back2Hog", f["label"], 0, mid, 0, 12, align="center")
+    text_in_box(d, "Hog2Hog", f["label"], mid, label_right, 0, 12, align="center")
+    d.line([(0, 12), (W - 1, 12)], fill=0)
+    if stones:
+        for val, x0, x1 in zip(stones[0], (0, mid), (mid, W)):
+            if val is not None:
+                dseg_number(d, val, f["big"], x0, x1, 13, 47)
+    d.line([(0, 47), (W - 1, 47)], fill=0, width=2)
+    d.line([(mid, 0), (mid, bottom - 1)], fill=0)
+    for i, stone in enumerate(stones[1:]):
+        ry = 50 + i * 14
+        if ry + 14 > bottom:
+            break
+        for val, x0, x1 in zip(stone, (0, mid), (mid, W)):
+            if val is not None:
+                text_in_box(d, f"{val:.2f}", f["row"], x0, x1, ry, ry + 14, margin=14)
+
+
+def competition_screen(stones, low_battery=False):
+    """Times only, full width, with a badge strip an umpire can read at a glance."""
+    f = fonts()
+    img = Image.new("1", (W, H), 1)
+    d = ImageDraw.Draw(img)
+    d.fontmode = "1"
+    strip = H - TIP_H
+    times_wide(d, f, stones, strip)
+    d.rectangle([0, strip, W - 1, H - 1], fill=0)
+    text_in_box(d, "COMPETITION", f["label"], 0, W, strip + 1, strip + 13, align="center", fill=1)
+    sub = "Battery low" if low_battery else "times only, radio off"
+    text_in_box(d, sub, f["label"], 0, W, strip + 13, strip + 25, align="center", fill=1)
+    return img
+
+
+def small_rock(d, cx, cy, state, cursor):
+    """Coach-mode rock (radius 5): empty, made (check) or missed (X); bold ring = cursor."""
+    d.ellipse([cx - 5, cy - 5, cx + 5, cy + 5], outline=0, width=1)
+    if state is True:
+        d.line([(cx - 3, cy), (cx - 1, cy + 2), (cx + 3, cy - 3)], fill=0, width=2)
+    elif state is False:
+        d.line([(cx - 2, cy - 2), (cx + 2, cy + 2)], fill=0, width=2)
+        d.line([(cx - 2, cy + 2), (cx + 2, cy - 2)], fill=0, width=2)
+    if cursor:
+        d.ellipse([cx - 5, cy - 5, cx + 5, cy + 5], outline=0, width=3)
+
+
+def page_marks(d, page):
+    """Two small squares top right: filled = the page showing."""
+    for k in range(2):
+        x = W - 16 + k * 8
+        if k == page:
+            d.rectangle([x, 3, x + 5, 8], fill=0)
+        else:
+            d.rectangle([x, 3, x + 5, 8], outline=0)
+
+
+def position_percent(shots, p):
+    """Rounded % made for position p (0 lead .. 3 skip), or None before its first rock."""
+    xs = [m for i, m in enumerate(shots) if (i % 8) // 2 == p]
+    return percent_of(sum(xs), len(xs)) if xs else None
+
+
+def coach_rock(d, i, shots, cx, cy):
+    state = shots[i] if i < len(shots) else None
+    small_rock(d, cx, cy, state, i == len(shots))
+
+
+def coach_timer_screen(stones, shots):
+    """Coach page 1, timer priority: wide times, the previous and current end below."""
+    f = fonts()
+    img = Image.new("1", (W, H), 1)
+    d = ImageDraw.Draw(img)
+    d.fontmode = "1"
+    page_marks(d, 0)
+    bottom = 150
+    times_wide(d, f, stones, bottom, label_right=W - 18)
+    d.line([(0, bottom), (W - 1, bottom)], fill=0, width=2)
+    gx = COACH_GX
+    for p in range(4):
+        if p:
+            d.line([(gx[p], bottom), (gx[p], H - 1)], fill=0)
+        v = position_percent(shots, p)
+        label = f"{POSITION_SHORT[p]} {v}%" if v is not None else POSITION_SHORT[p]
+        text_in_box(d, label, f["label"], gx[p], gx[p + 1], bottom + 2, bottom + 14, align="center")
+    current = min(len(shots), COACH_SLOTS - 1) // 8
+    first = max(0, min(current - 1, 6))
+    for row, end in enumerate((first, first + 1)):
+        cy = bottom + 24 + row * 15
+        f["tiny"].draw(d, str(end + 1), 3, cy - 4)
+        for p in range(4):
+            for r in range(2):
+                coach_rock(d, end * 8 + p * 2 + r, shots, gx[p] + 15 + r * 17, cy)
+    return img
+
+
+def coach_rocks_screen(stones, shots):
+    """Coach page 2, rock priority: newest times only, all 64 rocks, % per position."""
+    f = fonts()
+    img = Image.new("1", (W, H), 1)
+    d = ImageDraw.Draw(img)
+    d.fontmode = "1"
+    mid = WIDE_MID
+    text_in_box(d, "Back2Hog", f["label"], 0, mid, 0, 12, align="center")
+    text_in_box(d, "Hog2Hog", f["label"], mid, W - 18, 0, 12, align="center")
+    d.line([(0, 12), (W - 1, 12)], fill=0)
+    page_marks(d, 1)
+    if stones:
+        for val, x0, x1 in zip(stones[0], (0, mid), (mid, W)):
+            if val is not None:
+                dseg_number(d, val, f["pct"], x0, x1, 13, 33, margin=20)
+    d.line([(mid, 0), (mid, 33)], fill=0)
+    d.line([(0, 33), (W - 1, 33)], fill=0, width=2)
+    gx = COACH_GX
+    for p in range(4):
+        text_in_box(d, POSITIONS[p], f["label"], gx[p], gx[p + 1], 35, 47, align="center")
+        if p:
+            d.line([(gx[p], 35), (gx[p], 185)], fill=0)
+    d.line([(0, 47), (W - 1, 47)], fill=0)
+    for end in range(8):
+        cy = 55 + end * 16
+        f["tiny"].draw(d, str(end + 1), 3, cy - 4)
+        for p in range(4):
+            for r in range(2):
+                coach_rock(d, end * 8 + p * 2 + r, shots, gx[p] + 15 + r * 17, cy)
+    d.line([(0, 185), (W - 1, 185)], fill=0, width=2)
+    for p in range(4):
+        if p:
+            d.line([(gx[p], 185), (gx[p], H - 1)], fill=0)
+        v = position_percent(shots, p)
+        if v is not None:
+            txt = f"{v}%"
+            w = 13 + 6 * len(txt)
+            x = (gx[p] + gx[p + 1] - w) // 2
+            draw_pie(d, x + 5, 193, v)
+            d.text((x + 13, 187), txt, font=f["label"], fill=0)
     return img
 
 

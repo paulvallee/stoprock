@@ -22,6 +22,7 @@ constexpr int64_t kEdgeGapUs = 30000;          // ignore further edges of the sa
 constexpr int64_t kStableUs = 20000;           // rocker debounce
 constexpr int64_t kUndoHoldUs = kSec / 2;   // 0.5 s
 constexpr int64_t kPowerHoldUs = 3 * kSec;
+constexpr int64_t kDoublePressUs = 400000;     // coach: two rocker presses within 0.4 s switch page
 constexpr int64_t kAwakeAfterPressUs = 2 * kSec;    // stay awake this long after a rocker press
 constexpr int64_t kAwakeAfterWakeUs = 40000;        // time to confirm the button that woke us
 constexpr int64_t kAuditEveryUs = 10 * 60 * kSec;   // clock audit sample interval
@@ -112,6 +113,12 @@ void IRAM_ATTR onEdge(void* arg) {
 bool isTimingButton(uint8_t b) { return b == board::kTop || b == board::kSide; }
 
 // ------------------------------------------------------------------ state
+// Chosen at switch-on by what the rocker is doing while the side button is held:
+// nothing = competition, down = league, up = coach (docs/SPEC.md section 2).
+GameMode mode = GameMode::Competition;
+uint8_t coachPage = 0;          // coach: 0 timer priority, 1 rock priority
+int64_t lastRockerPress = -kSec; // coach: when the rocker was last pressed (short presses only count)
+
 TimingEngine timing;
 ShotLog shots;
 Stone stones[kMaxStones];
@@ -178,10 +185,10 @@ Databank bank(bankStore);
 
 // Every switch-on starts a new game; it's stored once it has a shot or a time in it.
 void newGame() {
-    bank.startGame(board::clockNow(), board::clockValid(), board::batteryPercent());
-    shots.clear();
+    bank.startGame(board::clockNow(), board::clockValid(), board::batteryPercent(), mode);
+    shots.setCapacity(mode == GameMode::Coach ? ShotLog::kCoachSlots : ShotLog::kLeagueSlots);
     stoneCount = 0;
-    Serial.println("game: new");
+    Serial.printf("game: new, %s mode\n", modeName(mode));
 }
 
 void saveShots() { bank.setShots(shots.count(), shots.bits(), board::clockNow()); }
@@ -192,6 +199,8 @@ uint16_t toStored(int32_t hundredths) {
 
 // ------------------------------------------------------------------ display task
 struct Model {
+    GameMode mode = GameMode::League;
+    uint8_t page = 0;       // coach: which page
     Stone stones[kMaxStones];
     uint8_t stoneCount = 0;
     ShotLog shots;          // the shots on screen (deferred while a stone is timed)
@@ -231,6 +240,11 @@ void displayTask(void*) {
 
         if (m.help) {
             drawHelp(next, m.lastGame, m.shotPct, m.battery, m.batteryNote);
+        } else if (m.mode == GameMode::Competition) {
+            drawCompetition(next, m.stones, m.stoneCount, m.warning);
+        } else if (m.mode == GameMode::Coach) {
+            if (m.page == 0) drawCoachTimer(next, m.stones, m.stoneCount, m.shots);
+            else drawCoachRocks(next, m.stones, m.stoneCount, m.shots);
         } else {
             MainView v;
             v.stones = m.stones;
@@ -260,6 +274,8 @@ void syncModel(bool full = false) {
     static bool sFull;
     sFull = full;
     publish([](Model& m) {
+        m.mode = mode;
+        m.page = coachPage;
         memcpy(m.stones, stones, sizeof stones);
         m.stoneCount = stoneCount;
         if (!timing.active()) m.shots = shots;
@@ -447,7 +463,7 @@ void showHelpAndPowerOff() {
     if (!bank.lastGame(g)) {
         snprintf(line, sizeof line, "No games yet");
     } else {
-        ShotLog s;
+        ShotLog s(ShotLog::kMaxSlots);
         s.restore(g.shotCount, g.shotBits);
         if (s.count() == 0) snprintf(line, sizeof line, "Last game %u stones timed", g.stoneCount);
         else {
@@ -505,19 +521,38 @@ bool onUndo() {
     return true;
 }
 
+// Coach: a second short rocker press within 0.4 s switches page (and isn't an undo).
+// The first press does nothing by itself, so switching page never costs a shot.
+void onRockerPress(ButtonState& s, int64_t t) {
+    if (mode != GameMode::Coach) return;
+    if (t - lastRockerPress < kDoublePressUs) {
+        s.holdFired = true;      // this press can't turn into an undo
+        lastRockerPress = -kSec; // a third press starts over
+        coachPage ^= 1;
+        sound.play(kClick);
+        Serial.printf("coach: page %d\n", coachPage + 1);
+        syncModel();  // a page switch shows at once, even while a stone is timed
+        return;
+    }
+    lastRockerPress = t;
+}
+
 void onPress(uint8_t b, int64_t t) {
     ButtonState& s = buttons[b];
     s.down = true;
     s.downSince = t;
     s.holdFired = false;
     s.nextRepeat = t + kUndoHoldUs;
+    // Competition: the rocker does nothing at all (times only).
+    if (mode == GameMode::Competition && !isTimingButton(b)) { s.holdFired = true; return; }
     activity(t);
     switch (b) {
     case board::kTop:
     case board::kSide: onTimingPress(t); break;
     case board::kUp: onShot(true); break;
     case board::kDown: onShot(false); break;
-    default: break;  // rocker press acts on hold only
+    case board::kPress: onRockerPress(s, t); break;  // otherwise it acts on hold only
+    default: break;
     }
 }
 
@@ -551,6 +586,7 @@ void pollButtons(int64_t now) {
             // one error buzz once there's nothing left to undo.
             if (b == board::kPress && now >= s.nextRepeat) {
                 s.nextRepeat += kUndoHoldUs;
+                lastRockerPress = -kSec;  // a hold isn't half of a double press
                 activity(now);
                 if (!onUndo()) s.holdFired = true;
             }
@@ -562,7 +598,7 @@ void pollButtons(int64_t now) {
 // Databank export, framed so an app can parse it: "@GAMES n", n JSON lines, "@END".
 void printGames(uint32_t fromId) {
     static GameRecord g;
-    static char json[2400];
+    static char json[2600];  // a full coach game: 64 shots, 128 stones
     uint32_t n = 0;
     for (uint32_t id = fromId; id <= bank.lastId(); ++id) n += bank.load(id, g) ? 1 : 0;
     Serial.printf("@GAMES %lu\n", static_cast<unsigned long>(n));
@@ -617,17 +653,29 @@ void serialCommands() {
         } else if (!strcmp(buf, "n")) {
             newGame();
             syncModel();
+        } else if (!strncmp(buf, "mode ", 5)) {  // testing: as if switched on in that mode
+            const char* name = buf + 5;
+            if (!strcmp(name, "competition")) mode = GameMode::Competition;
+            else if (!strcmp(name, "league")) mode = GameMode::League;
+            else if (!strcmp(name, "coach")) mode = GameMode::Coach;
+            else { Serial.println("modes: competition | league | coach"); continue; }
+            coachPage = 0;
+            newGame();
+            syncModel(true);
+        } else if (!strcmp(buf, "page")) {  // testing: coach page switch, as a double press
+            if (mode == GameMode::Coach) { coachPage ^= 1; syncModel(); }
         } else if (!strcmp(buf, "o")) {
             showHelpAndPowerOff();
         } else if (!strcmp(buf, "s")) {
-            Serial.printf("status: board %s, stones %d, shots %d/%d, games %lu-%lu, battery %d%%, clock %lu%s\n",
-                          board::name(), stoneCount, shots.madeCount(), shots.count(),
+            Serial.printf("status: board %s, %s mode, stones %d, shots %d/%d, games %lu-%lu, battery %d%%, clock %lu%s\n",
+                          board::name(), modeName(mode), stoneCount, shots.madeCount(), shots.count(),
                           static_cast<unsigned long>(bank.firstId()), static_cast<unsigned long>(bank.lastId()),
                           board::batteryPercent(), static_cast<unsigned long>(board::clockNow()),
                           board::clockValid() ? "" : " (not set)");
         } else if (buf[0]) {
             Serial.println("commands: t <unix seconds> | s | games | games new | game <id> | ack <id> | bank | "
-                           "erase-all yes | audit | sleeptiming on|off | n (new game) | o (power off)");
+                           "erase-all yes | audit | sleeptiming on|off | n (new game) | o (power off) | "
+                           "mode competition|league|coach | page");
         }
     }
 }
@@ -647,6 +695,10 @@ void setup() {
     sleepWhileTiming = prefs.getBool("sleeptim", true);
     if (!bankStore.begin()) Serial.println("databank: no \"games\" partition, games won't be kept");
     bank.begin();
+    // The mode: whatever the rocker is doing while the side button switches the device on.
+    if (board::held(board::kDown)) mode = GameMode::League;
+    else if (board::held(board::kUp)) mode = GameMode::Coach;
+    else mode = GameMode::Competition;
     newGame();  // every switch-on starts a new game
 
     // A button already held at start-up (the side button used to switch on) is neither a
@@ -664,7 +716,7 @@ void setup() {
     syncModel(true);
     auditStart(esp_timer_get_time());  // first clock audit sample
     nextAuditAt = esp_timer_get_time() + kAuditEveryUs;
-    Serial.printf("stoprock ready (%s)\n", board::name());
+    Serial.printf("stoprock ready (%s, %s mode)\n", board::name(), modeName(mode));
 }
 
 void loop() {
@@ -681,8 +733,10 @@ void loop() {
         refreshAt = -1;
         if (!timing.active()) {
             if (refreshFull) stonesSinceClean = 0;
-            tipIndex = (tipIndex + 1) % kTipCount;
-            prefs.putUChar("tip", tipIndex);
+            if (mode == GameMode::League) {
+                tipIndex = (tipIndex + 1) % kTipCount;
+                prefs.putUChar("tip", tipIndex);
+            }
             syncModel(refreshFull);
         }
     }

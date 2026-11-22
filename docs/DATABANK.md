@@ -14,7 +14,8 @@ One record per game:
 | `id` | 1, 2, 3, … Never reused, even after games are dropped or erased, so an app can tell new games from old ones by number alone |
 | `started`, `updated` | Clock seconds (Unix time, UTC) when the game started and when it last changed |
 | `clock` | `false` if the device's clock hadn't been set; then `started` and `updated` only make sense relative to each other |
-| `shots` | Your rocks in order: `M` made, `X` missed (up to 16) |
+| `mode` | How the device was switched on: `competition`, `league` or `coach` (games before format version 3 read as `league`) |
+| `shots` | Rocks in order: `M` made, `X` missed. League: your own, up to 16. Coach: the team's, up to 64, in throwing order (lead, lead, second, second, third, third, skip, skip per end). Competition: none |
 | `made`, `thrown`, `pct` | Summary of `shots`; `pct` is -1 with no rocks thrown |
 | `stones` | Every timed stone in order, as `[back-to-hog, hog-to-hog]` in seconds; `null` where that split wasn't timed (up to 128) |
 | `battery_start`, `battery_end` | Battery charge (%) at switch-on and at switch-off; `null` if unknown (no reading, a game recorded before format version 2, or a game that never switched off cleanly) |
@@ -36,27 +37,33 @@ the flash and commits each record atomically.
 Keys in the namespace `bank`:
 
 - `meta`: version (1), oldest id, next id, last acknowledged id, as little-endian u32s.
-- `g<id>`: one game, record format version 2:
+- `g<id>`: one game, record format version 3:
 
 | Bytes | Field |
 |---|---|
 | 0 | `'G'` |
-| 1 | Format version (1) |
+| 1 | Format version (3) |
 | 2 | Flags: bit 0 = clock set |
-| 3 | Rocks thrown (0–16) |
+| 3 | Rocks thrown (0–64) |
 | 4–7 | id |
 | 8–11 | Started |
 | 12–15 | Updated |
-| 16–17 | Shot bits: bit *i* set = rock *i* made |
-| 18–19 | Number of timed stones *n* (0–128) |
-| 20 | Battery % at switch-on (0xFF = unknown) |
-| 21 | Battery % at switch-off (0xFF = unknown) |
-| 22–23 | Reserved (0) |
-| 24 … 24 + 4*n* − 1 | Per stone: back-to-hog, hog-to-hog (u16 hundredths; 0xFFFF = not timed) |
+| 16–17 | Number of timed stones *n* (0–128) |
+| 18 | Battery % at switch-on (0xFF = unknown) |
+| 19 | Battery % at switch-off (0xFF = unknown) |
+| 20 | Mode: 0 league, 1 competition, 2 coach |
+| 21–23 | Reserved (0) |
+| 24–31 | Shot bits (u64): bit *i* set = rock *i* made |
+| 32 … 32 + 4*n* − 1 | Per stone: back-to-hog, hog-to-hog (u16 hundredths; 0xFFFF = not timed) |
 | last | Checksum of all preceding bytes |
 
-All numbers are little-endian. A record that fails its checks is skipped, not shown as a game. Version 1
-records (the same, with bytes 20–23 reserved) are still read, with the battery unknown.
+All numbers are little-endian. A record that fails its checks is skipped, not shown as a game.
+
+Older records are still read, as league games:
+
+- Version 2: a 24-byte header. Bytes 0–15 as above (rocks thrown 0–16), 16–17 shot bits, 18–19 stone count,
+  20–21 battery at switch-on and switch-off, 22–23 reserved; stones from byte 24.
+- Version 1: the same as version 2 with bytes 20–23 reserved: the battery reads as unknown.
 
 ## Battery drain log
 
@@ -73,7 +80,7 @@ and replies. One command per line.
 
 | Command | Reply |
 |---|---|
-| `bank` | `@BANK {"first":1,"last":42,"synced":40,"current":42,"version":2}` |
+| `bank` | `@BANK {"first":1,"last":42,"synced":40,"current":42,"version":3}` |
 | `games` | Every stored game |
 | `games new` | Games after the last acknowledged one |
 | `game <id>` | Games from that id on |
@@ -85,8 +92,8 @@ Game listings are framed so they can be parsed from a stream that also carries l
 
 ```text
 @GAMES 2
-{"id":41,"v":2,"started":1795290802,"updated":1795297990,"clock":true,"shots":"MMXMMMXM","made":6,"thrown":8,"pct":75,"stones":[[3.47,13.92],[3.29,null],[null,14.02]],"battery_start":88,"battery_end":85}
-{"id":42,"v":2,"started":1795377202,"updated":1795377300,"clock":true,"shots":"M","made":1,"thrown":1,"pct":100,"stones":[],"battery_start":85,"battery_end":null}
+{"id":41,"v":3,"mode":"league","started":1795290802,"updated":1795297990,"clock":true,"shots":"MMXMMMXM","made":6,"thrown":8,"pct":75,"stones":[[3.47,13.92],[3.29,null],[null,14.02]],"battery_start":88,"battery_end":85}
+{"id":42,"v":3,"mode":"coach","started":1795377202,"updated":1795377300,"clock":true,"shots":"M","made":1,"thrown":1,"pct":100,"stones":[],"battery_start":85,"battery_end":null}
 @END
 ```
 

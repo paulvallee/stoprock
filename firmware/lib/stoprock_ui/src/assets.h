@@ -37,6 +37,10 @@ extern const Sprite kRockOutline;   // rock slot circle
 extern const Sprite kCursorRing;    // cursor on the next slot: a bold ring within the slot
 extern const Sprite kCheck;         // made
 extern const Sprite kCross;         // missed
+extern const Sprite kRockSmall;     // coach mode: rock slot (radius 5)
+extern const Sprite kCursorSmall;   // coach mode: cursor
+extern const Sprite kCheckSmall;    // coach mode: made
+extern const Sprite kCrossSmall;    // coach mode: missed
 
 // Slash of the drawn % sign, for each digit height; sprite origin = top-left of the sign.
 struct PercentSlash {

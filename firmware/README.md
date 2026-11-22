@@ -36,6 +36,8 @@ Type into the serial console:
 | `sleeptiming on` / `off` | Sleep between the clicks of a stone (default on) |
 | `n` | Start a new game now (switching on also does) |
 | `o` | Switch off (shows the help page) |
+| `mode competition` / `league` / `coach` | Start a new game in that mode, as if switched on with the rocker (for testing) |
+| `page` | Coach mode: switch page, as a double press of the rocker does |
 
 ## After a real game: the clock audit
 

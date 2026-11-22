@@ -56,6 +56,26 @@ int main(int argc, char** argv) {
         writePbm(c, path);
     }
 
+    // start-up modes: the same samples as tools/mockups/render.py (COACH_STONES, COACH_SHOTS)
+    const Stone many[] = {{347, 1392}, {329, -1},  {351, 1366}, {-1, 1402}, {338, -1},  {342, 1381},
+                          {361, 1420}, {333, 1375}, {-1, 1388}, {340, 1405}, {355, -1}, {336, 1397}};
+    drawCompetition(c, many, 12, false);
+    snprintf(path, sizeof path, "%s/competition.pbm", dir);
+    writePbm(c, path);
+    drawCompetition(c, many, 12, true);
+    snprintf(path, sizeof path, "%s/competition-battery.pbm", dir);
+    writePbm(c, path);
+    for (int n : {0, 8, 35, 63, 64}) {
+        ShotLog s(ShotLog::kCoachSlots);
+        for (int i = 0; i < n; ++i) s.add(i % 5 != 3 && i % 7 != 5);
+        drawCoachTimer(c, many, n ? 12 : 0, s);
+        snprintf(path, sizeof path, "%s/coach1-%02d.pbm", dir, n);
+        writePbm(c, path);
+        drawCoachRocks(c, many, n ? 12 : 0, s);
+        snprintf(path, sizeof path, "%s/coach2-%02d.pbm", dir, n);
+        writePbm(c, path);
+    }
+
     drawHelp(c, "Last game 9/12 shots made", 75, 84, "~11 games battery left");
     snprintf(path, sizeof path, "%s/help.pbm", dir);
     writePbm(c, path);
