@@ -2,7 +2,7 @@
 
 A pocket curling stopwatch with a shot-percentage tracker. Version 0.3 (design agreed; firmware in `firmware/`, not yet run on hardware).
 
-Mockups: [`mockups/screens.png`](mockups/screens.png) (help page, main screen, low battery), [`mockups/modes.png`](mockups/modes.png) (the three start-up modes) and [`mockups/rocker-storyboard.png`](mockups/rocker-storyboard.png). Regenerate them with `python tools/mockups/render.py`.
+Mockups: [`mockups/screens.png`](mockups/screens.png) (help page, league screen, low battery), [`mockups/modes.png`](mockups/modes.png) (the three start-up modes) and [`mockups/rocker-storyboard.png`](mockups/rocker-storyboard.png). Regenerate them with `python tools/mockups/render.py`.
 
 ## 1. Purpose
 
@@ -42,9 +42,9 @@ Graphics library: **M5GFX / M5Unified** (has a driver for this screen, `Panel_GD
 | Rocker up | Log a **made** shot at the cursor |
 | Rocker down | Log a **missed** shot at the cursor |
 | Rocker press, held 0.5 s | **Undo**: cursor steps back one slot and clears it (like backspace). Keep holding to undo another rock every 0.5 s; stops after one error buzz when nothing is left. |
-| Rocker press, short | Nothing. In coach mode, two presses within 0.4 s switch page. |
+| Rocker press, short | Nothing on its own. Two presses within 0.4 s: in coach mode, switch page; in league and competition, change your own position (lead → 2nd → 3rd → skip → lead, remembered). |
 
-In competition mode, rocker up and down move the cursor to the previous or next teammate (wrapping round), and a double press of the centre changes your own position (section 8a). There is no undo.
+In competition mode, rocker up and down move the player cursor to the previous or next teammate (wrapping round). There is no undo.
 
 Timing clicks are timestamped in the interrupt handler, so screen activity never affects timing accuracy.
 
@@ -55,7 +55,7 @@ What the rocker is doing while the side button switches the device on picks the 
 | Switch on with | Mode | Screen | Rocker |
 |---|---|---|---|
 | Side button only | **Competition** | Times only, full width, the history in a column per teammate, with a cursor on the player about to throw; a black badge strip at the bottom reads `COMPETITION` / `STOPWATCH FEATURES ONLY`, for an umpire | Moves the cursor; double press: your position |
-| Side button + rocker **down** | **League** | The main screen (section 8): times and your own 16 rocks | Made / missed / undo |
+| Side button + rocker **down** | **League** | Section 8: your teammates' times by player, your own 16 rocks and % | Made / missed / undo; double press: your position |
 | Side button + rocker **up** | **Coach** | Two pages (section 8a): the whole team's 64 rocks | Made / missed / undo; double press switches page |
 
 - Competition is the default because it is what a tournament allows: World Curling's rules (R11(c)) limit stopwatches to giving time data only, and forbid electronic communication. Competition mode shows and records times only, and never uses the radio (the radio isn't used in any mode yet).
@@ -105,7 +105,7 @@ A stone gives at most one **B2H** (back line, or tee line, to hog line) followed
 | State | Entered when | Woken by |
 |---|---|---|
 | Awake | Any press | — |
-| Light sleep | Whenever nothing is happening: straight after each timing click once its beep and any screen update are done (including between the clicks of a stone), and 2 s after a rocker press | Any button (the waking press counts as a normal press and is timed from the moment of waking), or a timer: the next tip or ghost clearing, a stone's 20 s timeout, the clock audit |
+| Light sleep | Whenever nothing is happening: straight after each timing click once its beep and any screen update are done (including between the clicks of a stone), and 2 s after a rocker press | Any button (the waking press counts as a normal press and is timed from the moment of waking), or a timer: ghost clearing, a stone's 20 s timeout, the clock audit |
 | Off | 5 min with no press, or side button held 3 s | Side button held |
 
 - On switching off, the screen gets one full refresh to the **help page** (section 9), which the e-ink keeps with no power.
@@ -115,42 +115,29 @@ A stone gives at most one **B2H** (back line, or tee line, to hog line) followed
 - Expected use over a 2-hour, 128-stone game (`tools/game_sim.py`): awake about 3% of the time, about 2% of the battery (estimated currents; to be measured). With sleeptiming off: about 40% and 5%.
 - Charge at room temperature only: lithium batteries must not be charged below 0 °C.
 
-## 8. Main screen
+## 8. League screen
 
-200 × 200 px, 1-bit. Column edges on 8-pixel boundaries.
+200 × 200 px, 1-bit. One page.
 
 | Area | Position | Content |
 |---|---|---|
-| Column labels | y 0–12 | `Back2Hog`, `Hog2Hog`, `SHOTS` in Spleen 6×12 |
-| Newest result | y 13–47, B2H x 0–72, H2H x 72–152 | DSEG7 Classic Bold 25 px, square decimal point. Blank cell if that split wasn't timed. |
-| Older results | below, newest first, 15 px rows, up to 8 rows | Drawn 7-segment digits: 12 px high, 7 px wide, 2 px strokes, empty corner pixels, 2 × 2 decimal point. Equal-width digits so points line up. |
-| Tip strip | x 0–152, bottom 26 px | Two lines of Spleen 6×12, max 25 characters each |
-| Shots | x 152–200 | One row per end (1–8), rock 1 and rock 2 side by side; ✓ made, ✗ missed, empty circle not thrown; ring = cursor. End numbers in drawn segments (9 px, 1 px strokes). |
-| Percentage | bottom of the shots column | DSEG7 16 px digits, packed closely, % sign drawn to match. 100% fits. |
+| Column labels | y 0–12 | `Back2Hog`, `Hog2Hog` in Spleen 6×12, split at x 92 |
+| Newest result | y 13–47 | DSEG7 Classic Bold 25 px, square decimal point. Blank cell if that split wasn't timed. |
+| Teammates' times | y 49–158 | A column per teammate in each half, headed with their position (a lead sees `2nd`, `3rd`, `Skip`); the player about to throw has the highlighted (inverted) header. Each column lists that player's stones newest first, 7 rows of 14 px, in drawn 7-segment digits (12 px high, 6 px wide, a narrow "1") |
+| Your rocks | x 0–134, y 161–199 | Like a scoreboard: ends 1–8 across (drawn digits, 9 px), rock 1 over rock 2 (radius 5); ✓ made, ✗ missed, empty circle not thrown; bold ring = cursor on your next rock |
+| Percentage | x 136–199, y 161–199 | Your shots made, DSEG7 16 px digits, % sign drawn to match. A low battery puts a white-on-black `Batt low` bar above it until charged. |
 
-**Tips** rotate in this fixed order, one step after each timed stone (a partial update of the strip). The position is kept across power-offs. A low-battery warning replaces the tip, shown white on black, until the battery is charged.
+**The player cursor** works as in competition (section 8a): each timed stone is filed under the highlighted player, and after their second rock the cursor moves to the next player. League also knows when you throw: **logging your own shot puts the cursor on the player after you** (as lead, the 2nd; as skip, the lead of the next end), so the cursor is back in step every end even if a stone was missed or an extra click got in. Your position is changed with a double press of the rocker centre.
 
-| # | Line 1 | Line 2 |
-|---|---|---|
-| 1 | Rocker up: made shot | Rocker down: missed |
-| 2 | Hold rocker to undo | keep holding to undo more |
-| 3 | Back2Hog: back/tee to hog | click far hog for Hog2Hog |
-| 4 | Top or side button both | time. Use either one. |
-| 5 | Two clicks within 1 s | count as one |
-| 6 | After an H2H, the next | click starts a new stone |
-| 7 | Each switch-on starts | a new game |
-| 8 | Off after 5 min idle. | Hold side to switch on |
-| Warning | Battery low | Charge after this game |
+There are no tips: the controls are simple enough, and the help page shows them.
 
 ## 8a. Competition and coach screens
 
-**Competition.** Labels y 0–12, newest result y 13–47 (DSEG7 25 px), split at x 92 (the H2H half is wider, as its times have a digit more). Below, a column per **teammate** in each half: you can't time your own rocks, so a lead's columns are `2nd`, `3rd`, `Skip`, a third's are `Lead`, `2nd`, `Skip`, and so on. Each column lists that player's stones newest first, 8 rows of 14 px, in drawn digits a little narrower than the main screen's (12 px high, 6 px wide, a narrow "1"); the newest stone overall is also shown large at the top. The **cursor** is the highlighted (inverted) header of the player about to throw: each timed stone is filed under that player, and after their second rock the cursor moves on to the next player by itself (from the skip back to the first, for the next end). Rocker up/down moves it by hand. A double press of the rocker centre changes your own position (lead → 2nd → 3rd → skip → lead), which the device remembers. The device keeps the last 25 stones for the screen, always at least a screenful of each player. Every switch-on starts with the cursor on the first column. The databank records who threw each stone. The badge strip fills the bottom 26 px, white on black. A low battery replaces `STOPWATCH FEATURES ONLY` with `Battery low`.
+**Competition.** Labels y 0–12, newest result y 13–47 (DSEG7 25 px), split at x 92 (the H2H half is wider, as its times have a digit more). Below, a column per **teammate** in each half: you can't time your own rocks, so a lead's columns are `2nd`, `3rd`, `Skip`, a third's are `Lead`, `2nd`, `Skip`, and so on. Each column lists that player's stones newest first, 8 rows of 14 px, in drawn digits (12 px high, 6 px wide, a narrow "1"); the newest stone overall is also shown large at the top. The **cursor** is the highlighted (inverted) header of the player about to throw: each timed stone is filed under that player, and after their second rock the cursor moves on to the next player by itself (from the skip back to the first, for the next end). Rocker up/down moves it by hand. A double press of the rocker centre changes your own position (lead → 2nd → 3rd → skip → lead), which the device remembers. The device keeps the last 25 stones for the screen, always at least a screenful of each player. Every switch-on starts with the cursor on the first column. The databank records who threw each stone. The badge strip fills the bottom 26 px, white on black. A low battery replaces `STOPWATCH FEATURES ONLY` with `Battery low`.
 
 **Coach, page 1 (timer priority).** The competition layout's times down to y 150, then the previous and current end: four columns (L, 2, 3, S), each headed with that position's running percentage, two rows of rocks (radius 5) with the end number on the left. Two small squares top right show which page is up.
 
 **Coach, page 2 (rock priority).** The newest times only (DSEG7 16 px) in y 13–33, position names, all 8 ends × 4 positions × 2 rocks, and along the bottom each position's percentage with a small pie.
-
-Coach mode has no tip strip.
 
 ## 9. Help page (shown while off)
 
@@ -183,8 +170,7 @@ The physical update takes about 0.26 s whatever the area changed, so the goal is
 | First result of a stone (B2H, or H2H with no B2H) | Beep. One update: move the previous result into the list, and show the new value in the large row. |
 | H2H after a B2H | Beep. Only the large H2H cell. |
 | Rocker | Beep. That rock, the cursor and the percentage. |
-| Next tip (partial update of the tip strip) | After **every timed stone**: **5 s after its H2H click**, or **20 s after its B2H click** if it has no H2H. A timer wakes the chip from light sleep for it. Abandoned starts don't count. If the next stone has already started, it waits for that stone to end. |
-| Ghost clearing (2 s full refresh) | Takes the place of the tip update after **every 4th timed stone** (a setting, to tune on the real panel); it shows the next tip too. |
+| Ghost clearing (2 s full refresh) | After **every 4th timed stone** (a setting, to tune on the real panel): **5 s after its H2H click**, or **20 s after its B2H click** if it has no H2H. A timer wakes the chip from light sleep for it. Abandoned starts don't count. If the next stone has already started, it waits for that stone to end. |
 
 Rules:
 1. During a stone (first click until done or abandoned), only timing updates run. Rocker entries are logged and beep immediately; their screen update waits.
@@ -213,7 +199,7 @@ Rules:
 | Font | Use | Licence |
 |---|---|---|
 | DSEG7 Classic Bold | Newest result, percentage | SIL Open Font License 1.1 |
-| Spleen 6×12 | Labels, tips, help page | BSD 2-clause |
+| Spleen 6×12 | Labels, help page | BSD 2-clause |
 | Nunito Black | Logo | SIL Open Font License 1.1 |
 | Drawn segments | Older results, end numbers | Our own code |
 

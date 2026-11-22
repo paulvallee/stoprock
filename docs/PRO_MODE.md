@@ -39,6 +39,6 @@ skip), with the same bold-ring cursor and hold-to-undo as player mode.
 1. Page 1 shows 6 earlier stones; two pairs to a row would show about 12, at some cost to readability.
 2. At the smaller rock size the ✗ is a 4 px cross; if it doesn't read on the real screen, a filled dot for
    missed would contrast better.
-3. Coach mode has no tip strip, so a low battery isn't shown during the game (only on the help page).
+3. Coach mode shows no low-battery warning during the game (only on the help page).
 
 The mockup is drawn by [`tools/mockups/coach_mode.py`](../tools/mockups/coach_mode.py).

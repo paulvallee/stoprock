@@ -50,7 +50,7 @@ const char* modeName(GameMode m) {
 //   18 battery % at start   19 battery % at end (0xFF = unknown)   20 mode (0 league, 1 competition, 2 coach)
 //   21-23 reserved (0)   24-31 shot bits (u64)
 //   then per stone: back-to-hog (u16), hog-to-hog (u16), hundredths, 0xFFFF = not timed;
-//   player (u8: competition's thrower, 0 lead .. 3 skip; 0xFF = none)
+//   player (u8: who threw it in competition and league, 0 lead .. 3 skip; 0xFF = none)
 //   last byte: checksum of everything before it
 //
 // Version 3: the same with 4 bytes per stone (no player).

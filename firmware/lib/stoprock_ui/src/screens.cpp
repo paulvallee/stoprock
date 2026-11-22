@@ -9,9 +9,7 @@ namespace stoprock {
 namespace {
 
 constexpr int W = 200, H = 200;
-constexpr int BH_X0 = 0, HH_X0 = 72, SH_X0 = 152;
-constexpr int LABEL_H = 12, BIG_H = 34, ROW_H = 15, TIP_H = 26;
-constexpr int ROCKS_BOTTOM = H - TIP_H;  // the 8 ends sit above this; the percentage row and tip strip below it
+constexpr int LABEL_H = 12, TIP_H = 26;  // TIP_H: competition's badge strip
 
 // Python's round(): halves go to the even neighbour.
 int pyRound(double v) {
@@ -108,115 +106,45 @@ void dsegNumber(Canvas& c, int32_t hundredths, double x0, double x1, double y0, 
     c.text(f, pyRound(xd + dot + gap - bf.l), pyRound(y), fp);
 }
 
+// DSEG7 16 px digits packed by their ink and a % sign drawn to match, centred in the box.
+void bigPercent(Canvas& c, int pct, double x0, double x1, double y0, double y1) {
+    char n[4];
+    snprintf(n, sizeof n, "%d", pct < 0 ? 0 : pct > 100 ? 100 : pct);
+    const Font& f = kFontDseg16;
+    const int len = static_cast<int>(strlen(n));
+    InkBox boxes[3];
+    int t = 1000, b = -1000, inkw = 0;
+    for (int i = 0; i < len; ++i) {
+        char one[2] = {n[i], 0};
+        boxes[i] = c.ink(f, one);
+        if (boxes[i].t < t) t = boxes[i].t;
+        if (boxes[i].b > b) b = boxes[i].b;
+        inkw += boxes[i].r - boxes[i].l;
+    }
+    const int dh = b - t, pw = pyRound(dh * 0.6), q = 3;
+    const int gap = len > 2 ? 2 : 3;
+    const double total = inkw + gap * len + pw;
+    double x = (x0 + x1 - total) / 2;
+    const double ytop = (y0 + y1 - dh) / 2;
+    for (int i = 0; i < len; ++i) {
+        char one[2] = {n[i], 0};
+        c.text(f, pyRound(x - boxes[i].l), pyRound(ytop - t), one);
+        x += (boxes[i].r - boxes[i].l) + gap;
+    }
+    const int px = pyRound(x), py = pyRound(ytop);
+    c.fillRect(px, py, px + q - 1, py + q - 1);
+    c.fillRect(px + pw - q, py + dh - q, px + pw - 1, py + dh - 1);
+    const Sprite* slash = nullptr;
+    for (uint8_t i = 0; i < kPercentSlashCount; ++i)
+        if (kPercentSlashes[i].digitHeight == dh) slash = kPercentSlashes[i].sprite;
+    if (slash) c.sprite(*slash, px, py);
+    else c.line(px + pw - 1, py, px, py + dh - 1, 2);
+}
+
 void hline(Canvas& c, int x0, int x1, int y, int width = 1) { c.fillRect(x0, y, x1, y + width - 1); }
 void vline(Canvas& c, int x, int y0, int y1, int width = 1) { c.fillRect(x, y0, x + width - 1, y1); }
 
 }  // namespace
-
-void drawMain(Canvas& c, const MainView& v) {
-    c.clear();
-    const bool tip = v.tip1 != nullptr;
-    const int bottom = tip ? H - TIP_H : H;
-    const Font& label = kFontSpleen6x12;
-
-    textInBox(c, label, "Back2Hog", BH_X0, HH_X0, 0, LABEL_H, kCentre, 4);
-    textInBox(c, label, "Hog2Hog", HH_X0, SH_X0, 0, LABEL_H, kCentre, 4);
-    textInBox(c, label, "SHOTS", SH_X0, W, 0, LABEL_H, kCentre, 4);
-    hline(c, 0, W - 1, LABEL_H);
-    vline(c, HH_X0, 0, bottom - 1);
-    vline(c, SH_X0, 0, H - 1, 2);
-
-    // newest result, large
-    const int y0 = LABEL_H + 1;
-    if (v.stoneCount > 0) {
-        if (v.stones[0].bh >= 0) dsegNumber(c, v.stones[0].bh, BH_X0, HH_X0, y0, y0 + BIG_H);
-        if (v.stones[0].hh >= 0) dsegNumber(c, v.stones[0].hh, HH_X0, SH_X0, y0, y0 + BIG_H);
-    }
-    const int yh = y0 + BIG_H;
-    hline(c, 0, SH_X0 - 1, yh, 2);
-
-    // older results
-    char buf[12];
-    for (int i = 1; i < v.stoneCount; ++i) {
-        const int ry = yh + 2 + (i - 1) * ROW_H;
-        if (ry + ROW_H > bottom) break;
-        if (v.stones[i].bh >= 0) {
-            formatTime(v.stones[i].bh, buf, sizeof buf);
-            segInBox(c, kRowFont, buf, BH_X0, HH_X0, ry, ry + ROW_H, kRight, 6);
-        }
-        if (v.stones[i].hh >= 0) {
-            formatTime(v.stones[i].hh, buf, sizeof buf);
-            segInBox(c, kRowFont, buf, HH_X0, SH_X0, ry, ry + ROW_H, kRight, 6);
-        }
-    }
-
-    // rocks: one row per end, ring = cursor on the next slot
-    const ShotLog empty;
-    const ShotLog& shots = v.shots ? *v.shots : empty;
-    const int cursor = shots.cursor();
-    const double top = LABEL_H + 1, pitch = (ROCKS_BOTTOM - top) / 8;
-    for (int end = 0; end < 8; ++end) {
-        const double cy = top + pitch * end + pitch / 2;
-        char n[3];
-        snprintf(n, sizeof n, "%d", end + 1);
-        // centred in the gap between the divider and the rocks, on the rocks' centre line
-        kEndFont.draw(c, n, SH_X0 + 4, static_cast<int>(cy) - 4);
-        for (int j = 0; j < 2; ++j) {
-            const int k = end * 2 + j;
-            const int cx = SH_X0 + (j == 0 ? 18 : 37);
-            const int icy = static_cast<int>(cy);  // Pillow truncates fractional coordinates
-            c.sprite(kRockOutline, cx, icy);
-            if (k < shots.count()) c.sprite(shots.made(k) ? kCheck : kCross, cx, icy);
-            if (k == cursor) c.sprite(kCursorRing, cx, icy);
-        }
-    }
-
-    // percentage: DSEG7 digits packed by their ink, % sign drawn to match
-    // one line straight across: over the tip strip and the percentage row alike
-    const double y9 = ROCKS_BOTTOM;
-    hline(c, 0, W - 1, ROCKS_BOTTOM, 2);
-    if (shots.count() > 0) {
-        char n[4];
-        snprintf(n, sizeof n, "%d", shots.percent());
-        const Font& f = kFontDseg16;
-        const int len = static_cast<int>(strlen(n));
-        InkBox boxes[3];
-        int t = 1000, b = -1000, inkw = 0;
-        for (int i = 0; i < len; ++i) {
-            char one[2] = {n[i], 0};
-            boxes[i] = c.ink(f, one);
-            if (boxes[i].t < t) t = boxes[i].t;
-            if (boxes[i].b > b) b = boxes[i].b;
-            inkw += boxes[i].r - boxes[i].l;
-        }
-        const int dh = b - t, pw = pyRound(dh * 0.6), q = 3;
-        const int gap = len > 2 ? 2 : 3;
-        const double total = inkw + gap * len + pw;
-        double x = (SH_X0 + 2 + W - total) / 2;
-        const double ytop = (y9 + 1 + H - dh) / 2;
-        for (int i = 0; i < len; ++i) {
-            char one[2] = {n[i], 0};
-            c.text(f, pyRound(x - boxes[i].l), pyRound(ytop - t), one);
-            x += (boxes[i].r - boxes[i].l) + gap;
-        }
-        const int px = pyRound(x), py = pyRound(ytop);
-        c.fillRect(px, py, px + q - 1, py + q - 1);
-        c.fillRect(px + pw - q, py + dh - q, px + pw - 1, py + dh - 1);
-        const Sprite* slash = nullptr;
-        for (uint8_t i = 0; i < kPercentSlashCount; ++i)
-            if (kPercentSlashes[i].digitHeight == dh) slash = kPercentSlashes[i].sprite;
-        if (slash) c.sprite(*slash, px, py);
-        else c.line(px + pw - 1, py, px, py + dh - 1, 2);
-    }
-
-    // tip strip, white on black for warnings
-    if (tip) {
-        const int ty = H - TIP_H;
-        if (v.warning) c.fillRect(0, ty, SH_X0 - 1, H - 1);
-        c.text(label, 1, ty + 2, v.tip1, !v.warning);
-        if (v.tip2) c.text(label, 1, ty + 14, v.tip2, !v.warning);
-    }
-}
 
 // 11 px pie: a 1-px ring and, inside a 1-px gap, a wedge filled clockwise from 12 o'clock.
 static void drawPie(Canvas& c, int cx, int cy, int pct) {
@@ -324,7 +252,7 @@ void gridColumns(int half, int mid, int* edges) {
     for (int k = 0; k < 4; ++k) edges[k] = x0 + (x1 - x0) * k / 3;
 }
 
-void timesGrid(Canvas& c, const Stone* stones, int count, int bottom, int mid, int me, int active) {
+void timesGrid(Canvas& c, const Stone* stones, int count, int mid, int me, int active, int rowsMax) {
     int cols[2][4];
     gridColumns(0, mid, cols[0]);
     gridColumns(1, mid, cols[1]);
@@ -337,14 +265,13 @@ void timesGrid(Canvas& c, const Stone* stones, int count, int bottom, int mid, i
             c.text(kFontSpleen6x12, (x0 + x1 - 6 * static_cast<int>(strlen(name))) / 2, GRID_LABEL_Y0, name, !on);
         }
     }
-    (void)bottom;
     char buf[12];
     int rows[3] = {0, 0, 0};
     for (int i = 0; i < count; ++i) {
         const int p = stones[i].player;
         if (p > 3 || p == me) continue;
         const int k = p < me ? p : p - 1;
-        if (rows[k] >= kGridRows) continue;
+        if (rows[k] >= rowsMax) continue;
         const int ry = GRID_TOP + rows[k]++ * GRID_PITCH;
         const int32_t vals[2] = {stones[i].bh, stones[i].hh};
         for (int half = 0; half < 2; ++half) {
@@ -360,7 +287,7 @@ void timesGrid(Canvas& c, const Stone* stones, int count, int bottom, int mid, i
 // Back2Hog | Hog2Hog across the full width: header, newest large, older below
 // (one to a row, or with grid three to a row).
 void timesWide(Canvas& c, const Stone* stones, int count, int bottom, int labelRight, bool grid = false,
-               int mid = WIDE_MID, int me = 0, int active = 0) {
+               int mid = WIDE_MID, int me = 0, int active = 0, int rowsMax = kGridRows) {
     const Font& label = kFontSpleen6x12;
     textInBox(c, label, "Back2Hog", 0, mid, 0, LABEL_H, kCentre, 4);
     textInBox(c, label, "Hog2Hog", mid, labelRight, 0, LABEL_H, kCentre, 4);
@@ -371,7 +298,7 @@ void timesWide(Canvas& c, const Stone* stones, int count, int bottom, int labelR
     }
     hline(c, 0, W - 1, 47, 2);
     vline(c, mid, 0, bottom - 1);
-    if (grid) { timesGrid(c, stones, count, bottom, mid, me, active); return; }
+    if (grid) { timesGrid(c, stones, count, mid, me, active, rowsMax); return; }
     char buf[12];
     for (int i = 1; i < count; ++i) {
         const int ry = 50 + (i - 1) * 14;
@@ -423,6 +350,38 @@ void drawCompetition(Canvas& c, const Stone* stones, uint8_t count, uint8_t me, 
     textInBox(c, label, "COMPETITION", 0, W, strip + 1, strip + 13, kCentre, 4, false);
     textInBox(c, label, lowBattery ? "Battery low" : "STOPWATCH FEATURES ONLY", 0, W, strip + 13, strip + 25,
               kCentre, 4, false);
+}
+
+void drawLeague(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& shots, uint8_t me, uint8_t activeCol,
+                bool lowBattery) {
+    c.clear();
+    const int top = 159;    // 2 px line under the times
+    const int split = 134;  // 2 px divider left of the percentage
+    timesWide(c, stones, count, top, W, true, COMP_MID, me, activeCol, kLeagueRows);
+    hline(c, 0, W - 1, top, 2);
+    vline(c, split, top, H - 1, 2);
+    // your rocks like a scoreboard: ends across, rock 1 over rock 2
+    const int cursor = shots.cursor();
+    for (int end = 0; end < 8; ++end) {
+        const int cx = 9 + end * 16;
+        char n[3];
+        snprintf(n, sizeof n, "%d", end + 1);
+        kEndFont.draw(c, n, cx - 2, top + 4);
+        for (int r = 0; r < 2; ++r) {
+            const int i = end * 2 + r, cy = top + 21 + r * 13;
+            c.sprite(kRockSmall, cx, cy);
+            if (i < shots.count()) c.sprite(shots.made(i) ? kCheckSmall : kCrossSmall, cx, cy);
+            if (i == cursor) c.sprite(kCursorSmall, cx, cy);
+        }
+    }
+    const int x0 = split + 2;
+    int y0 = top + 2;
+    if (lowBattery) {  // a black bar over the percentage
+        c.fillRect(x0, y0, W - 1, y0 + 12);
+        textInBox(c, kFontSpleen6x12, "Batt low", x0, W, y0, y0 + 12, kCentre, 4, false);
+        y0 += 13;
+    }
+    if (shots.count() > 0) bigPercent(c, shots.percent(), x0, W, y0, H);
 }
 
 void drawCoachTimer(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& shots) {

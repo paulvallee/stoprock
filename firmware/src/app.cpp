@@ -39,20 +39,8 @@ constexpr uint32_t kMinGameSecondsForBattery = 60;
 constexpr int64_t kBatteryCheckUs = 30 * kSec;
 constexpr uint32_t kMinGameSecondsForBattery = 20 * 60;
 #endif
-constexpr int kMaxStones = 25;  // on screen: the newest and up to 24 older (competition)
+constexpr int kMaxStones = 25;  // kept for the screen: at least a screenful of each player
 
-const char* const kTips[][2] = {
-    {"Rocker up: made shot", "Rocker down: missed"},
-    {"Hold rocker to undo", "keep holding to undo more"},
-    {"Back2Hog: back/tee to hog", "click far hog for Hog2Hog"},
-    {"Top or side button both", "time. Use either one."},
-    {"Two clicks within 1 s", "count as one"},
-    {"After an H2H, the next", "click starts a new stone"},
-    {"Each switch-on starts", "a new game"},
-    {"Off after 5 min idle.", "Hold side to switch on"},
-};
-constexpr int kTipCount = sizeof kTips / sizeof kTips[0];
-const char* const kWarning[2] = {"Battery low", "Charge after this game"};
 const char* const kPositionNames[4] = {"lead", "second", "third", "skip"};
 
 // ------------------------------------------------------------------ sounds
@@ -119,8 +107,9 @@ bool isTimingButton(uint8_t b) { return b == board::kTop || b == board::kSide; }
 // nothing = competition, down = league, up = coach (docs/SPEC.md section 2).
 GameMode mode = GameMode::Competition;
 uint8_t coachPage = 0;          // coach: 0 timer priority, 1 rock priority
-// Competition: you time your teammates' stones, a column each. The cursor is on the player
-// about to throw; it moves on by itself after their second rock, or with the rocker.
+// Competition and league: you time your teammates' stones, a column each. The cursor is on the
+// player about to throw; it moves on by itself after their second rock. In competition the
+// rocker moves it too; in league, logging your own shot puts it on the player after you.
 uint8_t myPosition = 0;         // 0 lead .. 3 skip (double press of the rocker centre; kept)
 uint8_t activeCol = 0;          // the column (0-2) with the cursor
 uint8_t rocksForActive = 0;     // stones timed for that player since the cursor got there
@@ -133,8 +122,7 @@ uint8_t stoneCount = 0;
 
 int64_t lastActivity = 0;
 int64_t sleepAt = 0;
-int64_t refreshAt = -1;          // after a stone: next tip, and every 4th stone a full refresh
-bool refreshFull = false;
+int64_t refreshAt = -1;          // after every 4th stone: a ghost-clearing full refresh
 uint8_t stonesSinceClean = 0;
 
 // Sleeping while a stone is timed (setting "sleeptiming", default on). Light sleep stops the
@@ -161,9 +149,8 @@ int64_t nextAuditAt = 0;
 constexpr int kAuditHistory = 8;
 int64_t nextBatteryCheck = 0;
 bool lowBattery = false;
-uint8_t tipIndex = 0;
 
-// settings (tip position) in the default NVS partition
+// settings (your position, sleep while timing, clock audits) in the default NVS partition
 Preferences prefs;
 
 // The game databank, in its own NVS partition ("games", see partitions.csv).
@@ -215,7 +202,6 @@ struct Model {
     Stone stones[kMaxStones];
     uint8_t stoneCount = 0;
     ShotLog shots;          // the shots on screen (deferred while a stone is timed)
-    uint8_t tip = 0;
     bool warning = false;
     bool help = false;
     bool full = false;      // next update is a ghost-clearing full refresh
@@ -257,14 +243,7 @@ void displayTask(void*) {
             if (m.page == 0) drawCoachTimer(next, m.stones, m.stoneCount, m.shots);
             else drawCoachRocks(next, m.stones, m.stoneCount, m.shots);
         } else {
-            MainView v;
-            v.stones = m.stones;
-            v.stoneCount = m.stoneCount;
-            v.shots = &m.shots;
-            v.tip1 = m.warning ? kWarning[0] : kTips[m.tip][0];
-            v.tip2 = m.warning ? kWarning[1] : kTips[m.tip][1];
-            v.warning = m.warning;
-            drawMain(next, v);
+            drawLeague(next, m.stones, m.stoneCount, m.shots, m.me, m.activeCol, m.warning);
         }
         const int64_t t0 = esp_timer_get_time();
         if (m.full) {
@@ -292,7 +271,6 @@ void syncModel(bool full = false) {
         memcpy(m.stones, stones, sizeof stones);
         m.stoneCount = stoneCount;
         if (!timing.active()) m.shots = shots;
-        m.tip = tipIndex;
         m.warning = lowBattery;
         m.help = false;
         m.full = m.full || sFull;
@@ -302,7 +280,7 @@ void syncModel(bool full = false) {
 // ------------------------------------------------------------------ timing
 // A new stone, newest first. Competition files it in the active column (see addStone()).
 void pushStone(Stone s) {
-    s.player = mode == GameMode::Competition ? teammate(myPosition, activeCol) : Stone::kNoPlayer;
+    s.player = mode == GameMode::Coach ? Stone::kNoPlayer : teammate(myPosition, activeCol);
     addStone(stones, stoneCount, kMaxStones, s);
 }
 
@@ -311,21 +289,19 @@ void closeStone(int64_t now) {
     sleepAt = now;
 }
 
-// A timed stone finished (with an H2H, or a B2H only). At the safe moment, delay after it
-// closed, the tip moves on with a partial update; every kStonesPerClean-th stone that update
-// is a ghost-clearing full refresh instead.
+// A timed stone finished (with an H2H, or a B2H only). Every kStonesPerClean-th stone gets a
+// ghost-clearing full refresh at the safe moment, delay after it closed.
 void countTimedStone(int64_t now, int64_t delay) {
-    // Competition: after the player's second rock, the cursor moves on to the next player.
-    if (mode == GameMode::Competition && stoneCount > 0 && stones[0].player == teammate(myPosition, activeCol) &&
+    // After the player's second rock, the cursor moves on to the next player.
+    if (mode != GameMode::Coach && stoneCount > 0 && stones[0].player == teammate(myPosition, activeCol) &&
         ++rocksForActive >= kRocksPerPlayer) {
         rocksForActive = 0;
         activeCol = (activeCol + 1) % kGridColumns;
-        Serial.printf("competition: next player, %s\n", kPositionNames[teammate(myPosition, activeCol)]);
+        Serial.printf("timing: next player, %s\n", kPositionNames[teammate(myPosition, activeCol)]);
         syncModel();
     }
-    ++stonesSinceClean;
-    refreshAt = now + delay;
-    refreshFull = stonesSinceClean >= kStonesPerClean;
+    // every kStonesPerClean-th stone: a ghost-clearing full refresh once it's safe
+    if (++stonesSinceClean >= kStonesPerClean) refreshAt = now + delay;
 }
 
 // A B2H or H2H was measured: note how much of it the chip spent asleep, for the clock audit.
@@ -528,6 +504,11 @@ void onShot(bool made) {
     if (!shots.add(made)) { sound.play(kError); return; }
     if (made) sound.play(kMade); else sound.play(kMissed);
     Serial.printf("shots: %s, %d/%d\n", made ? "made" : "missed", shots.madeCount(), shots.count());
+    if (mode == GameMode::League) {  // you just threw: the player after you is next
+        const uint8_t next = (myPosition + 1) % 4;
+        activeCol = next < myPosition ? next : next - 1;
+        rocksForActive = 0;
+    }
     saveShots();
     if (!timing.active()) syncModel();
 }
@@ -544,9 +525,8 @@ bool onUndo() {
 
 // Coach: a second short rocker press within 0.4 s switches page (and isn't an undo).
 // The first press does nothing by itself, so switching page never costs a shot.
-// Competition: a double press changes your position (lead, 2nd, 3rd, skip, round again).
+// Competition and league: a double press changes your position (lead, 2nd, 3rd, skip, round again).
 void onRockerPress(ButtonState& s, int64_t t) {
-    if (mode == GameMode::League) return;
     if (t - lastRockerPress < kDoublePressUs) {
         s.holdFired = true;      // this press can't turn into an undo
         lastRockerPress = -kSec; // a third press starts over
@@ -559,7 +539,7 @@ void onRockerPress(ButtonState& s, int64_t t) {
             prefs.putUChar("mypos", myPosition);
             activeCol = 0;
             rocksForActive = 0;
-            Serial.printf("competition: you are %s\n", kPositionNames[myPosition]);
+            Serial.printf("position: you are %s\n", kPositionNames[myPosition]);
         }
         syncModel();  // shows at once, even while a stone is timed
         return;
@@ -732,7 +712,6 @@ void setup() {
     xTaskCreatePinnedToCore(displayTask, "display", 8192, nullptr, 1, &displayTaskHandle, 0);
 
     prefs.begin("stoprock", false);
-    tipIndex = prefs.getUChar("tip", 0) % kTipCount;
     sleepWhileTiming = prefs.getBool("sleeptim", true);
     myPosition = prefs.getUChar("mypos", 0) % 4;
     if (!bankStore.begin()) Serial.println("databank: no \"games\" partition, games won't be kept");
@@ -768,18 +747,13 @@ void loop() {
     sound.update(now);
     serialCommands();
 
-    // between stones: next tip (partial update), or a ghost-clearing full refresh every
-    // kStonesPerClean stones. If the next stone has already started, it waits for that
-    // stone to end, which schedules it again.
+    // between stones: a ghost-clearing full refresh every kStonesPerClean stones. If the next
+    // stone has already started, it waits for that stone to end, which schedules it again.
     if (refreshAt >= 0 && now >= refreshAt) {
         refreshAt = -1;
         if (!timing.active()) {
-            if (refreshFull) stonesSinceClean = 0;
-            if (mode == GameMode::League) {
-                tipIndex = (tipIndex + 1) % kTipCount;
-                prefs.putUChar("tip", tipIndex);
-            }
-            syncModel(refreshFull);
+            stonesSinceClean = 0;
+            syncModel(true);
         }
     }
 

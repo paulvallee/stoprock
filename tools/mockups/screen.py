@@ -9,13 +9,7 @@ FONTS = ROOT / "assets" / "fonts"
 DSEG = FONTS / "DSEG7Classic-Bold.ttf"
 
 W = H = 200
-BH_X0, HH_X0, SH_X0 = 0, 72, 152  # column edges on 8-px boundaries
-LABEL_H = 12
-BIG_H = 34
-ROW_H = 15
-TIP_H = 26
-ROCKS_BOTTOM = H - TIP_H  # the 8 ends sit above this; the percentage row and tip strip below it
-SLOTS = 16
+TIP_H = 26  # competition's badge strip
 
 _bdf_cache = {}
 
@@ -163,107 +157,30 @@ def _make_fonts():
     )
 
 
-# --------------------------------------------------------------------------- main screen
+# --------------------------------------------------------------------------- percentage
 def percent_of(made, n):
     """Rounded percentage, half up (as the firmware rounds; Python's round() rounds half to even)."""
     return (made * 200 + n) // (2 * n)
 
 
-def rock_xy(k):
-    top = LABEL_H + 1
-    pitch = (ROCKS_BOTTOM - top) / 8
-    end, j = divmod(k, 2)
-    return SH_X0 + (18 if j == 0 else 37), top + pitch * end + pitch / 2
-
-
-def main_screen(stones, shots, tip=None, warn=False, show_cursor=True):
-    """stones: newest first, each (bh, hh) with None for a split not timed.
-    shots: True made / False missed, in throw order. The cursor (a bold ring, inside the
-    slot itself) marks the next slot."""
-    fs = fonts()
-    img = Image.new("1", (W, H), 1)
-    d = ImageDraw.Draw(img)
-    d.fontmode = "1"
-    bottom = H - TIP_H if tip else H
-
-    for label, x0, x1 in (("Back2Hog", BH_X0, HH_X0), ("Hog2Hog", HH_X0, SH_X0), ("SHOTS", SH_X0, W)):
-        text_in_box(d, label, fs["label"], x0, x1, 0, LABEL_H, align="center")
-    d.line([(0, LABEL_H), (W - 1, LABEL_H)], fill=0)
-    d.line([(HH_X0, 0), (HH_X0, bottom - 1)], fill=0)
-    d.line([(SH_X0, 0), (SH_X0, H - 1)], fill=0, width=2)
-
-    # newest result, large
-    y0 = LABEL_H + 1
-    if stones:
-        for val, x0, x1 in zip(stones[0], (BH_X0, HH_X0), (HH_X0, SH_X0)):
-            if val is not None:
-                dseg_number(d, val, fs["big"], x0, x1, y0, y0 + BIG_H)
-    yh = y0 + BIG_H
-    d.line([(0, yh), (SH_X0 - 1, yh)], fill=0, width=2)
-
-    # older results
-    for i, stone in enumerate(stones[1:]):
-        ry = yh + 2 + i * ROW_H
-        if ry + ROW_H > bottom:
-            break
-        for val, x0, x1 in zip(stone, (BH_X0, HH_X0), (HH_X0, SH_X0)):
-            if val is not None:
-                text_in_box(d, f"{val:.2f}", fs["row"], x0, x1, ry, ry + ROW_H, margin=6)
-
-    # rocks, one row per end; ring = cursor on the next slot
-    cursor = len(shots) if len(shots) < SLOTS else -1
-    top = LABEL_H + 1
-    pitch = (ROCKS_BOTTOM - top) / 8
-    r = 7
-    for end in range(8):
-        cy = top + pitch * end + pitch / 2
-        # end number: centred in the gap between the divider and the rocks, and on the
-        # same centre line as its rocks (which are drawn at int(cy))
-        fs["tiny"].draw(d, str(end + 1), SH_X0 + 4, int(cy) - 4)
-        for j in range(2):
-            k = end * 2 + j
-            cx, _ = rock_xy(k)
-            d.ellipse([cx - r, cy - r, cx + r, cy + r], outline=0, width=1)
-            if k < len(shots):
-                if shots[k]:
-                    d.line([(cx - 4, cy), (cx - 1, cy + 3), (cx + 4, cy - 4)], fill=0, width=2)
-                else:
-                    d.line([(cx - 3, cy - 3), (cx + 3, cy + 3)], fill=0, width=2)
-                    d.line([(cx - 3, cy + 3), (cx + 3, cy - 3)], fill=0, width=2)
-            if k == cursor and show_cursor:  # bold ring within the slot: never touches its neighbours
-                d.ellipse([cx - 7, cy - 7, cx + 7, cy + 7], outline=0, width=3)
-
-    # percentage: DSEG7 digits packed by their ink, % sign drawn to match
-    # one line straight across: over the tip strip and the percentage row alike
-    y9 = ROCKS_BOTTOM
-    d.line([(0, y9), (W - 1, y9)], fill=0, width=2)
-    if shots:
-        n = str(percent_of(sum(shots), len(shots)))
-        f = fs["pct"]
-        boxes = [ink(c, f) for c in n]
-        t, b = min(bx[1] for bx in boxes), max(bx[3] for bx in boxes)
-        dh = b - t
-        pw, st, q = round(dh * 0.6), 2, 3
-        gap = 2 if len(n) > 2 else 3
-        total = sum(bx[2] - bx[0] for bx in boxes) + gap * len(n) + pw
-        x = (SH_X0 + 2 + W - total) / 2
-        ytop = (y9 + 1 + H - dh) / 2
-        for c, bx in zip(n, boxes):
-            d.text((round(x - bx[0]), round(ytop - t)), c, font=f, fill=0)
-            x += (bx[2] - bx[0]) + gap
-        x, y = round(x), round(ytop)
-        d.rectangle([x, y, x + q - 1, y + q - 1], fill=0)
-        d.rectangle([x + pw - q, y + dh - q, x + pw - 1, y + dh - 1], fill=0)
-        d.line([(x + pw - 1, y), (x, y + dh - 1)], fill=0, width=st)
-
-    # tip strip (white on black for warnings)
-    if tip:
-        ty = H - TIP_H
-        if warn:
-            d.rectangle([0, ty, SH_X0 - 1, H - 1], fill=0)
-        for i, line in enumerate(tip):
-            d.text((1, ty + 2 + i * 12), line, font=fs["label"], fill=1 if warn else 0)
-    return img
+def big_percent(d, f, pct, x0, x1, y0, y1):
+    """DSEG7 digits packed by their ink and a % sign drawn to match, centred in the box."""
+    n = str(pct)
+    boxes = [ink(c, f) for c in n]
+    t, b = min(bx[1] for bx in boxes), max(bx[3] for bx in boxes)
+    dh = b - t
+    pw, st, q = round(dh * 0.6), 2, 3
+    gap = 2 if len(n) > 2 else 3
+    total = sum(bx[2] - bx[0] for bx in boxes) + gap * len(n) + pw
+    x = (x0 + x1 - total) / 2
+    ytop = (y0 + y1 - dh) / 2
+    for c, bx in zip(n, boxes):
+        d.text((round(x - bx[0]), round(ytop - t)), c, font=f, fill=0)
+        x += (bx[2] - bx[0]) + gap
+    x, y = round(x), round(ytop)
+    d.rectangle([x, y, x + q - 1, y + q - 1], fill=0)
+    d.rectangle([x + pw - q, y + dh - q, x + pw - 1, y + dh - 1], fill=0)
+    d.line([(x + pw - 1, y), (x, y + dh - 1)], fill=0, width=st)
 
 
 # --------------------------------------------------------------------------- help page
@@ -390,7 +307,7 @@ def grid_columns(half, mid):
     return [x0 + (x1 - x0) * k // 3 for k in range(4)]
 
 
-def times_grid(d, f, stones, bottom, mid, me, active):
+def times_grid(d, f, stones, bottom, mid, me, active, rows_max=GRID_ROWS):
     """stones: (b2h, h2h, position) newest first; active: the column (0-2) with the cursor."""
     cols = [grid_columns(0, mid), grid_columns(1, mid)]
     players = teammates(me)
@@ -407,7 +324,7 @@ def times_grid(d, f, stones, bottom, mid, me, active):
         if stone[2] not in players:
             continue
         k = players.index(stone[2])
-        if rows[k] >= GRID_ROWS:
+        if rows[k] >= rows_max:
             continue
         ry = GRID_TOP + rows[k] * GRID_PITCH
         rows[k] += 1
@@ -419,7 +336,8 @@ def times_grid(d, f, stones, bottom, mid, me, active):
                 text_in_box(d, f"{val:.2f}", f["grid"], x0, x1, ry, ry + GRID_PITCH, margin=margin)
 
 
-def times_wide(d, f, stones, bottom, label_right=W, grid=False, mid=WIDE_MID, me=0, active=0):
+def times_wide(d, f, stones, bottom, label_right=W, grid=False, mid=WIDE_MID, me=0, active=0,
+               rows_max=GRID_ROWS):
     """Back2Hog | Hog2Hog across the full width: header, newest large, older below
     (one to a row, or with grid=True three to a row).
     label_right: where the Hog2Hog label's box ends (left of the page marks in coach mode)."""
@@ -433,7 +351,7 @@ def times_wide(d, f, stones, bottom, label_right=W, grid=False, mid=WIDE_MID, me
     d.line([(0, 47), (W - 1, 47)], fill=0, width=2)
     d.line([(mid, 0), (mid, bottom - 1)], fill=0)
     if grid:
-        return times_grid(d, f, stones, bottom, mid, me, active)
+        return times_grid(d, f, stones, bottom, mid, me, active, rows_max)
     for i, stone in enumerate(stones[1:]):
         ry = 50 + i * 14
         if ry + 14 > bottom:
@@ -457,6 +375,42 @@ def competition_screen(stones, me=0, active=0, low_battery=False):
     text_in_box(d, "COMPETITION", f["label"], 0, W, strip + 1, strip + 13, align="center", fill=1)
     sub = "Battery low" if low_battery else "STOPWATCH FEATURES ONLY"
     text_in_box(d, sub, f["label"], 0, W, strip + 13, strip + 25, align="center", fill=1)
+    return img
+
+
+# League: the competition layout with 7 rows a player, and below it your own rocks like a
+# scoreboard (ends across, rock 1 over rock 2) with your percentage large on the right.
+LEAGUE_ROWS_BOTTOM = 159     # 2 px line under the times
+LEAGUE_PCT_X = 134           # 2 px divider left of the percentage
+LEAGUE_SLOTS = 16
+
+
+def league_screen(stones, shots, me=0, active=0, low_battery=False):
+    """stones: (b2h, h2h, position) newest first; shots: True made / False missed, in order;
+    me: your position; active: the teammate column (0-2) with the cursor."""
+    f = fonts()
+    img = Image.new("1", (W, H), 1)
+    d = ImageDraw.Draw(img)
+    d.fontmode = "1"
+    top = LEAGUE_ROWS_BOTTOM
+    times_wide(d, f, stones, top, grid=True, mid=COMP_MID, me=me, active=active, rows_max=7)
+    d.line([(0, top), (W - 1, top)], fill=0, width=2)
+    split = LEAGUE_PCT_X
+    d.line([(split, top), (split, H - 1)], fill=0, width=2)
+    cursor = len(shots) if len(shots) < LEAGUE_SLOTS else -1
+    for end in range(8):
+        cx = 9 + end * 16
+        f["tiny"].draw(d, str(end + 1), cx - 2, top + 4)
+        for r in range(2):
+            i = end * 2 + r
+            small_rock(d, cx, top + 21 + r * 13, shots[i] if i < len(shots) else None, i == cursor)
+    x0, y0 = split + 2, top + 2
+    if low_battery:  # a black bar over the percentage
+        d.rectangle([x0, y0, W - 1, y0 + 12], fill=0)
+        text_in_box(d, "Batt low", f["label"], x0, W, y0, y0 + 12, align="center", fill=1)
+        y0 += 13
+    if shots:
+        big_percent(d, f["pct"], percent_of(sum(shots), len(shots)), x0, W, y0, H)
     return img
 
 

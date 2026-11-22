@@ -33,14 +33,10 @@ extern const Font kFontDseg25;      // newest result
 extern const Font kFontDseg16;      // percentage
 extern const Font kFontSpleen6x12;  // labels, tips, help page
 extern const Bitmap kLogo;          // 176 px wordmark
-extern const Sprite kRockOutline;   // rock slot circle
-extern const Sprite kCursorRing;    // cursor on the next slot: a bold ring within the slot
-extern const Sprite kCheck;         // made
-extern const Sprite kCross;         // missed
-extern const Sprite kRockSmall;     // coach mode: rock slot (radius 5)
-extern const Sprite kCursorSmall;   // coach mode: cursor
-extern const Sprite kCheckSmall;    // coach mode: made
-extern const Sprite kCrossSmall;    // coach mode: missed
+extern const Sprite kRockSmall;     // a rock slot (radius 5)
+extern const Sprite kCursorSmall;   // cursor: the slot drawn bold
+extern const Sprite kCheckSmall;    // made
+extern const Sprite kCrossSmall;    // missed
 
 // Slash of the drawn % sign, for each digit height; sprite origin = top-left of the sign.
 struct PercentSlash {

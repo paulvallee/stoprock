@@ -64,11 +64,11 @@ changes.
 | Mode | Switch on with | What to try |
 |---|---|---|
 | Competition | <kbd>S</kbd> | Times only, full width, the badge strip at the bottom; a column per teammate; the highlighted player gets the next times and moves on after two rocks; <kbd>↑</kbd>/<kbd>↓</kbd> move it, <kbd>Enter</kbd> twice quickly changes your own position |
-| League | <kbd>↓</kbd> + <kbd>S</kbd> | The main screen: times, your 16 rocks and tips |
+| League | <kbd>↓</kbd> + <kbd>S</kbd> | Teammates' times by player, your 16 rocks along the bottom; logging your shot moves the player cursor to the player after you; <kbd>Enter</kbd> twice quickly changes your position |
 | Coach | <kbd>↑</kbd> + <kbd>S</kbd> | 64 rocks for the whole team; <kbd>Enter</kbd> twice quickly switches between the timer page and the rocks page |
 
 The **Battery** slider sets the battery level the firmware reads (`run.py` sends it to the emulated chip's
-second serial port). Below 15% the tip strip shows the low-battery warning, within about 2 s. To try the battery
+second serial port). Below 15% the screen shows the low-battery warning (league: a bar over your %; competition: the badge strip), within about 2 s. To try the battery
 drain log and the "~N games battery left" estimate on the off screen: set a level, switch on, log a shot or a
 time, wait at least a minute, lower the slider, then hold the side button 3 s to switch off. In the simulator a
 game of 1 minute or more counts towards the estimate (on the CoreInk: 20 minutes), so a few short games are enough.

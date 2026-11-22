@@ -23,7 +23,7 @@ struct StoneTimes {
     uint16_t backToHog = kNoTime;
     uint16_t hogToHog = kNoTime;
     static constexpr uint8_t kNoPlayer = 0xFF;
-    uint8_t player = kNoPlayer;  // competition: who threw it, 0 lead .. 3 skip; kNoPlayer otherwise
+    uint8_t player = kNoPlayer;  // competition and league: who threw it, 0 lead .. 3 skip; kNoPlayer in coach
 };
 
 // How the device was switched on (see docs/SPEC.md). 0 = league, so older records read as league.

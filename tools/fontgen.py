@@ -111,18 +111,12 @@ def main():
     spleen_chars = "".join(chr(c) for c in range(32, 127)) + "°"
     emit_font("kFontSpleen6x12", f["label"], spleen_chars, out)
     emit_bitmap("kLogo", logo.device_logo(), out)
-    # Shapes from tools/mockups/screen.py main_screen(), drawn around an integer centre.
-    emit_sprite("kRockOutline", lambda d, c: d.ellipse([c - 7, c - 7, c + 7, c + 7], outline=0, width=1), 23, out)
-    emit_sprite("kCursorRing", lambda d, c: d.ellipse([c - 7, c - 7, c + 7, c + 7], outline=0, width=3), 23, out)
-    emit_sprite("kCheck", lambda d, c: d.line([(c - 4, c), (c - 1, c + 3), (c + 4, c - 4)], fill=0, width=2), 23, out)
-    # coach mode's smaller rocks (radius 5), drawn as tools/mockups/screen.py small_rock()
+    # rocks (radius 5) for league and coach, drawn as tools/mockups/screen.py small_rock()
     emit_sprite("kRockSmall", lambda d, c: d.ellipse([c - 5, c - 5, c + 5, c + 5], outline=0, width=1), 15, out)
     emit_sprite("kCursorSmall", lambda d, c: d.ellipse([c - 5, c - 5, c + 5, c + 5], outline=0, width=3), 15, out)
     emit_sprite("kCheckSmall", lambda d, c: d.line([(c - 3, c), (c - 1, c + 2), (c + 3, c - 3)], fill=0, width=2), 15, out)
     emit_sprite("kCrossSmall", lambda d, c: (d.line([(c - 2, c - 2), (c + 2, c + 2)], fill=0, width=2),
                                              d.line([(c - 2, c + 2), (c + 2, c - 2)], fill=0, width=2)), 15, out)
-    emit_sprite("kCross", lambda d, c: (d.line([(c - 3, c - 3), (c + 3, c + 3)], fill=0, width=2),
-                                        d.line([(c - 3, c + 3), (c + 3, c - 3)], fill=0, width=2)), 23, out)
     # Percent-sign slashes: one per possible digit height (the "1" is shorter in DSEG).
     pct = f["pct"]
     boxes = {ch: screen.ink(ch, pct) for ch in "0123456789"}

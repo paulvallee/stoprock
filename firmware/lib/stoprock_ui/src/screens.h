@@ -11,20 +11,9 @@ namespace stoprock {
 struct Stone {
     int32_t bh = -1;
     int32_t hh = -1;
-    uint8_t player = kNoPlayer;  // competition: who threw it, 0 lead .. 3 skip
+    uint8_t player = kNoPlayer;  // competition and league: who threw it, 0 lead .. 3 skip
     static constexpr uint8_t kNoPlayer = 0xFF;
 };
-
-struct MainView {
-    const Stone* stones = nullptr;  // newest first
-    uint8_t stoneCount = 0;
-    const ShotLog* shots = nullptr;
-    const char* tip1 = nullptr;     // tip strip; nullptr = no strip
-    const char* tip2 = nullptr;
-    bool warning = false;           // white-on-black strip
-};
-
-void drawMain(Canvas& c, const MainView& v);
 
 // lastGame: e.g. "Last game 21 Nov   9/12". shotPct: shown with a pie, -1 = none.
 // battery: charge at switch-off, -1 = unknown. batteryNote: left of the battery, e.g.
@@ -41,6 +30,13 @@ void drawCompetition(Canvas& c, const Stone* stones, uint8_t count, uint8_t me, 
                      bool lowBattery);
 // The position shown in column k (0-2) for a player at position me.
 inline uint8_t teammate(uint8_t me, uint8_t k) { return k < me ? k : k + 1; }
+
+// League (side button + rocker down): the competition layout with 7 rows a player, and below it
+// your own 16 rocks like a scoreboard (ends across, rock 1 over rock 2) and your percentage.
+// lowBattery puts a "Batt low" bar over the percentage.
+constexpr uint8_t kLeagueRows = 7;
+void drawLeague(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& shots, uint8_t me, uint8_t activeCol,
+                bool lowBattery);
 
 // Put a stone at the front of a newest-first list. When the list is full, the stone dropped is
 // the oldest of a player with more than a screenful (kGridRows), so a player who has thrown

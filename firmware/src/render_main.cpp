@@ -22,40 +22,6 @@ int main(int argc, char** argv) {
     char path[256];
     Canvas c;
 
-    const Stone stones[] = {{347, 1392}, {329, -1}, {351, 1366}, {-1, 1402}, {338, -1}, {342, 1381}};
-    ShotLog shots;
-    for (bool m : {true, true, false, true, true, true, false}) shots.add(m);
-
-    MainView v;
-    v.stones = stones;
-    v.stoneCount = 6;
-    v.shots = &shots;
-    v.tip1 = "Top or side button both";
-    v.tip2 = "time. Use either one.";
-    drawMain(c, v);
-    snprintf(path, sizeof path, "%s/main.pbm", dir);
-    writePbm(c, path);
-
-    v.tip1 = "Battery low";
-    v.tip2 = "Charge after this game";
-    v.warning = true;
-    drawMain(c, v);
-    snprintf(path, sizeof path, "%s/battery.pbm", dir);
-    writePbm(c, path);
-
-    // The cursor at every position: 0-16 rocks logged, a mix of made and missed.
-    v.warning = false;
-    for (int n = 0; n <= 16; ++n) {
-        ShotLog s;
-        for (int i = 0; i < n; ++i) s.add(i % 3 != 2);
-        v.shots = &s;
-        v.tip1 = "Rocker up: made shot";
-        v.tip2 = "Rocker down: missed";
-        drawMain(c, v);
-        snprintf(path, sizeof path, "%s/cursor%02d.pbm", dir, n);
-        writePbm(c, path);
-    }
-
     // start-up modes: the same samples as tools/mockups/render.py (COACH_STONES, COACH_SHOTS)
     const Stone many[] = {{347, 1392}, {329, -1},  {351, 1366}, {-1, 1402}, {338, -1},  {342, 1381},
                           {361, 1420}, {333, 1375}, {-1, 1388}, {340, 1405}, {355, -1}, {336, 1397}};
@@ -66,6 +32,23 @@ int main(int argc, char** argv) {
         comp[i].hh = i % 7 == 4 ? -1 : 1350 + i * 53 % 90;
         comp[i].player = static_cast<uint8_t>(1 + (i + 3) / 2 % 3);  // you're lead: 2nd, 3rd, Skip in turn
     }
+    // league: the same stones, your rocks as tools/mockups/render.py BASE + [False]
+    ShotLog shots;
+    for (bool m : {true, true, false, true, true, true, false}) shots.add(m);
+    drawLeague(c, comp, 25, shots, 0, 1, false);
+    snprintf(path, sizeof path, "%s/league.pbm", dir);
+    writePbm(c, path);
+    drawLeague(c, comp, 25, shots, 0, 1, true);
+    snprintf(path, sizeof path, "%s/league-battery.pbm", dir);
+    writePbm(c, path);
+    for (int n = 0; n <= 16; ++n) {  // the cursor at every position; each position as yours, each column active
+        ShotLog s;
+        for (int i = 0; i < n; ++i) s.add(i % 3 != 2);
+        drawLeague(c, comp, 25, s, n % 4, n % 3, false);
+        snprintf(path, sizeof path, "%s/league%02d.pbm", dir, n);
+        writePbm(c, path);
+    }
+
     drawCompetition(c, comp, 25, 0, 1, false);
     snprintf(path, sizeof path, "%s/competition.pbm", dir);
     writePbm(c, path);
