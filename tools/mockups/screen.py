@@ -383,17 +383,23 @@ def times_wide(d, f, stones, bottom, label_right=W, grid=False, mid=WIDE_MID, me
                 text_in_box(d, f"{val:.2f}", f["row"], x0, x1, ry, ry + 14, margin=14)
 
 
-POSITION_TIP = ("Double click rocker", "to change position")
+# Switch-on tips ("" = a half-line gap). Competition has no focus, so only the first.
+POSITION_TIP = ("Double click rocker to", "change your position")
+FOCUS_TIP = ("Long hold rocker to", "change focus players/rocks")
 
 
 def tooltip(d, f, lines):
-    """A bordered box in the middle of the times area (empty at switch-on), lines centred."""
+    """A bordered box in the middle of the times area (empty at switch-on), lines centred;
+    an empty line is a half-line gap."""
     w = 6 * max(len(t) for t in lines) + 16
     x0, y0 = (W - w) // 2, 86
-    y1 = y0 + 12 * len(lines) + 13
+    y1 = y0 + sum(12 if t else 6 for t in lines) + 13
     d.rectangle([x0, y0, x0 + w - 1, y1], fill=1, outline=0, width=2)
-    for i, t in enumerate(lines):
-        d.text(((W - 6 * len(t)) // 2, y0 + 7 + 12 * i), t, font=f["label"], fill=0)
+    y = y0 + 7
+    for t in lines:
+        if t:
+            d.text(((W - 6 * len(t)) // 2, y), t, font=f["label"], fill=0)
+        y += 12 if t else 6
 
 
 def competition_screen(stones, me=0, active=0, low_battery=False, tip=False, waiting=None):
@@ -457,7 +463,7 @@ def league_screen(stones, shots, me=0, active=0, low_battery=False, tip=False, w
     if shots:
         big_percent(d, f["pct"], percent_of(sum(shots), len(shots)), x0, W, y0, H)
     if tip:
-        tooltip(d, f, POSITION_TIP)
+        tooltip(d, f, POSITION_TIP + ("",) + FOCUS_TIP)
     return img
 
 

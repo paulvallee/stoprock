@@ -354,22 +354,30 @@ void endRow(Canvas& c, const ShotLog& shots, int end, int cy) {
 
 }  // namespace
 
-// A bordered box in the middle of the times area (empty at switch-on), lines centred.
+// A bordered box in the middle of the times area (empty at switch-on), lines centred; an empty
+// line is a half-line gap.
 static void tooltip(Canvas& c, const char* const* lines, int n) {
-    int longest = 0;
+    int longest = 0, height = 0;
     for (int i = 0; i < n; ++i) {
         const int len = static_cast<int>(strlen(lines[i]));
         if (len > longest) longest = len;
+        height += len ? 12 : 6;
     }
-    const int w = 6 * longest + 16, x0 = (W - w) / 2, y0 = 86, y1 = y0 + 12 * n + 13;
+    const int w = 6 * longest + 16, x0 = (W - w) / 2, y0 = 86, y1 = y0 + height + 13;
     c.fillRect(x0, y0, x0 + w - 1, y1, false);
     rectOutline(c, x0, y0, x0 + w - 1, y1);
     rectOutline(c, x0 + 1, y0 + 1, x0 + w - 2, y1 - 1);
-    for (int i = 0; i < n; ++i)
-        c.text(kFontSpleen6x12, (W - 6 * static_cast<int>(strlen(lines[i]))) / 2, y0 + 7 + 12 * i, lines[i]);
+    int y = y0 + 7;
+    for (int i = 0; i < n; ++i) {
+        const int len = static_cast<int>(strlen(lines[i]));
+        if (len) c.text(kFontSpleen6x12, (W - 6 * len) / 2, y, lines[i]);
+        y += len ? 12 : 6;
+    }
 }
 
-static const char* const kPositionTip[2] = {"Double click rocker", "to change position"};
+// Switch-on tips. Competition has no focus, so it shows only the first two lines.
+static const char* const kSwitchOnTip[5] = {"Double click rocker to", "change your position", "",
+                                            "Long hold rocker to", "change focus players/rocks"};
 
 void drawCompetition(Canvas& c, const Stone* stones, uint8_t count, uint8_t me, uint8_t activeCol,
                      bool lowBattery, bool tip, Waiting waiting) {
@@ -381,7 +389,7 @@ void drawCompetition(Canvas& c, const Stone* stones, uint8_t count, uint8_t me, 
     textInBox(c, label, "COMPETITION", 0, W, strip + 1, strip + 13, kCentre, 4, false);
     textInBox(c, label, lowBattery ? "Battery low" : "STOPWATCH FEATURES ONLY", 0, W, strip + 13, strip + 25,
               kCentre, 4, false);
-    if (tip) tooltip(c, kPositionTip, 2);
+    if (tip) tooltip(c, kSwitchOnTip, 2);
 }
 
 void drawLeague(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& shots, uint8_t me, uint8_t activeCol,
@@ -422,7 +430,7 @@ void drawLeague(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& sh
         y0 += 13;
     }
     if (shots.count() > 0) bigPercent(c, shots.percent(), x0, W, y0, H);
-    if (tip) tooltip(c, kPositionTip, 2);
+    if (tip) tooltip(c, kSwitchOnTip, 5);
 }
 
 void drawCoachTimer(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& shots, Waiting waiting) {
