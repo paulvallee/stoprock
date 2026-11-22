@@ -129,7 +129,7 @@ A stone gives at most one **B2H** (back line, or tee line, to hog line) followed
 
 **The player cursor** works as in competition (section 8a): each timed stone is filed under the highlighted player, and after their second rock the cursor moves to the next player. League also knows when you throw: **logging your own shot puts the cursor on the player after you** (as lead, the 2nd; as skip, the lead of the next end), so the cursor is back in step every end even if a stone was missed or an extra click got in. Your position is changed with a double press of the rocker centre.
 
-There are no tips: the controls are simple enough, and the help page shows them.
+There are no rotating tips: the controls are simple enough, and the help page shows them. One tip remains: for 5 s after switching on (counted from when the screen is up), competition and league show a box over the empty times area: "Double click rocker / to change position". If a stone is being timed when the 5 s are up, the box goes with that stone's next screen update.
 
 ## 8a. Competition and coach screens
 

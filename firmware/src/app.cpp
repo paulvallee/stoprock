@@ -123,6 +123,9 @@ uint8_t stoneCount = 0;
 int64_t lastActivity = 0;
 int64_t sleepAt = 0;
 int64_t refreshAt = -1;          // after every 4th stone: a ghost-clearing full refresh
+constexpr int64_t kTipUs = 5 * kSec;
+int64_t tipUntil = -1;           // competition and league: the switch-on position tip shows until then
+bool tipWaiting = false;         // ... its 5 s start once the screen showing it is up
 uint8_t stonesSinceClean = 0;
 
 // Sleeping while a stone is timed (setting "sleeptiming", default on). Light sleep stops the
@@ -183,6 +186,9 @@ void newGame() {
     shots.setCapacity(mode == GameMode::Coach ? ShotLog::kCoachSlots : ShotLog::kLeagueSlots);
     activeCol = 0;
     rocksForActive = 0;
+    // "Double click rocker to change position", for the first 5 s (not in coach: no positions)
+    tipWaiting = mode != GameMode::Coach;
+    tipUntil = -1;
     stoneCount = 0;
     Serial.printf("game: new, %s mode\n", modeName(mode));
 }
@@ -205,6 +211,7 @@ struct Model {
     bool warning = false;
     bool help = false;
     bool full = false;      // next update is a ghost-clearing full refresh
+    bool tip = false;       // the switch-on position tip
     char lastGame[40] = "";
     int shotPct = -1;       // help page: last game's shot percentage
     int battery = -1;       // help page: charge at switch-off
@@ -238,12 +245,12 @@ void displayTask(void*) {
         if (m.help) {
             drawHelp(next, m.lastGame, m.shotPct, m.battery, m.batteryNote);
         } else if (m.mode == GameMode::Competition) {
-            drawCompetition(next, m.stones, m.stoneCount, m.me, m.activeCol, m.warning);
+            drawCompetition(next, m.stones, m.stoneCount, m.me, m.activeCol, m.warning, m.tip);
         } else if (m.mode == GameMode::Coach) {
             if (m.page == 0) drawCoachTimer(next, m.stones, m.stoneCount, m.shots);
             else drawCoachRocks(next, m.stones, m.stoneCount, m.shots);
         } else {
-            drawLeague(next, m.stones, m.stoneCount, m.shots, m.me, m.activeCol, m.warning);
+            drawLeague(next, m.stones, m.stoneCount, m.shots, m.me, m.activeCol, m.warning, m.tip);
         }
         const int64_t t0 = esp_timer_get_time();
         if (m.full) {
@@ -274,6 +281,7 @@ void syncModel(bool full = false) {
         m.warning = lowBattery;
         m.help = false;
         m.full = m.full || sFull;
+        m.tip = tipWaiting || tipUntil >= 0;
     });
 }
 
@@ -757,6 +765,17 @@ void loop() {
         }
     }
 
+    // the switch-on tip goes after 5 s. If a stone is being timed, it goes with that stone's
+    // next screen update instead, so the screen isn't redrawn mid-stone just for it.
+    if (tipWaiting && !displayBusy) {  // on screen now (the switch-on refresh takes ~2 s)
+        tipWaiting = false;
+        tipUntil = now + kTipUs;
+    }
+    if (tipUntil >= 0 && now >= tipUntil) {
+        tipUntil = -1;
+        if (!timing.active()) syncModel();
+    }
+
     if (now >= nextBatteryCheck) {
         nextBatteryCheck = now + kBatteryCheckUs;
         const int pct = board::batteryPercent();
@@ -780,6 +799,7 @@ void loop() {
     if (mayTime && !displayBusy && !anyDown && !sound.playing() && !auditWaiting && now >= sleepAt) {
         int64_t wake = lastActivity + kPowerOffUs;
         if (refreshAt >= 0 && refreshAt < wake) wake = refreshAt;
+        if (tipUntil >= 0 && tipUntil < wake) wake = tipUntil;
         if (nextAuditAt < wake) wake = nextAuditAt;
         if (timing.active() && timing.deadline() + 1000 < wake) wake = timing.deadline() + 1000;
         const int64_t before = esp_timer_get_time();

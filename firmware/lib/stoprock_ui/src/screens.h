@@ -26,8 +26,9 @@ void drawHelp(Canvas& c, const char* lastGame, int shotPct = -1, int battery = -
 // per teammate (the three positions other than me, 0 lead .. 3 skip, in throwing order), each
 // listing that player's stones newest first; activeCol (0-2) has its header highlighted.
 constexpr uint8_t kGridColumns = 3, kGridRows = 8;
+// tip: the switch-on tip, "Double click rocker to change position", in a box over the times.
 void drawCompetition(Canvas& c, const Stone* stones, uint8_t count, uint8_t me, uint8_t activeCol,
-                     bool lowBattery);
+                     bool lowBattery, bool tip = false);
 // The position shown in column k (0-2) for a player at position me.
 inline uint8_t teammate(uint8_t me, uint8_t k) { return k < me ? k : k + 1; }
 
@@ -36,7 +37,7 @@ inline uint8_t teammate(uint8_t me, uint8_t k) { return k < me ? k : k + 1; }
 // lowBattery puts a "Batt low" bar over the percentage.
 constexpr uint8_t kLeagueRows = 7;
 void drawLeague(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& shots, uint8_t me, uint8_t activeCol,
-                bool lowBattery);
+                bool lowBattery, bool tip = false);
 
 // Put a stone at the front of a newest-first list. When the list is full, the stone dropped is
 // the oldest of a player with more than a screenful (kGridRows), so a player who has thrown

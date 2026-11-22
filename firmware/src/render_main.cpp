@@ -71,6 +71,14 @@ int main(int argc, char** argv) {
         writePbm(c, path);
     }
 
+    // switch-on: no stones yet, the position tip over the times
+    drawCompetition(c, comp, 0, 0, 0, false, true);
+    snprintf(path, sizeof path, "%s/competition-tip.pbm", dir);
+    writePbm(c, path);
+    drawLeague(c, comp, 0, ShotLog(), 2, 0, false, true);
+    snprintf(path, sizeof path, "%s/league-tip.pbm", dir);
+    writePbm(c, path);
+
     drawHelp(c, "Last game 9/12 shots made", 75, 84, "~11 games battery left");
     snprintf(path, sizeof path, "%s/help.pbm", dir);
     writePbm(c, path);

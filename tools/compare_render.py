@@ -25,6 +25,8 @@ def main():
         "league-battery": screen.league_screen(st, shots, me, act, low_battery=True),
         "help": screen.help_page(logo.device_logo(), "Last game 9/12 shots made", shot_pct=75, battery=84, battery_note="~11 games battery left"),
     }
+    refs["competition-tip"] = screen.competition_screen([], 0, 0, tip=True)
+    refs["league-tip"] = screen.league_screen([], [], 2, 0, tip=True)
     for n in range(17):  # the cursor at every position; each position as yours, each column active
         refs[f"league{n:02d}"] = screen.league_screen(st, [i % 3 != 2 for i in range(n)], n % 4, n % 3)
     refs["competition"] = screen.competition_screen(render.COMP_STONES, render.COMP_ME, render.COMP_ACTIVE)

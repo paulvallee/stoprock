@@ -361,7 +361,20 @@ def times_wide(d, f, stones, bottom, label_right=W, grid=False, mid=WIDE_MID, me
                 text_in_box(d, f"{val:.2f}", f["row"], x0, x1, ry, ry + 14, margin=14)
 
 
-def competition_screen(stones, me=0, active=0, low_battery=False):
+POSITION_TIP = ("Double click rocker", "to change position")
+
+
+def tooltip(d, f, lines):
+    """A bordered box in the middle of the times area (empty at switch-on), lines centred."""
+    w = 6 * max(len(t) for t in lines) + 16
+    x0, y0 = (W - w) // 2, 86
+    y1 = y0 + 12 * len(lines) + 13
+    d.rectangle([x0, y0, x0 + w - 1, y1], fill=1, outline=0, width=2)
+    for i, t in enumerate(lines):
+        d.text(((W - 6 * len(t)) // 2, y0 + 7 + 12 * i), t, font=f["label"], fill=0)
+
+
+def competition_screen(stones, me=0, active=0, low_battery=False, tip=False):
     """Times only, full width, with a badge strip an umpire can read at a glance.
     stones: (b2h, h2h, position 0-3) newest first; me: your position; active: the column (0-2)
     with the cursor, the player whose stones are being timed."""
@@ -375,6 +388,8 @@ def competition_screen(stones, me=0, active=0, low_battery=False):
     text_in_box(d, "COMPETITION", f["label"], 0, W, strip + 1, strip + 13, align="center", fill=1)
     sub = "Battery low" if low_battery else "STOPWATCH FEATURES ONLY"
     text_in_box(d, sub, f["label"], 0, W, strip + 13, strip + 25, align="center", fill=1)
+    if tip:
+        tooltip(d, f, POSITION_TIP)
     return img
 
 
@@ -385,7 +400,7 @@ LEAGUE_PCT_X = 134           # 2 px divider left of the percentage
 LEAGUE_SLOTS = 16
 
 
-def league_screen(stones, shots, me=0, active=0, low_battery=False):
+def league_screen(stones, shots, me=0, active=0, low_battery=False, tip=False):
     """stones: (b2h, h2h, position) newest first; shots: True made / False missed, in order;
     me: your position; active: the teammate column (0-2) with the cursor."""
     f = fonts()
@@ -411,6 +426,8 @@ def league_screen(stones, shots, me=0, active=0, low_battery=False):
         y0 += 13
     if shots:
         big_percent(d, f["pct"], percent_of(sum(shots), len(shots)), x0, W, y0, H)
+    if tip:
+        tooltip(d, f, POSITION_TIP)
     return img
 
 
