@@ -38,7 +38,7 @@ constexpr uint32_t kMinGameSecondsForBattery = 60;
 constexpr int64_t kBatteryCheckUs = 30 * kSec;
 constexpr uint32_t kMinGameSecondsForBattery = 20 * 60;
 #endif
-constexpr int kMaxStones = 12;
+constexpr int kMaxStones = 25;  // on screen: the newest and up to 24 older (competition)
 
 const char* const kTips[][2] = {
     {"Rocker up: made shot", "Rocker down: missed"},

@@ -34,6 +34,10 @@ COACH_SHOTS = [i % 5 != 3 and i % 7 != 5 for i in range(35)]
 COACH_STONES = [(3.47, 13.92), (3.29, None), (3.51, 13.66), (None, 14.02), (3.38, None), (3.42, 13.81),
                 (3.61, 14.20), (3.33, 13.75), (None, 13.88), (3.40, 14.05), (3.55, None), (3.36, 13.97)]
 
+# competition sample: 25 stones (the newest and 24 in the history grid), newest first
+COMP_STONES = [(None if i % 5 == 3 else (320 + i * 37 % 60) / 100,
+                None if i % 7 == 4 else (1350 + i * 53 % 90) / 100) for i in range(25)]
+
 
 def caption_font(size, bold=False):
     path = f"/usr/share/fonts/truetype/dejavu/DejaVuSans{'-Bold' if bold else ''}.ttf"
@@ -96,7 +100,7 @@ def main():
         ("Off page", "How to start each mode; last game and battery",
          screen.help_page(dev, "Last game 9/12 shots made", shot_pct=75, battery=84, battery_note="~11 games battery left")),
         ("Competition (side button only)", "Times only, full width; badge for umpires",
-         screen.competition_screen(COACH_STONES)),
+         screen.competition_screen(COMP_STONES)),
         ("League (+ rocker down)", "Times and your own 16 rocks",
          screen.main_screen(STONES, BASE + [False], tip=TIPS[0])),
         ("Coach, page 1 (+ rocker up)", "Timer priority; double-press the rocker to switch",
@@ -104,7 +108,7 @@ def main():
         ("Coach, page 2", "Rock priority: all 64 rocks, % per position",
          screen.coach_rocks_screen(COACH_STONES, COACH_SHOTS)),
         ("Competition, low battery", "The badge's second line becomes the warning",
-         screen.competition_screen(COACH_STONES, low_battery=True)),
+         screen.competition_screen(COMP_STONES, low_battery=True)),
     ], DOCS / "modes.png")
 
     sheet("Logging your shots with the rocker (ring = cursor on the next slot)", [

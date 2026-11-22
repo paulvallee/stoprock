@@ -158,6 +158,7 @@ def _make_fonts():
         big=ImageFont.truetype(str(DSEG), 25),
         row=SegFont(h=12, w=7, t=2, gap=2, dot=2),
         tiny=SegFont(h=9, w=5, t=1, gap=1),  # equal-width cells: a "1" sits on the right
+        grid=SegFont(h=12, w=6, t=2, gap=1, dot=2, prop=True),  # competition history: 3 to a row
         pct=ImageFont.truetype(str(DSEG), 16),
     )
 
@@ -363,10 +364,42 @@ WIDE_MID = 100               # times split in competition and coach page 1
 COACH_GX = [12 + k * 47 for k in range(5)]  # coach position columns
 
 
-def times_wide(d, f, stones, bottom, label_right=W):
-    """Back2Hog | Hog2Hog across the full width: header, newest large, older below.
+# Competition history: three columns in each half, labelled 1 2 3; older stones fill the rows
+# left to right, newest first, so column 1 of the top row is the stone before the newest.
+# H2H times are a digit wider than B2H, so the H2H half is wider: the split moves left to 92.
+COMP_MID = 92
+GRID_TOP = 62                # first row
+GRID_PITCH = 14
+GRID_TYPICAL = (23, 26)      # width of "3.47" and "13.92": each column centres that width
+
+
+def grid_columns(half, mid):
+    """Edges of the three columns in a half (0 = B2H, 1 = H2H)."""
+    x0, x1 = (0, mid) if half == 0 else (mid, W)
+    return [x0 + (x1 - x0) * k // 3 for k in range(4)]
+
+
+def times_grid(d, f, stones, bottom, mid):
+    cols = [grid_columns(0, mid), grid_columns(1, mid)]
+    for half in range(2):
+        for k in range(3):
+            text_in_box(d, str(k + 1), f["label"], cols[half][k], cols[half][k + 1], 49, 61, align="center")
+    for i, stone in enumerate(stones[1:]):
+        row, k = divmod(i, 3)
+        ry = GRID_TOP + row * GRID_PITCH
+        if ry + GRID_PITCH > bottom:
+            break
+        for half, val in enumerate(stone):
+            if val is not None:
+                x0, x1 = cols[half][k], cols[half][k + 1]
+                margin = (x1 - x0 - GRID_TYPICAL[half]) // 2
+                text_in_box(d, f"{val:.2f}", f["grid"], x0, x1, ry, ry + GRID_PITCH, margin=margin)
+
+
+def times_wide(d, f, stones, bottom, label_right=W, grid=False, mid=WIDE_MID):
+    """Back2Hog | Hog2Hog across the full width: header, newest large, older below
+    (one to a row, or with grid=True three to a row).
     label_right: where the Hog2Hog label's box ends (left of the page marks in coach mode)."""
-    mid = WIDE_MID
     text_in_box(d, "Back2Hog", f["label"], 0, mid, 0, 12, align="center")
     text_in_box(d, "Hog2Hog", f["label"], mid, label_right, 0, 12, align="center")
     d.line([(0, 12), (W - 1, 12)], fill=0)
@@ -376,6 +409,8 @@ def times_wide(d, f, stones, bottom, label_right=W):
                 dseg_number(d, val, f["big"], x0, x1, 13, 47)
     d.line([(0, 47), (W - 1, 47)], fill=0, width=2)
     d.line([(mid, 0), (mid, bottom - 1)], fill=0)
+    if grid:
+        return times_grid(d, f, stones, bottom, mid)
     for i, stone in enumerate(stones[1:]):
         ry = 50 + i * 14
         if ry + 14 > bottom:
@@ -392,7 +427,7 @@ def competition_screen(stones, low_battery=False):
     d = ImageDraw.Draw(img)
     d.fontmode = "1"
     strip = H - TIP_H
-    times_wide(d, f, stones, strip)
+    times_wide(d, f, stones, strip, grid=True, mid=COMP_MID)
     d.rectangle([0, strip, W - 1, H - 1], fill=0)
     text_in_box(d, "COMPETITION", f["label"], 0, W, strip + 1, strip + 13, align="center", fill=1)
     sub = "Battery low" if low_battery else "times only, radio off"

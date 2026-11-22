@@ -63,6 +63,7 @@ struct SegFont {
 
 constexpr SegFont kRowFont{12, 7, 2, 2, 2, false};  // older results
 constexpr SegFont kEndFont{9, 5, 1, 1, 1, false};   // end numbers: equal-width cells, a "1" sits on the right
+constexpr SegFont kGridFont{12, 6, 2, 1, 2, true};   // competition history, three to a row
 
 enum Align { kLeft, kCentre, kRight };
 
@@ -311,18 +312,55 @@ void rectOutline(Canvas& c, int x0, int y0, int x1, int y1) {
     c.fillRect(x1, y0, x1, y1);
 }
 
-// Back2Hog | Hog2Hog across the full width: header, newest large, older below.
-void timesWide(Canvas& c, const Stone* stones, int count, int bottom, int labelRight) {
+// Competition history: three columns in each half, labelled 1 2 3; older stones fill the rows
+// left to right, newest first. H2H times are a digit wider, so that half is wider (split at 92).
+constexpr int COMP_MID = 92;
+constexpr int GRID_TOP = 62, GRID_PITCH = 14;
+constexpr int GRID_TYPICAL[2] = {23, 26};  // width of "3.47" and "13.92": each column centres that width
+
+void gridColumns(int half, int mid, int* edges) {
+    const int x0 = half == 0 ? 0 : mid, x1 = half == 0 ? mid : W;
+    for (int k = 0; k < 4; ++k) edges[k] = x0 + (x1 - x0) * k / 3;
+}
+
+void timesGrid(Canvas& c, const Stone* stones, int count, int bottom, int mid) {
+    int cols[2][4];
+    gridColumns(0, mid, cols[0]);
+    gridColumns(1, mid, cols[1]);
+    static const char* const kLabels[3] = {"1", "2", "3"};
+    for (int half = 0; half < 2; ++half)
+        for (int k = 0; k < 3; ++k)
+            textInBox(c, kFontSpleen6x12, kLabels[k], cols[half][k], cols[half][k + 1], 49, 61, kCentre, 4);
+    char buf[12];
+    for (int i = 1; i < count; ++i) {
+        const int row = (i - 1) / 3, k = (i - 1) % 3;
+        const int ry = GRID_TOP + row * GRID_PITCH;
+        if (ry + GRID_PITCH > bottom) break;
+        const int32_t vals[2] = {stones[i].bh, stones[i].hh};
+        for (int half = 0; half < 2; ++half) {
+            if (vals[half] < 0) continue;
+            const int x0 = cols[half][k], x1 = cols[half][k + 1];
+            formatTime(vals[half], buf, sizeof buf);
+            segInBox(c, kGridFont, buf, x0, x1, ry, ry + GRID_PITCH, kRight, (x1 - x0 - GRID_TYPICAL[half]) / 2);
+        }
+    }
+}
+
+// Back2Hog | Hog2Hog across the full width: header, newest large, older below
+// (one to a row, or with grid three to a row).
+void timesWide(Canvas& c, const Stone* stones, int count, int bottom, int labelRight, bool grid = false,
+               int mid = WIDE_MID) {
     const Font& label = kFontSpleen6x12;
-    textInBox(c, label, "Back2Hog", 0, WIDE_MID, 0, LABEL_H, kCentre, 4);
-    textInBox(c, label, "Hog2Hog", WIDE_MID, labelRight, 0, LABEL_H, kCentre, 4);
+    textInBox(c, label, "Back2Hog", 0, mid, 0, LABEL_H, kCentre, 4);
+    textInBox(c, label, "Hog2Hog", mid, labelRight, 0, LABEL_H, kCentre, 4);
     hline(c, 0, W - 1, LABEL_H);
     if (count > 0) {
-        if (stones[0].bh >= 0) dsegNumber(c, stones[0].bh, 0, WIDE_MID, 13, 47);
-        if (stones[0].hh >= 0) dsegNumber(c, stones[0].hh, WIDE_MID, W, 13, 47);
+        if (stones[0].bh >= 0) dsegNumber(c, stones[0].bh, 0, mid, 13, 47);
+        if (stones[0].hh >= 0) dsegNumber(c, stones[0].hh, mid, W, 13, 47);
     }
     hline(c, 0, W - 1, 47, 2);
-    vline(c, WIDE_MID, 0, bottom - 1);
+    vline(c, mid, 0, bottom - 1);
+    if (grid) { timesGrid(c, stones, count, bottom, mid); return; }
     char buf[12];
     for (int i = 1; i < count; ++i) {
         const int ry = 50 + (i - 1) * 14;
@@ -368,7 +406,7 @@ void drawCompetition(Canvas& c, const Stone* stones, uint8_t count, bool lowBatt
     c.clear();
     const Font& label = kFontSpleen6x12;
     const int strip = H - TIP_H;
-    timesWide(c, stones, count, strip, W);
+    timesWide(c, stones, count, strip, W, true, COMP_MID);
     c.fillRect(0, strip, W - 1, H - 1);
     textInBox(c, label, "COMPETITION", 0, W, strip + 1, strip + 13, kCentre, 4, false);
     textInBox(c, label, lowBattery ? "Battery low" : "times only, radio off", 0, W, strip + 13, strip + 25,

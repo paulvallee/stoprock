@@ -54,7 +54,7 @@ What the rocker is doing while the side button switches the device on picks the 
 
 | Switch on with | Mode | Screen | Rocker |
 |---|---|---|---|
-| Side button only | **Competition** | Times only, full width (Back2Hog and Hog2Hog 100 px each); a black badge strip at the bottom reads `COMPETITION` / `times only, radio off`, for an umpire | Does nothing |
+| Side button only | **Competition** | Times only, full width, the last 24 in three columns per split; a black badge strip at the bottom reads `COMPETITION` / `times only, radio off`, for an umpire | Does nothing |
 | Side button + rocker **down** | **League** | The main screen (section 8): times and your own 16 rocks | Made / missed / undo |
 | Side button + rocker **up** | **Coach** | Two pages (section 8a): the whole team's 64 rocks | Made / missed / undo; double press switches page |
 
@@ -144,7 +144,7 @@ A stone gives at most one **B2H** (back line, or tee line, to hog line) followed
 
 ## 8a. Competition and coach screens
 
-**Competition.** Labels y 0–12, newest result y 13–47 (DSEG7 25 px) in two 100 px columns, older results below in 14 px rows (the same drawn digits as the main screen), and the badge strip in the bottom 26 px, white on black. A low battery replaces `times only, radio off` with `Battery low`.
+**Competition.** Labels y 0–12, newest result y 13–47 (DSEG7 25 px), split at x 92 (the H2H half is wider, as its times have a digit more). Below, the older results three to a row in each half, under column labels `1 2 3`: they fill the rows left to right, newest first, so the top row's column 1 is the stone before the newest. 8 rows of 14 px hold 24 stones, in drawn digits a little narrower than the main screen's (12 px high, 6 px wide, a narrow "1"). The badge strip fills the bottom 26 px, white on black. A low battery replaces `times only, radio off` with `Battery low`.
 
 **Coach, page 1 (timer priority).** The competition layout's times down to y 150, then the previous and current end: four columns (L, 2, 3, S), each headed with that position's running percentage, two rows of rocks (radius 5) with the end number on the left. Two small squares top right show which page is up.
 
