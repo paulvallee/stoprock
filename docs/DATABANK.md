@@ -17,7 +17,7 @@ One record per game:
 | `mode` | How the device was switched on: `competition`, `league` or `coach` (games before format version 3 read as `league`) |
 | `shots` | Rocks in order: `M` made, `X` missed. League: your own, up to 16. Coach: the team's, up to 64, in throwing order (lead, lead, second, second, third, third, skip, skip per end). Competition: none |
 | `made`, `thrown`, `pct` | Summary of `shots`; `pct` is -1 with no rocks thrown |
-| `stones` | Every timed stone in order, as `[back-to-hog, hog-to-hog]` in seconds; `null` where that split wasn't timed (up to 128) |
+| `stones` | Every timed stone in order, as `[back-to-hog, hog-to-hog, column]`: times in seconds, `null` where that split wasn't timed; column 1–3 is the competition history column it was filed in (always 1 in league and coach, and in games before format version 4). Up to 128 |
 | `battery_start`, `battery_end` | Battery charge (%) at switch-on and at switch-off; `null` if unknown (no reading, a game recorded before format version 2, or a game that never switched off cleanly) |
 
 Rules:
@@ -37,12 +37,12 @@ the flash and commits each record atomically.
 Keys in the namespace `bank`:
 
 - `meta`: version (1), oldest id, next id, last acknowledged id, as little-endian u32s.
-- `g<id>`: one game, record format version 3:
+- `g<id>`: one game, record format version 4:
 
 | Bytes | Field |
 |---|---|
 | 0 | `'G'` |
-| 1 | Format version (3) |
+| 1 | Format version (4) |
 | 2 | Flags: bit 0 = clock set |
 | 3 | Rocks thrown (0–64) |
 | 4–7 | id |
@@ -54,12 +54,16 @@ Keys in the namespace `bank`:
 | 20 | Mode: 0 league, 1 competition, 2 coach |
 | 21–23 | Reserved (0) |
 | 24–31 | Shot bits (u64): bit *i* set = rock *i* made |
-| 32 … 32 + 4*n* − 1 | Per stone: back-to-hog, hog-to-hog (u16 hundredths; 0xFFFF = not timed) |
+| 32 … 32 + 5*n* − 1 | Per stone: back-to-hog, hog-to-hog (u16 hundredths; 0xFFFF = not timed), column (u8, 0–2) |
 | last | Checksum of all preceding bytes |
 
 All numbers are little-endian. A record that fails its checks is skipped, not shown as a game.
 
-Older records are still read, as league games:
+Older records are still read:
+
+- Version 3: the same with 4 bytes per stone (no column: read as column 1).
+
+Versions 1 and 2 read as league games:
 
 - Version 2: a 24-byte header. Bytes 0–15 as above (rocks thrown 0–16), 16–17 shot bits, 18–19 stone count,
   20–21 battery at switch-on and switch-off, 22–23 reserved; stones from byte 24.
@@ -80,7 +84,7 @@ and replies. One command per line.
 
 | Command | Reply |
 |---|---|
-| `bank` | `@BANK {"first":1,"last":42,"synced":40,"current":42,"version":3}` |
+| `bank` | `@BANK {"first":1,"last":42,"synced":40,"current":42,"version":4}` |
 | `games` | Every stored game |
 | `games new` | Games after the last acknowledged one |
 | `game <id>` | Games from that id on |
@@ -92,8 +96,8 @@ Game listings are framed so they can be parsed from a stream that also carries l
 
 ```text
 @GAMES 2
-{"id":41,"v":3,"mode":"league","started":1795290802,"updated":1795297990,"clock":true,"shots":"MMXMMMXM","made":6,"thrown":8,"pct":75,"stones":[[3.47,13.92],[3.29,null],[null,14.02]],"battery_start":88,"battery_end":85}
-{"id":42,"v":3,"mode":"coach","started":1795377202,"updated":1795377300,"clock":true,"shots":"M","made":1,"thrown":1,"pct":100,"stones":[],"battery_start":85,"battery_end":null}
+{"id":41,"v":4,"mode":"league","started":1795290802,"updated":1795297990,"clock":true,"shots":"MMXMMMXM","made":6,"thrown":8,"pct":75,"stones":[[3.47,13.92,1],[3.29,null,1],[null,14.02,1]],"battery_start":88,"battery_end":85}
+{"id":42,"v":4,"mode":"coach","started":1795377202,"updated":1795377300,"clock":true,"shots":"M","made":1,"thrown":1,"pct":100,"stones":[],"battery_start":85,"battery_end":null}
 @END
 ```
 

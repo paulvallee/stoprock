@@ -59,18 +59,24 @@ int main(int argc, char** argv) {
     // start-up modes: the same samples as tools/mockups/render.py (COACH_STONES, COACH_SHOTS)
     const Stone many[] = {{347, 1392}, {329, -1},  {351, 1366}, {-1, 1402}, {338, -1},  {342, 1381},
                           {361, 1420}, {333, 1375}, {-1, 1388}, {340, 1405}, {355, -1}, {336, 1397}};
-    // competition: 25 stones, as tools/mockups/render.py COMP_STONES
+    // competition: 25 stones and column 2 active, as tools/mockups/render.py COMP_STONES
     Stone comp[25];
     for (int i = 0; i < 25; ++i) {
         comp[i].bh = i % 5 == 3 ? -1 : 320 + i * 37 % 60;
         comp[i].hh = i % 7 == 4 ? -1 : 1350 + i * 53 % 90;
+        comp[i].col = static_cast<uint8_t>(i % 4 == 2 ? 1 : i % 4 == 3 ? 2 : 0);
     }
-    drawCompetition(c, comp, 25, false);
+    drawCompetition(c, comp, 25, 1, false);
     snprintf(path, sizeof path, "%s/competition.pbm", dir);
     writePbm(c, path);
-    drawCompetition(c, comp, 25, true);
+    drawCompetition(c, comp, 25, 1, true);
     snprintf(path, sizeof path, "%s/competition-battery.pbm", dir);
     writePbm(c, path);
+    for (uint8_t a : {0, 2}) {  // the cursor on the other columns
+        drawCompetition(c, comp, 25, a, false);
+        snprintf(path, sizeof path, "%s/competition-col%d.pbm", dir, a + 1);
+        writePbm(c, path);
+    }
     for (int n : {0, 8, 35, 63, 64}) {
         ShotLog s(ShotLog::kCoachSlots);
         for (int i = 0; i < n; ++i) s.add(i % 5 != 3 && i % 7 != 5);

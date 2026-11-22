@@ -117,6 +117,7 @@ bool isTimingButton(uint8_t b) { return b == board::kTop || b == board::kSide; }
 // nothing = competition, down = league, up = coach (docs/SPEC.md section 2).
 GameMode mode = GameMode::Competition;
 uint8_t coachPage = 0;          // coach: 0 timer priority, 1 rock priority
+uint8_t activeCol = 0;          // competition: the history column new stones are filed in (rocker)
 int64_t lastRockerPress = -kSec; // coach: when the rocker was last pressed (short presses only count)
 
 TimingEngine timing;
@@ -187,6 +188,7 @@ Databank bank(bankStore);
 void newGame() {
     bank.startGame(board::clockNow(), board::clockValid(), board::batteryPercent(), mode);
     shots.setCapacity(mode == GameMode::Coach ? ShotLog::kCoachSlots : ShotLog::kLeagueSlots);
+    activeCol = 0;
     stoneCount = 0;
     Serial.printf("game: new, %s mode\n", modeName(mode));
 }
@@ -201,6 +203,7 @@ uint16_t toStored(int32_t hundredths) {
 struct Model {
     GameMode mode = GameMode::League;
     uint8_t page = 0;       // coach: which page
+    uint8_t activeCol = 0;  // competition: the column with the cursor
     Stone stones[kMaxStones];
     uint8_t stoneCount = 0;
     ShotLog shots;          // the shots on screen (deferred while a stone is timed)
@@ -241,7 +244,7 @@ void displayTask(void*) {
         if (m.help) {
             drawHelp(next, m.lastGame, m.shotPct, m.battery, m.batteryNote);
         } else if (m.mode == GameMode::Competition) {
-            drawCompetition(next, m.stones, m.stoneCount, m.warning);
+            drawCompetition(next, m.stones, m.stoneCount, m.activeCol, m.warning);
         } else if (m.mode == GameMode::Coach) {
             if (m.page == 0) drawCoachTimer(next, m.stones, m.stoneCount, m.shots);
             else drawCoachRocks(next, m.stones, m.stoneCount, m.shots);
@@ -276,6 +279,7 @@ void syncModel(bool full = false) {
     publish([](Model& m) {
         m.mode = mode;
         m.page = coachPage;
+        m.activeCol = activeCol;
         memcpy(m.stones, stones, sizeof stones);
         m.stoneCount = stoneCount;
         if (!timing.active()) m.shots = shots;
@@ -287,10 +291,10 @@ void syncModel(bool full = false) {
 }
 
 // ------------------------------------------------------------------ timing
-void pushStone(const Stone& s) {
-    if (stoneCount < kMaxStones) ++stoneCount;
-    memmove(&stones[1], &stones[0], sizeof(Stone) * (stoneCount - 1));
-    stones[0] = s;
+// A new stone, newest first. Competition files it in the active column (see addStone()).
+void pushStone(Stone s) {
+    s.col = mode == GameMode::Competition ? activeCol : 0;
+    addStone(stones, stoneCount, kMaxStones, s);
 }
 
 void closeStone(int64_t now) {
@@ -335,7 +339,7 @@ void handleOutcome(const Outcome& o, int64_t now) {
     case TimingEvent::BH:
         noteResult(o.us);
         pushStone(Stone{toHundredths(o.us), -1});
-        bank.addStone(toStored(stones[0].bh), StoneTimes::kNoTime, board::clockNow());
+        bank.addStone(toStored(stones[0].bh), StoneTimes::kNoTime, board::clockNow(), stones[0].col);
         Serial.printf("timing: B2H %.2f\n", o.us / 1e6);
         syncModel();
         break;
@@ -346,7 +350,7 @@ void handleOutcome(const Outcome& o, int64_t now) {
             bank.setLastHogToHog(toStored(stones[0].hh), board::clockNow());
         } else {
             pushStone(Stone{-1, toHundredths(o.us)});
-            bank.addStone(StoneTimes::kNoTime, toStored(stones[0].hh), board::clockNow());
+            bank.addStone(StoneTimes::kNoTime, toStored(stones[0].hh), board::clockNow(), stones[0].col);
         }
         Serial.printf("timing: H2H %.2f\n", o.us / 1e6);
         closeStone(now);
@@ -543,8 +547,18 @@ void onPress(uint8_t b, int64_t t) {
     s.downSince = t;
     s.holdFired = false;
     s.nextRepeat = t + kUndoHoldUs;
-    // Competition: the rocker does nothing at all (times only).
-    if (mode == GameMode::Competition && !isTimingButton(b)) { s.holdFired = true; return; }
+    // Competition: the rocker moves the cursor between the history columns (up = left,
+    // down = right, round and round); pressing it does nothing.
+    if (mode == GameMode::Competition && !isTimingButton(b)) {
+        s.holdFired = true;
+        activity(t);
+        if (b == board::kPress) return;
+        activeCol = (activeCol + (b == board::kUp ? kGridColumns - 1 : 1)) % kGridColumns;
+        sound.play(kClick);
+        Serial.printf("competition: column %d\n", activeCol + 1);
+        syncModel();
+        return;
+    }
     activity(t);
     switch (b) {
     case board::kTop:
@@ -598,7 +612,7 @@ void pollButtons(int64_t now) {
 // Databank export, framed so an app can parse it: "@GAMES n", n JSON lines, "@END".
 void printGames(uint32_t fromId) {
     static GameRecord g;
-    static char json[2600];  // a full coach game: 64 shots, 128 stones
+    static char json[3000];  // a full coach game: 64 shots, 128 stones
     uint32_t n = 0;
     for (uint32_t id = fromId; id <= bank.lastId(); ++id) n += bank.load(id, g) ? 1 : 0;
     Serial.printf("@GAMES %lu\n", static_cast<unsigned long>(n));

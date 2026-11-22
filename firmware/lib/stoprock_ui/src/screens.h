@@ -11,6 +11,7 @@ namespace stoprock {
 struct Stone {
     int32_t bh = -1;
     int32_t hh = -1;
+    uint8_t col = 0;  // competition: the history column (0-2) it was filed in
 };
 
 struct MainView {
@@ -31,8 +32,17 @@ void drawHelp(Canvas& c, const char* lastGame, int shotPct = -1, int battery = -
               const char* batteryNote = nullptr);
 
 // Competition (switched on with the side button alone): times only, full width, and a badge
-// strip an umpire can read. lowBattery replaces the strip's second line.
-void drawCompetition(Canvas& c, const Stone* stones, uint8_t count, bool lowBattery);
+// strip an umpire can read. lowBattery replaces the strip's second line. The history is in three
+// columns per split, each listing the stones filed in it newest first; activeCol (0-2) gets the
+// cursor, a bold box.
+constexpr uint8_t kGridColumns = 3, kGridRows = 7;
+void drawCompetition(Canvas& c, const Stone* stones, uint8_t count, uint8_t activeCol, bool lowBattery);
+
+// Put a stone at the front of a newest-first list. When the list is full, the stone dropped is
+// the oldest of a column with more than a screenful (kGridRows), so a column that's rarely used
+// keeps its times however many stones go into the others. capacity must be over
+// kGridColumns * kGridRows for that to hold. With one column it simply drops the oldest.
+void addStone(Stone* list, uint8_t& count, uint8_t capacity, const Stone& s);
 
 // Coach (side button + rocker up), 64 rocks: 8 ends x 4 positions x 2.
 // Page 1, timer priority: wide times, % per position, the previous and current end.

@@ -63,7 +63,7 @@ changes.
 
 | Mode | Switch on with | What to try |
 |---|---|---|
-| Competition | <kbd>S</kbd> | Times only, full width, the badge strip at the bottom; the rocker does nothing |
+| Competition | <kbd>S</kbd> | Times only, full width, the badge strip at the bottom; <kbd>↑</kbd>/<kbd>↓</kbd> move the cursor between the history columns, and new times go into that column |
 | League | <kbd>↓</kbd> + <kbd>S</kbd> | The main screen: times, your 16 rocks and tips |
 | Coach | <kbd>↑</kbd> + <kbd>S</kbd> | 64 rocks for the whole team; <kbd>Enter</kbd> twice quickly switches between the timer page and the rocks page |
 

@@ -173,7 +173,7 @@ static void test_encode_decode_round_trip_and_corruption() {
     r.stones[1] = StoneTimes{NONE, 1402};
     uint8_t buf[Databank::kMaxRecordSize];
     const size_t n = Databank::encode(r, buf);
-    TEST_ASSERT_EQUAL_size_t(Databank::kHeaderSize + 8 + 1, n);
+    TEST_ASSERT_EQUAL_size_t(Databank::kHeaderSize + 2 * Databank::kStoneSize + 1, n);
     GameRecord back;
     TEST_ASSERT_TRUE(Databank::decode(buf, n, back));
     TEST_ASSERT_EQUAL_UINT32(77, back.id);
@@ -295,6 +295,41 @@ static void test_coach_game_of_64_shots_and_mode() {
     TEST_ASSERT_EQUAL_UINT8(0, g.shotCount);
 }
 
+static void test_stone_columns_and_version_3() {
+    MemStore st;
+    Databank db(st);
+    db.begin();
+    db.startGame(0, true, 80, GameMode::Competition);
+    db.addStone(347, StoneTimes::kNoTime, 1, 2);
+    db.setLastHogToHog(1392, 2);
+    db.addStone(NONE, 1402, 3, 1);
+    GameRecord g;
+    TEST_ASSERT_TRUE(db.load(1, g));
+    TEST_ASSERT_EQUAL_UINT8(2, g.stones[0].column);
+    TEST_ASSERT_EQUAL_UINT16(1392, g.stones[0].hogToHog);
+    TEST_ASSERT_EQUAL_UINT8(1, g.stones[1].column);
+    // a version 3 record: the same header, 4 bytes per stone, no column
+    uint8_t buf[Databank::kMaxRecordSize];
+    memset(buf, 0, 32);
+    buf[0] = 'G';
+    buf[1] = 3;
+    buf[4] = 9;                             // id 9
+    buf[16] = 1;                            // one stone
+    buf[18] = buf[19] = 0xFF;               // battery unknown
+    buf[20] = 1;                            // competition
+    buf[32] = 0x5B; buf[33] = 0x01;         // B2H 3.47
+    buf[34] = 0x70; buf[35] = 0x05;         // H2H 13.92
+    const size_t n = 32 + 4 + 1;
+    uint8_t c = 0x5A;
+    for (size_t i = 0; i + 1 < n; ++i) c = static_cast<uint8_t>((c << 1 | c >> 7) ^ buf[i]);
+    buf[n - 1] = c;
+    TEST_ASSERT_TRUE(Databank::decode(buf, n, g));
+    TEST_ASSERT_EQUAL_UINT32(9, g.id);
+    TEST_ASSERT_TRUE(g.mode == GameMode::Competition);
+    TEST_ASSERT_EQUAL_UINT16(1392, g.stones[0].hogToHog);
+    TEST_ASSERT_EQUAL_UINT8(0, g.stones[0].column);
+}
+
 static void test_json_line() {
     GameRecord r;
     r.id = 12;
@@ -305,12 +340,12 @@ static void test_json_line() {
     r.shotBits = 0b101;
     r.stoneCount = 2;
     r.stones[0] = StoneTimes{347, 1392};
-    r.stones[1] = StoneTimes{NONE, 1402};
+    r.stones[1] = StoneTimes{NONE, 1402, 2};
     char out[256];
     Databank::toJson(r, out, sizeof out);
     TEST_ASSERT_EQUAL_STRING(
-        "{\"id\":12,\"v\":3,\"mode\":\"league\",\"started\":100,\"updated\":200,\"clock\":true,\"shots\":\"MXM\","
-        "\"made\":2,\"thrown\":3,\"pct\":67,\"stones\":[[3.47,13.92],[null,14.02]],"
+        "{\"id\":12,\"v\":4,\"mode\":\"league\",\"started\":100,\"updated\":200,\"clock\":true,\"shots\":\"MXM\","
+        "\"made\":2,\"thrown\":3,\"pct\":67,\"stones\":[[3.47,13.92,1],[null,14.02,3]],"
         "\"battery_start\":null,\"battery_end\":null}",
         out);
     char small[20];
@@ -334,6 +369,7 @@ int main() {
     RUN_TEST(test_games_left_estimate);
     RUN_TEST(test_reads_version_1_and_2_records);
     RUN_TEST(test_coach_game_of_64_shots_and_mode);
+    RUN_TEST(test_stone_columns_and_version_3);
     RUN_TEST(test_json_line);
     return UNITY_END();
 }
