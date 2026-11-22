@@ -24,6 +24,7 @@ constexpr int64_t kUndoHoldUs = kSec / 2;   // 0.5 s
 constexpr int64_t kPowerHoldUs = 3 * kSec;
 constexpr int64_t kDoublePressUs = 400000;     // two rocker presses within 0.4 s: a double press
 constexpr uint8_t kRocksPerPlayer = 2;         // each player throws two rocks an end
+constexpr int64_t kFocusHoldUs = kSec / 2;     // league: hold rocker up/down this long to move the focus
 constexpr int64_t kAwakeAfterPressUs = 2 * kSec;    // stay awake this long after a rocker press
 constexpr int64_t kAwakeAfterWakeUs = 40000;        // time to confirm the button that woke us
 constexpr int64_t kAuditEveryUs = 10 * 60 * kSec;   // clock audit sample interval
@@ -113,6 +114,9 @@ uint8_t coachPage = 0;          // coach: 0 timer priority, 1 rock priority
 uint8_t myPosition = 0;         // 0 lead .. 3 skip (double press of the rocker centre; kept)
 uint8_t activeCol = 0;          // the column (0-2) with the cursor
 uint8_t rocksForActive = 0;     // stones timed for that player since the cursor got there
+// League: what rocker up/down work on, the focus (bold border): your rocks (made/missed) or the
+// players (previous/next). Hold up 0.5 s for the players, hold down 0.5 s for your rocks.
+Focus focus = Focus::Rocks;
 int64_t lastRockerPress = -kSec; // coach: when the rocker was last pressed (short presses only count)
 
 TimingEngine timing;
@@ -186,6 +190,7 @@ void newGame() {
     shots.setCapacity(mode == GameMode::Coach ? ShotLog::kCoachSlots : ShotLog::kLeagueSlots);
     activeCol = 0;
     rocksForActive = 0;
+    focus = Focus::Rocks;
     // "Double click rocker to change position", for the first 5 s (not in coach: no positions)
     tipWaiting = mode != GameMode::Coach;
     tipUntil = -1;
@@ -213,6 +218,7 @@ struct Model {
     bool full = false;      // next update is a ghost-clearing full refresh
     bool tip = false;       // the switch-on position tip
     Waiting waiting = Waiting::None;  // a stone being timed: the stopwatch shows where its time will go
+    Focus focus = Focus::Rocks;       // league: what the rocker works on
     char lastGame[40] = "";
     int shotPct = -1;       // help page: last game's shot percentage
     int battery = -1;       // help page: charge at switch-off
@@ -251,7 +257,7 @@ void displayTask(void*) {
             if (m.page == 0) drawCoachTimer(next, m.stones, m.stoneCount, m.shots, m.waiting);
             else drawCoachRocks(next, m.stones, m.stoneCount, m.shots, m.waiting);
         } else {
-            drawLeague(next, m.stones, m.stoneCount, m.shots, m.me, m.activeCol, m.warning, m.tip, m.waiting);
+            drawLeague(next, m.stones, m.stoneCount, m.shots, m.me, m.activeCol, m.warning, m.tip, m.waiting, m.focus);
         }
         const int64_t t0 = esp_timer_get_time();
         if (m.full) {
@@ -283,6 +289,7 @@ void syncModel(bool full = false) {
         m.help = false;
         m.full = m.full || sFull;
         m.tip = tipWaiting || tipUntil >= 0;
+        m.focus = focus;
         m.waiting = timing.state() == TimingState::Started     ? Waiting::BackToHog
                     : timing.state() == TimingState::WaitingHH ? Waiting::HogToHog
                                                                : Waiting::None;
@@ -560,6 +567,31 @@ void onRockerPress(ButtonState& s, int64_t t) {
     lastRockerPress = t;
 }
 
+// The player cursor one column left (-1) or right (+1), round and round.
+void movePlayer(int dir) {
+    activeCol = (activeCol + (dir < 0 ? kGridColumns - 1 : 1)) % kGridColumns;
+    rocksForActive = 0;
+    sound.play(kClick);
+    Serial.printf("timing: %s next\n", kPositionNames[teammate(myPosition, activeCol)]);
+    syncModel();
+}
+
+// League: rocker up/down held 0.5 s moves the focus (up: players, down: your rocks).
+void setFocus(Focus f) {
+    focus = f;
+    sound.play(kClick);
+    Serial.printf("focus: %s\n", f == Focus::Players ? "players" : "rocks");
+    syncModel();
+}
+
+// League: a short press of rocker up/down, acted on when it's let go (a long press moves the
+// focus instead): made/missed, or previous/next player.
+void onRelease(uint8_t b) {
+    if (mode != GameMode::League || (b != board::kUp && b != board::kDown) || buttons[b].holdFired) return;
+    if (focus == Focus::Rocks) onShot(b == board::kUp);
+    else movePlayer(b == board::kUp ? -1 : 1);
+}
+
 void onPress(uint8_t b, int64_t t) {
     ButtonState& s = buttons[b];
     s.down = true;
@@ -572,14 +604,12 @@ void onPress(uint8_t b, int64_t t) {
         s.holdFired = true;
         activity(t);
         if (b == board::kPress) { onRockerPress(s, t); return; }
-        activeCol = (activeCol + (b == board::kUp ? kGridColumns - 1 : 1)) % kGridColumns;
-        rocksForActive = 0;
-        sound.play(kClick);
-        Serial.printf("competition: timing %s\n", kPositionNames[teammate(myPosition, activeCol)]);
-        syncModel();
+        movePlayer(b == board::kUp ? -1 : 1);
         return;
     }
     activity(t);
+    // League: rocker up/down act when let go, or move the focus when held (pollButtons).
+    if (mode == GameMode::League && (b == board::kUp || b == board::kDown)) return;
     switch (b) {
     case board::kTop:
     case board::kSide: onTimingPress(t); break;
@@ -611,7 +641,10 @@ void pollButtons(int64_t now) {
             if (s.down && !raw && stable) s.down = false;
         } else {
             if (stable && raw && !s.down) onPress(b, s.rawSince);
-            if (stable && !raw && s.down) s.down = false;
+            if (stable && !raw && s.down) {
+                onRelease(b);
+                s.down = false;
+            }
         }
 
         // holds
@@ -625,6 +658,12 @@ void pollButtons(int64_t now) {
                 if (!onUndo()) s.holdFired = true;
             }
             if (b == board::kSide && now - s.downSince >= kPowerHoldUs) { s.holdFired = true; showHelpAndPowerOff(); }
+            if (mode == GameMode::League && (b == board::kUp || b == board::kDown) &&
+                now - s.downSince >= kFocusHoldUs) {
+                s.holdFired = true;  // not a short press when it's let go
+                activity(now);
+                setFocus(b == board::kUp ? Focus::Players : Focus::Rocks);
+            }
         }
     }
 }

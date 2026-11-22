@@ -40,8 +40,11 @@ inline uint8_t teammate(uint8_t me, uint8_t k) { return k < me ? k : k + 1; }
 // your own 16 rocks like a scoreboard (ends across, rock 1 over rock 2) and your percentage.
 // lowBattery puts a "Batt low" bar over the percentage.
 constexpr uint8_t kLeagueRows = 7;
+// focus: the half the rocker works on, shown by a bold border: your rocks (made/missed) or the
+// players (previous/next player).
+enum class Focus : uint8_t { Rocks, Players };
 void drawLeague(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& shots, uint8_t me, uint8_t activeCol,
-                bool lowBattery, bool tip = false, Waiting waiting = Waiting::None);
+                bool lowBattery, bool tip = false, Waiting waiting = Waiting::None, Focus focus = Focus::Rocks);
 
 // Put a stone at the front of a newest-first list. When the list is full, the stone dropped is
 // the oldest of a player with more than a screenful (kGridRows), so a player who has thrown

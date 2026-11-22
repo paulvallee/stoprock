@@ -247,15 +247,16 @@ constexpr int GRID_LABEL_Y0 = 49, GRID_LABEL_Y1 = 60;
 constexpr int GRID_TOP = 61, GRID_PITCH = 14;
 constexpr int GRID_TYPICAL[2] = {23, 26};  // width of "3.47" and "13.92": each column centres that width
 
-void gridColumns(int half, int mid, int* edges) {
-    const int x0 = half == 0 ? 0 : mid, x1 = half == 0 ? mid : W;
+// Edges of the three columns in a half (0 = B2H, 1 = H2H), inset from the screen's sides.
+void gridColumns(int half, int mid, int* edges, int inset = 0) {
+    const int x0 = half == 0 ? inset : mid, x1 = half == 0 ? mid : W - inset;
     for (int k = 0; k < 4; ++k) edges[k] = x0 + (x1 - x0) * k / 3;
 }
 
-void timesGrid(Canvas& c, const Stone* stones, int count, int mid, int me, int active, int rowsMax) {
+void timesGrid(Canvas& c, const Stone* stones, int count, int mid, int me, int active, int rowsMax, int inset) {
     int cols[2][4];
-    gridColumns(0, mid, cols[0]);
-    gridColumns(1, mid, cols[1]);
+    gridColumns(0, mid, cols[0], inset);
+    gridColumns(1, mid, cols[1], inset);
     for (int half = 0; half < 2; ++half) {
         for (int k = 0; k < 3; ++k) {
             const int x0 = cols[half][k], x1 = cols[half][k + 1];
@@ -302,7 +303,7 @@ void newestRow(Canvas& c, const Stone* stones, int count, Waiting waiting, int m
 // (one to a row, or with grid three to a row).
 void timesWide(Canvas& c, const Stone* stones, int count, int bottom, int labelRight, bool grid = false,
                int mid = WIDE_MID, int me = 0, int active = 0, int rowsMax = kGridRows,
-               Waiting waiting = Waiting::None) {
+               Waiting waiting = Waiting::None, int inset = 0) {
     const Font& label = kFontSpleen6x12;
     textInBox(c, label, "Back2Hog", 0, mid, 0, LABEL_H, kCentre, 4);
     textInBox(c, label, "Hog2Hog", mid, labelRight, 0, LABEL_H, kCentre, 4);
@@ -310,7 +311,7 @@ void timesWide(Canvas& c, const Stone* stones, int count, int bottom, int labelR
     newestRow(c, stones, count, waiting, mid, kFontDseg25, 13, 47, 3, kStopwatch, 30);
     hline(c, 0, W - 1, 47, 2);
     vline(c, mid, 0, bottom - 1);
-    if (grid) { timesGrid(c, stones, count, mid, me, active, rowsMax); return; }
+    if (grid) { timesGrid(c, stones, count, mid, me, active, rowsMax, inset); return; }
     char buf[12];
     const int first = waiting == Waiting::BackToHog ? 0 : 1;  // a new stone under way: the last one is older now
     for (int i = first; i < count; ++i) {
@@ -384,26 +385,34 @@ void drawCompetition(Canvas& c, const Stone* stones, uint8_t count, uint8_t me, 
 }
 
 void drawLeague(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& shots, uint8_t me, uint8_t activeCol,
-                bool lowBattery, bool tip, Waiting waiting) {
+                bool lowBattery, bool tip, Waiting waiting, Focus focus) {
     c.clear();
     const int top = 159;    // 2 px line under the times
     const int split = 134;  // 2 px divider left of the percentage
-    timesWide(c, stones, count, top, W, true, COMP_MID, me, activeCol, kLeagueRows, waiting);
+    timesWide(c, stones, count, top, W, true, COMP_MID, me, activeCol, kLeagueRows, waiting, 2);
     hline(c, 0, W - 1, top, 2);
     vline(c, split, top, H - 1, 2);
     // your rocks like a scoreboard: ends across, rock 1 over rock 2
     const int cursor = shots.cursor();
     for (int end = 0; end < 8; ++end) {
-        const int cx = 9 + end * 16;
+        const int cx = 10 + end * 16;
         char n[3];
         snprintf(n, sizeof n, "%d", end + 1);
-        kEndFont.draw(c, n, cx - 2, top + 4);
+        kEndFont.draw(c, n, cx - 2, top + 3);
         for (int r = 0; r < 2; ++r) {
-            const int i = end * 2 + r, cy = top + 21 + r * 13;
+            const int i = end * 2 + r, cy = top + 19 + r * 13;
             c.sprite(kRockSmall, cx, cy);
             if (i < shots.count()) c.sprite(shots.made(i) ? kCheckSmall : kCrossSmall, cx, cy);
             if (i == cursor) c.sprite(kCursorSmall, cx, cy);
         }
+    }
+    // the focus: a bold border around the half the rocker works on
+    if (focus == Focus::Players) {
+        rectOutline(c, 0, 47, W - 1, top + 1);
+        rectOutline(c, 1, 48, W - 2, top);
+    } else {
+        rectOutline(c, 0, top, split + 1, H - 1);
+        rectOutline(c, 1, top + 1, split, H - 2);
     }
     const int x0 = split + 2;
     int y0 = top + 2;

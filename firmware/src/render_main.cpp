@@ -86,6 +86,9 @@ int main(int argc, char** argv) {
     drawCompetition(c, comp, 25, 0, 1, false, false, Waiting::BackToHog);
     snprintf(path, sizeof path, "%s/competition-wait-b2h.pbm", dir);
     writePbm(c, path);
+    drawLeague(c, comp, 25, shots, 0, 1, false, false, Waiting::None, Focus::Players);
+    snprintf(path, sizeof path, "%s/league-players.pbm", dir);
+    writePbm(c, path);
     drawLeague(c, half, 25, shots, 0, 1, false, false, Waiting::HogToHog);
     snprintf(path, sizeof path, "%s/league-wait-h2h.pbm", dir);
     writePbm(c, path);

@@ -301,15 +301,16 @@ def teammates(me):
     return [p for p in range(4) if p != me]
 
 
-def grid_columns(half, mid):
-    """Edges of the three columns in a half (0 = B2H, 1 = H2H)."""
-    x0, x1 = (0, mid) if half == 0 else (mid, W)
+def grid_columns(half, mid, left=0, right=W):
+    """Edges of the three columns in a half (0 = B2H, 1 = H2H), between left and right."""
+    x0, x1 = (left, mid) if half == 0 else (mid, right)
     return [x0 + (x1 - x0) * k // 3 for k in range(4)]
 
 
-def times_grid(d, f, stones, bottom, mid, me, active, rows_max=GRID_ROWS):
-    """stones: (b2h, h2h, position) newest first; active: the column (0-2) with the cursor."""
-    cols = [grid_columns(0, mid), grid_columns(1, mid)]
+def times_grid(d, f, stones, bottom, mid, me, active, rows_max=GRID_ROWS, inset=0):
+    """stones: (b2h, h2h, position) newest first; active: the column (0-2) with the cursor.
+    inset: columns kept this far from the screen's sides (room for a focus border)."""
+    cols = [grid_columns(0, mid, inset, W - inset), grid_columns(1, mid, inset, W - inset)]
     players = teammates(me)
     for half in range(2):
         for k in range(3):
@@ -360,7 +361,7 @@ def newest_row(d, f, stones, waiting, mid, font, y0, y1, margin, r, cy):
 
 
 def times_wide(d, f, stones, bottom, label_right=W, grid=False, mid=WIDE_MID, me=0, active=0,
-               rows_max=GRID_ROWS, waiting=None):
+               rows_max=GRID_ROWS, waiting=None, inset=0):
     """Back2Hog | Hog2Hog across the full width: header, newest large, older below
     (one to a row, or with grid=True three to a row).
     label_right: where the Hog2Hog label's box ends (left of the page marks in coach mode)."""
@@ -371,7 +372,7 @@ def times_wide(d, f, stones, bottom, label_right=W, grid=False, mid=WIDE_MID, me
     d.line([(0, 47), (W - 1, 47)], fill=0, width=2)
     d.line([(mid, 0), (mid, bottom - 1)], fill=0)
     if grid:
-        return times_grid(d, f, stones, bottom, mid, me, active, rows_max)
+        return times_grid(d, f, stones, bottom, mid, me, active, rows_max, inset)
     older = stones if waiting == "b2h" else stones[1:]  # a new stone under way: the last one is older now
     for i, stone in enumerate(older):
         ry = 50 + i * 14
@@ -416,12 +417,14 @@ def competition_screen(stones, me=0, active=0, low_battery=False, tip=False, wai
 
 # League: the competition layout with 7 rows a player, and below it your own rocks like a
 # scoreboard (ends across, rock 1 over rock 2) with your percentage large on the right.
+# The rocker works on one half at a time, the focus, shown by a bold border: your rocks (up/down =
+# made/missed) or the players (up/down = previous/next player). Hold up or down to move it.
 LEAGUE_ROWS_BOTTOM = 159     # 2 px line under the times
 LEAGUE_PCT_X = 134           # 2 px divider left of the percentage
 LEAGUE_SLOTS = 16
 
 
-def league_screen(stones, shots, me=0, active=0, low_battery=False, tip=False, waiting=None):
+def league_screen(stones, shots, me=0, active=0, low_battery=False, tip=False, waiting=None, focus="rocks"):
     """stones: (b2h, h2h, position) newest first; shots: True made / False missed, in order;
     me: your position; active: the teammate column (0-2) with the cursor."""
     f = fonts()
@@ -429,17 +432,23 @@ def league_screen(stones, shots, me=0, active=0, low_battery=False, tip=False, w
     d = ImageDraw.Draw(img)
     d.fontmode = "1"
     top = LEAGUE_ROWS_BOTTOM
-    times_wide(d, f, stones, top, grid=True, mid=COMP_MID, me=me, active=active, rows_max=7, waiting=waiting)
+    times_wide(d, f, stones, top, grid=True, mid=COMP_MID, me=me, active=active, rows_max=7, waiting=waiting,
+               inset=2)
     d.line([(0, top), (W - 1, top)], fill=0, width=2)
     split = LEAGUE_PCT_X
     d.line([(split, top), (split, H - 1)], fill=0, width=2)
     cursor = len(shots) if len(shots) < LEAGUE_SLOTS else -1
     for end in range(8):
-        cx = 9 + end * 16
-        f["tiny"].draw(d, str(end + 1), cx - 2, top + 4)
+        cx = 10 + end * 16
+        f["tiny"].draw(d, str(end + 1), cx - 2, top + 3)
         for r in range(2):
             i = end * 2 + r
-            small_rock(d, cx, top + 21 + r * 13, shots[i] if i < len(shots) else None, i == cursor)
+            small_rock(d, cx, top + 19 + r * 13, shots[i] if i < len(shots) else None, i == cursor)
+    # the focus: a bold border around the half the rocker works on
+    if focus == "players":
+        d.rectangle([0, 47, W - 1, top + 1], outline=0, width=2)
+    else:
+        d.rectangle([0, top, split + 1, H - 1], outline=0, width=2)
     x0, y0 = split + 2, top + 2
     if low_battery:  # a black bar over the percentage
         d.rectangle([x0, y0, W - 1, y0 + 12], fill=0)

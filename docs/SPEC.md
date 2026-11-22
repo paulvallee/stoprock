@@ -46,6 +46,8 @@ Graphics library: **M5GFX / M5Unified** (has a driver for this screen, `Panel_GD
 
 In competition mode, rocker up and down move the player cursor to the previous or next teammate (wrapping round). There is no undo.
 
+In league mode the rocker works on one half of the screen at a time, the **focus**, shown by a bold border: your **rocks** (up/down = made/missed, the default at switch-on) or the **players** (up/down = previous/next player, for a rock nobody timed). **Hold rocker up 0.5 s** to focus the players, **hold rocker down 0.5 s** to focus your rocks. So that a hold can be told from a press, league acts on a short up/down press when it's let go.
+
 Timing clicks are timestamped in the interrupt handler, so screen activity never affects timing accuracy.
 
 ### Start-up modes
@@ -55,7 +57,7 @@ What the rocker is doing while the side button switches the device on picks the 
 | Switch on with | Mode | Screen | Rocker |
 |---|---|---|---|
 | Side button only | **Competition** | Times only, full width, the history in a column per teammate, with a cursor on the player about to throw; a black badge strip at the bottom reads `COMPETITION` / `STOPWATCH FEATURES ONLY`, for an umpire | Moves the cursor; double press: your position |
-| Side button + rocker **down** | **League** | Section 8: your teammates' times by player, your own 16 rocks and % | Made / missed / undo; double press: your position |
+| Side button + rocker **down** | **League** | Section 8: your teammates' times by player, your own 16 rocks and % | Made / missed / undo, or previous / next player (hold up / down to switch); double press: your position |
 | Side button + rocker **up** | **Coach** | Two pages (section 8a): the whole team's 64 rocks | Made / missed / undo; double press switches page |
 
 - Competition is the default because it is what a tournament allows: World Curling's rules (R11(c)) limit stopwatches to giving time data only, and forbid electronic communication. Competition mode shows and records times only, and never uses the radio (the radio isn't used in any mode yet).
@@ -124,10 +126,10 @@ A stone gives at most one **B2H** (back line, or tee line, to hog line) followed
 | Column labels | y 0–12 | `Back2Hog`, `Hog2Hog` in Spleen 6×12, split at x 92 |
 | Newest result | y 13–47 | DSEG7 Classic Bold 25 px, square decimal point. Blank cell if that split wasn't timed. |
 | Teammates' times | y 49–158 | A column per teammate in each half, headed with their position (a lead sees `2nd`, `3rd`, `Skip`); the player about to throw has the highlighted (inverted) header. Each column lists that player's stones newest first, 7 rows of 14 px, in drawn 7-segment digits (12 px high, 6 px wide, a narrow "1") |
-| Your rocks | x 0–134, y 161–199 | Like a scoreboard: ends 1–8 across (drawn digits, 9 px), rock 1 over rock 2 (radius 5); ✓ made, ✗ missed, empty circle not thrown; bold ring = cursor on your next rock |
+| Your rocks | x 0–135, y 159–199 | Like a scoreboard: ends 1–8 across (drawn digits, 9 px), rock 1 over rock 2 (radius 5); ✓ made, ✗ missed, empty circle not thrown; bold ring = cursor on your next rock |
 | Percentage | x 136–199, y 161–199 | Your shots made, DSEG7 16 px digits, % sign drawn to match. A low battery puts a white-on-black `Batt low` bar above it until charged. |
 
-**The player cursor** works as in competition (section 8a): each timed stone is filed under the highlighted player, and after their second rock the cursor moves to the next player. League also knows when you throw: **logging your own shot puts the cursor on the player after you** (as lead, the 2nd; as skip, the lead of the next end), so the cursor is back in step every end even if a stone was missed or an extra click got in. Your position is changed with a double press of the rocker centre.
+**The player cursor** works as in competition (section 8a): each timed stone is filed under the highlighted player, and after their second rock the cursor moves to the next player. League also knows when you throw: **logging your own shot puts the cursor on the player after you** (as lead, the 2nd; as skip, the lead of the next end), so the cursor is back in step every end even if a stone was missed or an extra click got in. For a rock nobody timed (a teammate called normal, say), move the cursor yourself: hold rocker up to focus the players (a bold border round the times), press up/down for the previous/next player, then hold rocker down to go back to your rocks (the border moves to them). Your position is changed with a double press of the rocker centre.
 
 There are no rotating tips: the controls are simple enough, and the help page shows them. One tip remains: for 5 s after switching on (counted from when the screen is up), competition and league show a box over the empty times area: "Double click rocker / to change position". If a stone is being timed when the 5 s are up, the box goes with that stone's next screen update.
 

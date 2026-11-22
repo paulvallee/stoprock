@@ -29,6 +29,7 @@ def main():
     refs["league-tip"] = screen.league_screen([], [], 2, 0, tip=True)
     half = [(st[0][0], None, st[0][2])] + list(st[1:])  # the newest stone awaiting its H2H
     refs["competition-wait-b2h"] = screen.competition_screen(st, 0, 1, waiting="b2h")
+    refs["league-players"] = screen.league_screen(st, shots, 0, 1, focus="players")
     refs["league-wait-h2h"] = screen.league_screen(half, shots, 0, 1, waiting="h2h")
     cs = render.COACH_STONES
     refs["coach1-wait-b2h"] = screen.coach_timer_screen(cs, render.COACH_SHOTS, waiting="b2h")

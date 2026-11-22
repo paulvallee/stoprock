@@ -64,7 +64,7 @@ changes.
 | Mode | Switch on with | What to try |
 |---|---|---|
 | Competition | <kbd>S</kbd> | Times only, full width, the badge strip at the bottom; a column per teammate; the highlighted player gets the next times and moves on after two rocks; <kbd>↑</kbd>/<kbd>↓</kbd> move it, <kbd>Enter</kbd> twice quickly changes your own position |
-| League | <kbd>↓</kbd> + <kbd>S</kbd> | Teammates' times by player, your 16 rocks along the bottom; logging your shot moves the player cursor to the player after you; <kbd>Enter</kbd> twice quickly changes your position |
+| League | <kbd>↓</kbd> + <kbd>S</kbd> | Teammates' times by player, your 16 rocks along the bottom; logging your shot moves the player cursor to the player after you; hold <kbd>↑</kbd> to move the player cursor with <kbd>↑</kbd>/<kbd>↓</kbd>, hold <kbd>↓</kbd> to log shots again; <kbd>Enter</kbd> twice quickly changes your position |
 | Coach | <kbd>↑</kbd> + <kbd>S</kbd> | 64 rocks for the whole team; <kbd>Enter</kbd> twice quickly switches between the timer page and the rocks page |
 
 The **Battery** slider sets the battery level the firmware reads (`run.py` sends it to the emulated chip's
