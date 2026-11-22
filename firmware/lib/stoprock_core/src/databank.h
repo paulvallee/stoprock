@@ -79,9 +79,13 @@ public:
     void endGame(int batteryPercent, uint32_t now);
 
     // Battery: games left at batteryPercent, from the average drain of the last `recent`
-    // completed games (both readings, a drop of at least 1 %, and at least minSeconds long).
-    // -1 if there are none to go on yet.
-    int gamesLeft(int batteryPercent, uint32_t minSeconds = 20 * 60, uint8_t recent = 10);
+    // completed games (both readings, a drop of at least 1 %, and at least minSeconds long),
+    // rounded down, less `reserve` games kept back so the estimate doesn't promise a game the
+    // battery can't finish (the charge reading is only an estimate, least reliable near empty).
+    // Never below 0; -1 if there are none to go on yet.
+    static constexpr uint8_t kReserveGames = 1;
+    int gamesLeft(int batteryPercent, uint32_t minSeconds = 20 * 60, uint8_t recent = 10,
+                  uint8_t reserve = kReserveGames);
 
     // Stored games: ids run from firstId() to lastId(); a gap means that record was lost.
     uint32_t firstId() const { return first_; }

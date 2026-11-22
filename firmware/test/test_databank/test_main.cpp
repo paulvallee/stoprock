@@ -224,12 +224,14 @@ static void test_games_left_estimate() {
         db.endGame(b1, start + secs);
     };
     game(0, 7200, 90, 87);                  // 3 % in a 2-hour game
-    TEST_ASSERT_EQUAL_INT(29, db.gamesLeft(87));        // 87 / 3
+    TEST_ASSERT_EQUAL_INT(28, db.gamesLeft(87));        // 87 / 3 = 29, less one in reserve
     game(10000, 7200, 87, 82);              // 5 %: average 4 %
-    TEST_ASSERT_EQUAL_INT(20, db.gamesLeft(82));        // 82 / 4 = 20.5, rounded down
+    TEST_ASSERT_EQUAL_INT(19, db.gamesLeft(82));        // 82 / 4 = 20.5: 20, less one
+    TEST_ASSERT_EQUAL_INT(20, db.gamesLeft(82, 20 * 60, 10, 0));  // no reserve: just rounded down
     game(20000, 300, 82, 70);               // 5-minute game: ignored
     game(30000, 7200, 70, 75);              // charged during the game: ignored
-    TEST_ASSERT_EQUAL_INT(18, db.gamesLeft(75));        // 75 / 4
+    TEST_ASSERT_EQUAL_INT(17, db.gamesLeft(75));        // 75 / 4 = 18, less one
+    TEST_ASSERT_EQUAL_INT(0, db.gamesLeft(7));          // 1.75 games: the last one is the reserve
     TEST_ASSERT_EQUAL_INT(0, db.gamesLeft(3));
     TEST_ASSERT_EQUAL_INT(-1, db.gamesLeft(-1));        // battery unknown
 }

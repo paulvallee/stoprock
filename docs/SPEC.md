@@ -171,7 +171,7 @@ stoprock logo (176 px), then Spleen 6×12:
  ~11 games battery left   [▭] 84%
 ```
 
-`[START]`, `[TIMING]` and `[SHOTS]` are white-on-black labels; every `=` sits in one column. A competition game's row reads "Last game N stones timed". The last rows show the most recent game, with its shot percentage beside a small pie, and the battery charge at switch-off beside a battery icon; the two percentages are right-aligned. Once at least one game has been completed, the battery row starts with an estimate: "~N games battery left" (from the average drain of the last 10 completed games of 20 minutes or more, rounded down), or "Charge before next game" below one game.
+`[START]`, `[TIMING]` and `[SHOTS]` are white-on-black labels; every `=` sits in one column. A competition game's row reads "Last game N stones timed". The last rows show the most recent game, with its shot percentage beside a small pie, and the battery charge at switch-off beside a battery icon; the two percentages are right-aligned. Once at least one game has been completed, the battery row starts with an estimate: "~N games battery left" (from the average drain of the last 10 completed games of 20 minutes or more, rounded down, less one game kept in reserve), or "Charge before next game" when only the reserve is left. The reserve is there because the charge reading is an estimate from the battery voltage, least reliable near empty: the device would rather say charge one game early than run out mid-game.
 
 ## 10. Screen update plan (responsiveness)
 

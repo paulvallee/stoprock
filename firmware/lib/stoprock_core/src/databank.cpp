@@ -231,7 +231,7 @@ void Databank::endGame(int batteryPercent, uint32_t now) {
     save();
 }
 
-int Databank::gamesLeft(int batteryPercent, uint32_t minSeconds, uint8_t recent) {
+int Databank::gamesLeft(int batteryPercent, uint32_t minSeconds, uint8_t recent, uint8_t reserve) {
     if (batteryPercent < 0) return -1;
     static GameRecord g;  // ~550 bytes: keep it off the stack
     uint32_t drained = 0, games = 0;
@@ -244,7 +244,8 @@ int Databank::gamesLeft(int batteryPercent, uint32_t minSeconds, uint8_t recent)
         ++games;
     }
     if (games == 0) return -1;
-    return static_cast<int>(static_cast<uint32_t>(batteryPercent) * games / drained);  // rounds down
+    const int left = static_cast<int>(static_cast<uint32_t>(batteryPercent) * games / drained);  // rounds down
+    return left > reserve ? left - reserve : 0;  // one game kept in reserve
 }
 
 void Databank::save() {
