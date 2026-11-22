@@ -16,6 +16,7 @@ Design agreed. Firmware written and building for the CoreInk and for the simulat
 | Path | What |
 |---|---|
 | [`docs/SPEC.md`](docs/SPEC.md) | Device specification: controls, timing rules, screens, power, screen-update plan, open items |
+| [`docs/PRO_MODE.md`](docs/PRO_MODE.md) | Planned paid features (not built): skip/coach mode mockup and how the app would unlock them |
 | [`docs/DATABANK.md`](docs/DATABANK.md) | Game databank: what each game record holds, and how a companion app reads and acknowledges games |
 | [`docs/mockups/`](docs/mockups/) | Pixel-exact screen mockups; `explorations/` holds the font and logo comparisons that led to them |
 | [`assets/logo/`](assets/logo/) | Wordmark: full resolution and the 176 px 1-bit version for the screen |
