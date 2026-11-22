@@ -44,7 +44,7 @@ Graphics library: **M5GFX / M5Unified** (has a driver for this screen, `Panel_GD
 | Rocker press, held 0.5 s | **Undo**: cursor steps back one slot and clears it (like backspace). Keep holding to undo another rock every 0.5 s; stops after one error buzz when nothing is left. |
 | Rocker press, short | Nothing. In coach mode, two presses within 0.4 s switch page. |
 
-In competition mode, rocker up and down move the cursor between the three history columns (up = left, down = right, wrapping round); pressing it does nothing.
+In competition mode, rocker up and down move the cursor to the previous or next teammate (wrapping round), and a double press of the centre changes your own position (section 8a). There is no undo.
 
 Timing clicks are timestamped in the interrupt handler, so screen activity never affects timing accuracy.
 
@@ -54,7 +54,7 @@ What the rocker is doing while the side button switches the device on picks the 
 
 | Switch on with | Mode | Screen | Rocker |
 |---|---|---|---|
-| Side button only | **Competition** | Times only, full width, the history in three columns per split that you file stones into; a black badge strip at the bottom reads `COMPETITION` / `times only, radio off`, for an umpire | Picks the column |
+| Side button only | **Competition** | Times only, full width, the history in a column per teammate, with a cursor on the player about to throw; a black badge strip at the bottom reads `COMPETITION` / `times only, radio off`, for an umpire | Moves the cursor; double press: your position |
 | Side button + rocker **down** | **League** | The main screen (section 8): times and your own 16 rocks | Made / missed / undo |
 | Side button + rocker **up** | **Coach** | Two pages (section 8a): the whole team's 64 rocks | Made / missed / undo; double press switches page |
 
@@ -144,7 +144,7 @@ A stone gives at most one **B2H** (back line, or tee line, to hog line) followed
 
 ## 8a. Competition and coach screens
 
-**Competition.** Labels y 0–12, newest result y 13–47 (DSEG7 25 px), split at x 96 (the H2H half is a little wider, as its times have a digit more). Below, three history columns in each half, labelled `1 2 3`. The rocker moves the **cursor** (a bold 2 px box around the column in both halves, its label inverted); each timed stone is filed in the column that has the cursor when its first result comes in, so the columns are your own groups (for example by team or by shot). Each column lists its stones newest first, 7 rows of 15 px; the newest stone overall is also shown large at the top. Times are drawn digits a little narrower than the main screen's (12 px high, 6 px wide, a narrow "1"). The device keeps the last 25 stones for the screen, always at least a screenful of each column, so a rarely used column keeps its times. Every switch-on starts with the cursor on column 1. The databank records each stone's column. The badge strip fills the bottom 26 px, white on black. A low battery replaces `times only, radio off` with `Battery low`.
+**Competition.** Labels y 0–12, newest result y 13–47 (DSEG7 25 px), split at x 92 (the H2H half is wider, as its times have a digit more). Below, a column per **teammate** in each half: you can't time your own rocks, so a lead's columns are `2nd`, `3rd`, `Skip`, a third's are `Lead`, `2nd`, `Skip`, and so on. Each column lists that player's stones newest first, 8 rows of 14 px, in drawn digits a little narrower than the main screen's (12 px high, 6 px wide, a narrow "1"); the newest stone overall is also shown large at the top. The **cursor** is the highlighted (inverted) header of the player about to throw: each timed stone is filed under that player, and after their second rock the cursor moves on to the next player by itself (from the skip back to the first, for the next end). Rocker up/down moves it by hand. A double press of the rocker centre changes your own position (lead → 2nd → 3rd → skip → lead), which the device remembers. The device keeps the last 25 stones for the screen, always at least a screenful of each player. Every switch-on starts with the cursor on the first column. The databank records who threw each stone. The badge strip fills the bottom 26 px, white on black. A low battery replaces `times only, radio off` with `Battery low`.
 
 **Coach, page 1 (timer priority).** The competition layout's times down to y 150, then the previous and current end: four columns (L, 2, 3, S), each headed with that position's running percentage, two rows of rocks (radius 5) with the end number on the left. Two small squares top right show which page is up.
 

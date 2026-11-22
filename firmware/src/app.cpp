@@ -22,7 +22,8 @@ constexpr int64_t kEdgeGapUs = 30000;          // ignore further edges of the sa
 constexpr int64_t kStableUs = 20000;           // rocker debounce
 constexpr int64_t kUndoHoldUs = kSec / 2;   // 0.5 s
 constexpr int64_t kPowerHoldUs = 3 * kSec;
-constexpr int64_t kDoublePressUs = 400000;     // coach: two rocker presses within 0.4 s switch page
+constexpr int64_t kDoublePressUs = 400000;     // two rocker presses within 0.4 s: a double press
+constexpr uint8_t kRocksPerPlayer = 2;         // each player throws two rocks an end
 constexpr int64_t kAwakeAfterPressUs = 2 * kSec;    // stay awake this long after a rocker press
 constexpr int64_t kAwakeAfterWakeUs = 40000;        // time to confirm the button that woke us
 constexpr int64_t kAuditEveryUs = 10 * 60 * kSec;   // clock audit sample interval
@@ -52,6 +53,7 @@ const char* const kTips[][2] = {
 };
 constexpr int kTipCount = sizeof kTips / sizeof kTips[0];
 const char* const kWarning[2] = {"Battery low", "Charge after this game"};
+const char* const kPositionNames[4] = {"lead", "second", "third", "skip"};
 
 // ------------------------------------------------------------------ sounds
 struct Note { uint16_t hz, ms; };
@@ -117,7 +119,11 @@ bool isTimingButton(uint8_t b) { return b == board::kTop || b == board::kSide; }
 // nothing = competition, down = league, up = coach (docs/SPEC.md section 2).
 GameMode mode = GameMode::Competition;
 uint8_t coachPage = 0;          // coach: 0 timer priority, 1 rock priority
-uint8_t activeCol = 0;          // competition: the history column new stones are filed in (rocker)
+// Competition: you time your teammates' stones, a column each. The cursor is on the player
+// about to throw; it moves on by itself after their second rock, or with the rocker.
+uint8_t myPosition = 0;         // 0 lead .. 3 skip (double press of the rocker centre; kept)
+uint8_t activeCol = 0;          // the column (0-2) with the cursor
+uint8_t rocksForActive = 0;     // stones timed for that player since the cursor got there
 int64_t lastRockerPress = -kSec; // coach: when the rocker was last pressed (short presses only count)
 
 TimingEngine timing;
@@ -189,6 +195,7 @@ void newGame() {
     bank.startGame(board::clockNow(), board::clockValid(), board::batteryPercent(), mode);
     shots.setCapacity(mode == GameMode::Coach ? ShotLog::kCoachSlots : ShotLog::kLeagueSlots);
     activeCol = 0;
+    rocksForActive = 0;
     stoneCount = 0;
     Serial.printf("game: new, %s mode\n", modeName(mode));
 }
@@ -203,6 +210,7 @@ uint16_t toStored(int32_t hundredths) {
 struct Model {
     GameMode mode = GameMode::League;
     uint8_t page = 0;       // coach: which page
+    uint8_t me = 0;         // competition: your position
     uint8_t activeCol = 0;  // competition: the column with the cursor
     Stone stones[kMaxStones];
     uint8_t stoneCount = 0;
@@ -244,7 +252,7 @@ void displayTask(void*) {
         if (m.help) {
             drawHelp(next, m.lastGame, m.shotPct, m.battery, m.batteryNote);
         } else if (m.mode == GameMode::Competition) {
-            drawCompetition(next, m.stones, m.stoneCount, m.activeCol, m.warning);
+            drawCompetition(next, m.stones, m.stoneCount, m.me, m.activeCol, m.warning);
         } else if (m.mode == GameMode::Coach) {
             if (m.page == 0) drawCoachTimer(next, m.stones, m.stoneCount, m.shots);
             else drawCoachRocks(next, m.stones, m.stoneCount, m.shots);
@@ -279,6 +287,7 @@ void syncModel(bool full = false) {
     publish([](Model& m) {
         m.mode = mode;
         m.page = coachPage;
+        m.me = myPosition;
         m.activeCol = activeCol;
         memcpy(m.stones, stones, sizeof stones);
         m.stoneCount = stoneCount;
@@ -293,7 +302,7 @@ void syncModel(bool full = false) {
 // ------------------------------------------------------------------ timing
 // A new stone, newest first. Competition files it in the active column (see addStone()).
 void pushStone(Stone s) {
-    s.col = mode == GameMode::Competition ? activeCol : 0;
+    s.player = mode == GameMode::Competition ? teammate(myPosition, activeCol) : Stone::kNoPlayer;
     addStone(stones, stoneCount, kMaxStones, s);
 }
 
@@ -306,6 +315,14 @@ void closeStone(int64_t now) {
 // closed, the tip moves on with a partial update; every kStonesPerClean-th stone that update
 // is a ghost-clearing full refresh instead.
 void countTimedStone(int64_t now, int64_t delay) {
+    // Competition: after the player's second rock, the cursor moves on to the next player.
+    if (mode == GameMode::Competition && stoneCount > 0 && stones[0].player == teammate(myPosition, activeCol) &&
+        ++rocksForActive >= kRocksPerPlayer) {
+        rocksForActive = 0;
+        activeCol = (activeCol + 1) % kGridColumns;
+        Serial.printf("competition: next player, %s\n", kPositionNames[teammate(myPosition, activeCol)]);
+        syncModel();
+    }
     ++stonesSinceClean;
     refreshAt = now + delay;
     refreshFull = stonesSinceClean >= kStonesPerClean;
@@ -339,7 +356,7 @@ void handleOutcome(const Outcome& o, int64_t now) {
     case TimingEvent::BH:
         noteResult(o.us);
         pushStone(Stone{toHundredths(o.us), -1});
-        bank.addStone(toStored(stones[0].bh), StoneTimes::kNoTime, board::clockNow(), stones[0].col);
+        bank.addStone(toStored(stones[0].bh), StoneTimes::kNoTime, board::clockNow(), stones[0].player);
         Serial.printf("timing: B2H %.2f\n", o.us / 1e6);
         syncModel();
         break;
@@ -350,7 +367,7 @@ void handleOutcome(const Outcome& o, int64_t now) {
             bank.setLastHogToHog(toStored(stones[0].hh), board::clockNow());
         } else {
             pushStone(Stone{-1, toHundredths(o.us)});
-            bank.addStone(StoneTimes::kNoTime, toStored(stones[0].hh), board::clockNow(), stones[0].col);
+            bank.addStone(StoneTimes::kNoTime, toStored(stones[0].hh), board::clockNow(), stones[0].player);
         }
         Serial.printf("timing: H2H %.2f\n", o.us / 1e6);
         closeStone(now);
@@ -527,15 +544,24 @@ bool onUndo() {
 
 // Coach: a second short rocker press within 0.4 s switches page (and isn't an undo).
 // The first press does nothing by itself, so switching page never costs a shot.
+// Competition: a double press changes your position (lead, 2nd, 3rd, skip, round again).
 void onRockerPress(ButtonState& s, int64_t t) {
-    if (mode != GameMode::Coach) return;
+    if (mode == GameMode::League) return;
     if (t - lastRockerPress < kDoublePressUs) {
         s.holdFired = true;      // this press can't turn into an undo
         lastRockerPress = -kSec; // a third press starts over
-        coachPage ^= 1;
         sound.play(kClick);
-        Serial.printf("coach: page %d\n", coachPage + 1);
-        syncModel();  // a page switch shows at once, even while a stone is timed
+        if (mode == GameMode::Coach) {
+            coachPage ^= 1;
+            Serial.printf("coach: page %d\n", coachPage + 1);
+        } else {
+            myPosition = (myPosition + 1) % 4;
+            prefs.putUChar("mypos", myPosition);
+            activeCol = 0;
+            rocksForActive = 0;
+            Serial.printf("competition: you are %s\n", kPositionNames[myPosition]);
+        }
+        syncModel();  // shows at once, even while a stone is timed
         return;
     }
     lastRockerPress = t;
@@ -547,15 +573,16 @@ void onPress(uint8_t b, int64_t t) {
     s.downSince = t;
     s.holdFired = false;
     s.nextRepeat = t + kUndoHoldUs;
-    // Competition: the rocker moves the cursor between the history columns (up = left,
-    // down = right, round and round); pressing it does nothing.
+    // Competition: rocker up/down moves the cursor to the previous/next player (round and
+    // round); a double press of the centre changes your position. No undo.
     if (mode == GameMode::Competition && !isTimingButton(b)) {
         s.holdFired = true;
         activity(t);
-        if (b == board::kPress) return;
+        if (b == board::kPress) { onRockerPress(s, t); return; }
         activeCol = (activeCol + (b == board::kUp ? kGridColumns - 1 : 1)) % kGridColumns;
+        rocksForActive = 0;
         sound.play(kClick);
-        Serial.printf("competition: column %d\n", activeCol + 1);
+        Serial.printf("competition: timing %s\n", kPositionNames[teammate(myPosition, activeCol)]);
         syncModel();
         return;
     }
@@ -612,7 +639,7 @@ void pollButtons(int64_t now) {
 // Databank export, framed so an app can parse it: "@GAMES n", n JSON lines, "@END".
 void printGames(uint32_t fromId) {
     static GameRecord g;
-    static char json[3000];  // a full coach game: 64 shots, 128 stones
+    static char json[3600];  // a full coach game: 64 shots, 128 stones
     uint32_t n = 0;
     for (uint32_t id = fromId; id <= bank.lastId(); ++id) n += bank.load(id, g) ? 1 : 0;
     Serial.printf("@GAMES %lu\n", static_cast<unsigned long>(n));
@@ -707,6 +734,7 @@ void setup() {
     prefs.begin("stoprock", false);
     tipIndex = prefs.getUChar("tip", 0) % kTipCount;
     sleepWhileTiming = prefs.getBool("sleeptim", true);
+    myPosition = prefs.getUChar("mypos", 0) % 4;
     if (!bankStore.begin()) Serial.println("databank: no \"games\" partition, games won't be kept");
     bank.begin();
     // The mode: whatever the rocker is doing while the side button switches the device on.

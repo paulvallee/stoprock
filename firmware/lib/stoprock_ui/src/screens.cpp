@@ -312,12 +312,11 @@ void rectOutline(Canvas& c, int x0, int y0, int x1, int y1) {
     c.fillRect(x1, y0, x1, y1);
 }
 
-// Competition history: three columns in each half, labelled 1 2 3, each listing the stones filed
-// in it newest first. The active column gets a bold box and an inverted label.
-// H2H times are a digit wider, so that half is a little wider (split at 96).
-constexpr int COMP_MID = 96;
-constexpr int GRID_LABEL_Y0 = 49, GRID_LABEL_Y1 = 61;
-constexpr int GRID_TOP = 65, GRID_PITCH = 15;
+// Competition history: a column per teammate in each half, headed with their position; the
+// active one's header is highlighted. H2H times are a digit wider, so that half is wider (x 92).
+constexpr int COMP_MID = 92;
+constexpr int GRID_LABEL_Y0 = 49, GRID_LABEL_Y1 = 60;
+constexpr int GRID_TOP = 61, GRID_PITCH = 14;
 constexpr int GRID_TYPICAL[2] = {23, 26};  // width of "3.47" and "13.92": each column centres that width
 
 void gridColumns(int half, int mid, int* edges) {
@@ -325,29 +324,26 @@ void gridColumns(int half, int mid, int* edges) {
     for (int k = 0; k < 4; ++k) edges[k] = x0 + (x1 - x0) * k / 3;
 }
 
-void timesGrid(Canvas& c, const Stone* stones, int count, int bottom, int mid, int active) {
+void timesGrid(Canvas& c, const Stone* stones, int count, int bottom, int mid, int me, int active) {
     int cols[2][4];
     gridColumns(0, mid, cols[0]);
     gridColumns(1, mid, cols[1]);
-    static const char* const kLabels[3] = {"1", "2", "3"};
     for (int half = 0; half < 2; ++half) {
         for (int k = 0; k < 3; ++k) {
             const int x0 = cols[half][k], x1 = cols[half][k + 1];
             const bool on = k == active;
-            if (on) {  // the cursor: a bold box from the line above to the strip, label inverted
-                c.fillRect(x0, 47, x1 - 1, 48);
-                c.fillRect(x0, bottom - 2, x1 - 1, bottom - 1);
-                c.fillRect(x0, 47, x0 + 1, bottom - 1);
-                c.fillRect(x1 - 2, 47, x1 - 1, bottom - 1);
-                c.fillRect(x0, GRID_LABEL_Y0, x1 - 1, GRID_LABEL_Y1);
-            }
-            textInBox(c, kFontSpleen6x12, kLabels[k], x0, x1, GRID_LABEL_Y0, GRID_LABEL_Y1, kCentre, 4, !on);
+            if (on) c.fillRect(x0, GRID_LABEL_Y0, x1 - 1, GRID_LABEL_Y1);
+            const char* name = kPositions[teammate(me, k)];  // on one baseline, centred by the 6 px cells
+            c.text(kFontSpleen6x12, (x0 + x1 - 6 * static_cast<int>(strlen(name))) / 2, GRID_LABEL_Y0, name, !on);
         }
     }
+    (void)bottom;
     char buf[12];
     int rows[3] = {0, 0, 0};
     for (int i = 0; i < count; ++i) {
-        const int k = stones[i].col < 3 ? stones[i].col : 0;
+        const int p = stones[i].player;
+        if (p > 3 || p == me) continue;
+        const int k = p < me ? p : p - 1;
         if (rows[k] >= kGridRows) continue;
         const int ry = GRID_TOP + rows[k]++ * GRID_PITCH;
         const int32_t vals[2] = {stones[i].bh, stones[i].hh};
@@ -364,7 +360,7 @@ void timesGrid(Canvas& c, const Stone* stones, int count, int bottom, int mid, i
 // Back2Hog | Hog2Hog across the full width: header, newest large, older below
 // (one to a row, or with grid three to a row).
 void timesWide(Canvas& c, const Stone* stones, int count, int bottom, int labelRight, bool grid = false,
-               int mid = WIDE_MID, int active = 0) {
+               int mid = WIDE_MID, int me = 0, int active = 0) {
     const Font& label = kFontSpleen6x12;
     textInBox(c, label, "Back2Hog", 0, mid, 0, LABEL_H, kCentre, 4);
     textInBox(c, label, "Hog2Hog", mid, labelRight, 0, LABEL_H, kCentre, 4);
@@ -375,7 +371,7 @@ void timesWide(Canvas& c, const Stone* stones, int count, int bottom, int labelR
     }
     hline(c, 0, W - 1, 47, 2);
     vline(c, mid, 0, bottom - 1);
-    if (grid) { timesGrid(c, stones, count, bottom, mid, active); return; }
+    if (grid) { timesGrid(c, stones, count, bottom, mid, me, active); return; }
     char buf[12];
     for (int i = 1; i < count; ++i) {
         const int ry = 50 + (i - 1) * 14;
@@ -417,11 +413,12 @@ void endRow(Canvas& c, const ShotLog& shots, int end, int cy) {
 
 }  // namespace
 
-void drawCompetition(Canvas& c, const Stone* stones, uint8_t count, uint8_t activeCol, bool lowBattery) {
+void drawCompetition(Canvas& c, const Stone* stones, uint8_t count, uint8_t me, uint8_t activeCol,
+                     bool lowBattery) {
     c.clear();
     const Font& label = kFontSpleen6x12;
     const int strip = H - TIP_H;
-    timesWide(c, stones, count, strip, W, true, COMP_MID, activeCol);
+    timesWide(c, stones, count, strip, W, true, COMP_MID, me, activeCol);
     c.fillRect(0, strip, W - 1, H - 1);
     textInBox(c, label, "COMPETITION", 0, W, strip + 1, strip + 13, kCentre, 4, false);
     textInBox(c, label, lowBattery ? "Battery low" : "times only, radio off", 0, W, strip + 13, strip + 25,
@@ -495,11 +492,12 @@ void addStone(Stone* list, uint8_t& count, uint8_t capacity, const Stone& s) {
     const Stone dropped = list[capacity - 1];  // the oldest: pushed off the end
     memmove(&list[1], &list[0], sizeof(Stone) * (capacity - 1));
     list[0] = s;
-    int per[kGridColumns] = {};
-    for (int i = 0; i < capacity; ++i) ++per[list[i].col % kGridColumns];
-    if (per[dropped.col % kGridColumns] >= kGridRows) return;  // its column still has a screenful
+    auto group = [](const Stone& s) { return s.player < 4 ? s.player : 4; };  // 4: no player
+    int per[5] = {};
+    for (int i = 0; i < capacity; ++i) ++per[group(list[i])];
+    if (group(dropped) == 4 || per[group(dropped)] >= kGridRows) return;  // nothing to keep it for
     for (int i = capacity - 1; i > 0; --i) {
-        if (per[list[i].col % kGridColumns] > kGridRows) {
+        if (per[group(list[i])] > kGridRows) {
             // drop this one instead, and keep the other as the oldest
             memmove(&list[i], &list[i + 1], sizeof(Stone) * (capacity - 1 - i));
             list[capacity - 1] = dropped;

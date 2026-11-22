@@ -24,10 +24,11 @@ def main():
         "battery": screen.main_screen(render.STONES, shots, tip=render.WARNING, warn=True),
         "help": screen.help_page(logo.device_logo(), "Last game 9/12 shots made", shot_pct=75, battery=84, battery_note="~11 games battery left"),
     }
-    refs["competition"] = screen.competition_screen(render.COMP_STONES, render.COMP_ACTIVE)
-    for a in (0, 2):
-        refs[f"competition-col{a + 1}"] = screen.competition_screen(render.COMP_STONES, a)
-    refs["competition-battery"] = screen.competition_screen(render.COMP_STONES, render.COMP_ACTIVE, low_battery=True)
+    refs["competition"] = screen.competition_screen(render.COMP_STONES, render.COMP_ME, render.COMP_ACTIVE)
+    refs["competition-battery"] = screen.competition_screen(render.COMP_STONES, render.COMP_ME, render.COMP_ACTIVE,
+                                                            low_battery=True)
+    for me in range(4):  # each position as yours, the cursor on each column
+        refs[f"competition-me{me}"] = screen.competition_screen(render.COMP_STONES, me, me % 3)
     for n in (0, 8, 35, 63, 64):
         coach = [i % 5 != 3 and i % 7 != 5 for i in range(n)]
         st = render.COACH_STONES if n else []

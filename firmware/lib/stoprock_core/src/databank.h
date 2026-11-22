@@ -22,7 +22,8 @@ struct StoneTimes {
     static constexpr uint16_t kNoTime = 0xFFFF;
     uint16_t backToHog = kNoTime;
     uint16_t hogToHog = kNoTime;
-    uint8_t column = 0;  // competition: the history column it was filed in (0-2); 0 otherwise
+    static constexpr uint8_t kNoPlayer = 0xFF;
+    uint8_t player = kNoPlayer;  // competition: who threw it, 0 lead .. 3 skip; kNoPlayer otherwise
 };
 
 // How the device was switched on (see docs/SPEC.md). 0 = league, so older records read as league.
@@ -53,7 +54,7 @@ public:
     static constexpr uint8_t kVersion = 4;            // record format version (1-3 still readable)
     static constexpr size_t kHeaderSize = 32;         // versions 3 and 4
     static constexpr size_t kOldHeaderSize = 24;      // versions 1 and 2
-    static constexpr size_t kStoneSize = 5;           // version 4; 4 before (no column)
+    static constexpr size_t kStoneSize = 5;           // version 4; 4 before (no player)
     static constexpr size_t kMaxRecordSize = kHeaderSize + kStoneSize * GameRecord::kMaxStones + 1;
     static constexpr uint32_t kDefaultCapacity = 500;
 
@@ -71,7 +72,7 @@ public:
     const GameRecord& current() const { return current_; }
     void setShots(uint8_t count, uint64_t bits, uint32_t now);
     // A stone's first result: a B2H (hogToHog = kNoTime), or an H2H with no B2H.
-    void addStone(uint16_t backToHog, uint16_t hogToHog, uint32_t now, uint8_t column = 0);
+    void addStone(uint16_t backToHog, uint16_t hogToHog, uint32_t now, uint8_t player = StoneTimes::kNoPlayer);
     // The H2H that completes the last stone's B2H.
     void setLastHogToHog(uint16_t hogToHog, uint32_t now);
     // The game ends (switch-off): note the battery. Kept only if the game is stored.

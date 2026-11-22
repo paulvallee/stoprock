@@ -364,17 +364,24 @@ WIDE_MID = 100               # times split in competition and coach page 1
 COACH_GX = [12 + k * 47 for k in range(5)]  # coach position columns
 
 
-# Competition history: three columns in each half, labelled 1 2 3. The rocker picks the active
-# column (bold box, label inverted); each timed stone goes into the column active at the time, so
-# the columns are the user's own groups. Each lists its stones newest first (the newest stone
-# overall is also shown large at the top).
-# H2H times are a digit wider than B2H, so the H2H half is a little wider: split at x 96.
-COMP_MID = 96
-GRID_LABEL = (49, 61)        # column labels 1 2 3
-GRID_TOP = 65                # first row
-GRID_PITCH = 15
-GRID_ROWS = 7
+# Competition history: one column per teammate, in throwing order (you can't time your own
+# rocks, so a lead sees 2nd, 3rd and Skip). Each column lists that player's stones newest first;
+# the newest stone overall is also shown large at the top. The rocker moves the cursor, the
+# highlighted header, to the player about to throw; it also moves on by itself after each
+# player's second rock.
+# H2H times are a digit wider than B2H, so the H2H half is wider: split at x 92.
+COMP_MID = 92
+GRID_LABEL = (49, 60)        # player headers
+GRID_TOP = 61                # first row
+GRID_PITCH = 14
+GRID_ROWS = 8
 GRID_TYPICAL = (23, 26)      # width of "3.47" and "13.92": each column centres that width
+POSITION_NAMES = ("Lead", "2nd", "3rd", "Skip")
+
+
+def teammates(me):
+    """The three positions timed by a player at position me (0 lead .. 3 skip), in throwing order."""
+    return [p for p in range(4) if p != me]
 
 
 def grid_columns(half, mid):
@@ -383,20 +390,23 @@ def grid_columns(half, mid):
     return [x0 + (x1 - x0) * k // 3 for k in range(4)]
 
 
-def times_grid(d, f, stones, bottom, mid, active):
-    """stones: (b2h, h2h, column) newest first."""
+def times_grid(d, f, stones, bottom, mid, me, active):
+    """stones: (b2h, h2h, position) newest first; active: the column (0-2) with the cursor."""
     cols = [grid_columns(0, mid), grid_columns(1, mid)]
+    players = teammates(me)
     for half in range(2):
         for k in range(3):
             x0, x1 = cols[half][k], cols[half][k + 1]
             on = k == active
-            if on:  # the cursor: a bold box from the line above to the strip, label inverted
-                d.rectangle([x0, 47, x1 - 1, bottom - 1], outline=0, width=2)
+            if on:
                 d.rectangle([x0, GRID_LABEL[0], x1 - 1, GRID_LABEL[1]], fill=0)
-            text_in_box(d, str(k + 1), f["label"], x0, x1, *GRID_LABEL, align="center", fill=1 if on else 0)
+            name = POSITION_NAMES[players[k]]  # on one baseline, centred by the 6 px cells
+            d.text(((x0 + x1 - 6 * len(name)) // 2, GRID_LABEL[0]), name, font=f["label"], fill=1 if on else 0)
     rows = [0, 0, 0]
     for stone in stones:
-        k = stone[2]
+        if stone[2] not in players:
+            continue
+        k = players.index(stone[2])
         if rows[k] >= GRID_ROWS:
             continue
         ry = GRID_TOP + rows[k] * GRID_PITCH
@@ -409,7 +419,7 @@ def times_grid(d, f, stones, bottom, mid, active):
                 text_in_box(d, f"{val:.2f}", f["grid"], x0, x1, ry, ry + GRID_PITCH, margin=margin)
 
 
-def times_wide(d, f, stones, bottom, label_right=W, grid=False, mid=WIDE_MID, active=0):
+def times_wide(d, f, stones, bottom, label_right=W, grid=False, mid=WIDE_MID, me=0, active=0):
     """Back2Hog | Hog2Hog across the full width: header, newest large, older below
     (one to a row, or with grid=True three to a row).
     label_right: where the Hog2Hog label's box ends (left of the page marks in coach mode)."""
@@ -423,7 +433,7 @@ def times_wide(d, f, stones, bottom, label_right=W, grid=False, mid=WIDE_MID, ac
     d.line([(0, 47), (W - 1, 47)], fill=0, width=2)
     d.line([(mid, 0), (mid, bottom - 1)], fill=0)
     if grid:
-        return times_grid(d, f, stones, bottom, mid, active)
+        return times_grid(d, f, stones, bottom, mid, me, active)
     for i, stone in enumerate(stones[1:]):
         ry = 50 + i * 14
         if ry + 14 > bottom:
@@ -433,15 +443,16 @@ def times_wide(d, f, stones, bottom, label_right=W, grid=False, mid=WIDE_MID, ac
                 text_in_box(d, f"{val:.2f}", f["row"], x0, x1, ry, ry + 14, margin=14)
 
 
-def competition_screen(stones, active=0, low_battery=False):
+def competition_screen(stones, me=0, active=0, low_battery=False):
     """Times only, full width, with a badge strip an umpire can read at a glance.
-    stones: (b2h, h2h, column 0-2) newest first; active: the column new stones go into."""
+    stones: (b2h, h2h, position 0-3) newest first; me: your position; active: the column (0-2)
+    with the cursor, the player whose stones are being timed."""
     f = fonts()
     img = Image.new("1", (W, H), 1)
     d = ImageDraw.Draw(img)
     d.fontmode = "1"
     strip = H - TIP_H
-    times_wide(d, f, stones, strip, grid=True, mid=COMP_MID, active=active)
+    times_wide(d, f, stones, strip, grid=True, mid=COMP_MID, me=me, active=active)
     d.rectangle([0, strip, W - 1, H - 1], fill=0)
     text_in_box(d, "COMPETITION", f["label"], 0, W, strip + 1, strip + 13, align="center", fill=1)
     sub = "Battery low" if low_battery else "times only, radio off"

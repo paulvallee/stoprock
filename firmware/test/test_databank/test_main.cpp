@@ -295,7 +295,7 @@ static void test_coach_game_of_64_shots_and_mode() {
     TEST_ASSERT_EQUAL_UINT8(0, g.shotCount);
 }
 
-static void test_stone_columns_and_version_3() {
+static void test_stone_players_and_version_3() {
     MemStore st;
     Databank db(st);
     db.begin();
@@ -305,10 +305,10 @@ static void test_stone_columns_and_version_3() {
     db.addStone(NONE, 1402, 3, 1);
     GameRecord g;
     TEST_ASSERT_TRUE(db.load(1, g));
-    TEST_ASSERT_EQUAL_UINT8(2, g.stones[0].column);
+    TEST_ASSERT_EQUAL_UINT8(2, g.stones[0].player);
     TEST_ASSERT_EQUAL_UINT16(1392, g.stones[0].hogToHog);
-    TEST_ASSERT_EQUAL_UINT8(1, g.stones[1].column);
-    // a version 3 record: the same header, 4 bytes per stone, no column
+    TEST_ASSERT_EQUAL_UINT8(1, g.stones[1].player);
+    // a version 3 record: the same header, 4 bytes per stone, no player
     uint8_t buf[Databank::kMaxRecordSize];
     memset(buf, 0, 32);
     buf[0] = 'G';
@@ -327,7 +327,7 @@ static void test_stone_columns_and_version_3() {
     TEST_ASSERT_EQUAL_UINT32(9, g.id);
     TEST_ASSERT_TRUE(g.mode == GameMode::Competition);
     TEST_ASSERT_EQUAL_UINT16(1392, g.stones[0].hogToHog);
-    TEST_ASSERT_EQUAL_UINT8(0, g.stones[0].column);
+    TEST_ASSERT_EQUAL_UINT8(StoneTimes::kNoPlayer, g.stones[0].player);
 }
 
 static void test_json_line() {
@@ -340,12 +340,12 @@ static void test_json_line() {
     r.shotBits = 0b101;
     r.stoneCount = 2;
     r.stones[0] = StoneTimes{347, 1392};
-    r.stones[1] = StoneTimes{NONE, 1402, 2};
+    r.stones[1] = StoneTimes{NONE, 1402, 2};  // thrown by the third
     char out[256];
     Databank::toJson(r, out, sizeof out);
     TEST_ASSERT_EQUAL_STRING(
         "{\"id\":12,\"v\":4,\"mode\":\"league\",\"started\":100,\"updated\":200,\"clock\":true,\"shots\":\"MXM\","
-        "\"made\":2,\"thrown\":3,\"pct\":67,\"stones\":[[3.47,13.92,1],[null,14.02,3]],"
+        "\"made\":2,\"thrown\":3,\"pct\":67,\"stones\":[[3.47,13.92,null],[null,14.02,\"third\"]],"
         "\"battery_start\":null,\"battery_end\":null}",
         out);
     char small[20];
@@ -369,7 +369,7 @@ int main() {
     RUN_TEST(test_games_left_estimate);
     RUN_TEST(test_reads_version_1_and_2_records);
     RUN_TEST(test_coach_game_of_64_shots_and_mode);
-    RUN_TEST(test_stone_columns_and_version_3);
+    RUN_TEST(test_stone_players_and_version_3);
     RUN_TEST(test_json_line);
     return UNITY_END();
 }

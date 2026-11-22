@@ -50,10 +50,10 @@ const char* modeName(GameMode m) {
 //   18 battery % at start   19 battery % at end (0xFF = unknown)   20 mode (0 league, 1 competition, 2 coach)
 //   21-23 reserved (0)   24-31 shot bits (u64)
 //   then per stone: back-to-hog (u16), hog-to-hog (u16), hundredths, 0xFFFF = not timed;
-//   column (u8, competition's history column 0-2)
+//   player (u8: competition's thrower, 0 lead .. 3 skip; 0xFF = none)
 //   last byte: checksum of everything before it
 //
-// Version 3: the same with 4 bytes per stone (no column).
+// Version 3: the same with 4 bytes per stone (no player).
 // Older versions (read only; their games read back as league):
 // Layout, version 2: a 24-byte header, 4 bytes per timed stone, then a checksum byte.
 //   0 'G'   1 version   2 flags (bit 0: clock set)   3 shot count
@@ -82,7 +82,7 @@ size_t Databank::encode(const GameRecord& r, uint8_t* out) {
     for (uint16_t i = 0; i < n; ++i, p += kStoneSize) {
         put16(p, r.stones[i].backToHog);
         put16(p + 2, r.stones[i].hogToHog);
-        p[4] = r.stones[i].column;
+        p[4] = r.stones[i].player;
     }
     *p = checksum(out, p - out);
     return (p - out) + 1;
@@ -120,7 +120,7 @@ bool Databank::decode(const uint8_t* in, size_t len, GameRecord& r) {
     for (uint16_t i = 0; i < n; ++i, p += stoneSize) {
         r.stones[i].backToHog = get16(p);
         r.stones[i].hogToHog = get16(p + 2);
-        if (stoneSize > 4) r.stones[i].column = p[4] < 3 ? p[4] : 0;
+        if (stoneSize > 4) r.stones[i].player = p[4] < 4 ? p[4] : StoneTimes::kNoPlayer;
     }
     return true;
 }
@@ -154,7 +154,9 @@ int Databank::toJson(const GameRecord& r, char* out, size_t len) {
         add(appendTime(out + (n < len ? n : len), room(), r.stones[i].backToHog));
         add(snprintf(out + (n < len ? n : len), room(), ","));
         add(appendTime(out + (n < len ? n : len), room(), r.stones[i].hogToHog));
-        add(snprintf(out + (n < len ? n : len), room(), ",%u]", r.stones[i].column + 1));
+        static const char* const kNames[4] = {"\"lead\"", "\"second\"", "\"third\"", "\"skip\""};
+        const uint8_t p = r.stones[i].player;
+        add(snprintf(out + (n < len ? n : len), room(), ",%s]", p < 4 ? kNames[p] : "null"));
     }
     add(snprintf(out + (n < len ? n : len), room(), "],\"battery_start\":"));
     add(r.batteryStart == GameRecord::kNoBattery ? snprintf(out + (n < len ? n : len), room(), "null")
@@ -208,9 +210,9 @@ void Databank::setShots(uint8_t count, uint64_t bits, uint32_t now) {
     save();
 }
 
-void Databank::addStone(uint16_t backToHog, uint16_t hogToHog, uint32_t now, uint8_t column) {
+void Databank::addStone(uint16_t backToHog, uint16_t hogToHog, uint32_t now, uint8_t player) {
     if (current_.stoneCount >= GameRecord::kMaxStones) return;  // a full game is 128 stones
-    current_.stones[current_.stoneCount++] = StoneTimes{backToHog, hogToHog, column};
+    current_.stones[current_.stoneCount++] = StoneTimes{backToHog, hogToHog, player};
     current_.updated = now;
     save();
 }

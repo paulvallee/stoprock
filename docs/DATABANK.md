@@ -17,7 +17,7 @@ One record per game:
 | `mode` | How the device was switched on: `competition`, `league` or `coach` (games before format version 3 read as `league`) |
 | `shots` | Rocks in order: `M` made, `X` missed. League: your own, up to 16. Coach: the team's, up to 64, in throwing order (lead, lead, second, second, third, third, skip, skip per end). Competition: none |
 | `made`, `thrown`, `pct` | Summary of `shots`; `pct` is -1 with no rocks thrown |
-| `stones` | Every timed stone in order, as `[back-to-hog, hog-to-hog, column]`: times in seconds, `null` where that split wasn't timed; column 1–3 is the competition history column it was filed in (always 1 in league and coach, and in games before format version 4). Up to 128 |
+| `stones` | Every timed stone in order, as `[back-to-hog, hog-to-hog, player]`: times in seconds, `null` where that split wasn't timed; player is who threw it in a competition game, `"lead"`, `"second"`, `"third"` or `"skip"` (`null` in league and coach, and in games before format version 4). Up to 128 |
 | `battery_start`, `battery_end` | Battery charge (%) at switch-on and at switch-off; `null` if unknown (no reading, a game recorded before format version 2, or a game that never switched off cleanly) |
 
 Rules:
@@ -54,14 +54,14 @@ Keys in the namespace `bank`:
 | 20 | Mode: 0 league, 1 competition, 2 coach |
 | 21–23 | Reserved (0) |
 | 24–31 | Shot bits (u64): bit *i* set = rock *i* made |
-| 32 … 32 + 5*n* − 1 | Per stone: back-to-hog, hog-to-hog (u16 hundredths; 0xFFFF = not timed), column (u8, 0–2) |
+| 32 … 32 + 5*n* − 1 | Per stone: back-to-hog, hog-to-hog (u16 hundredths; 0xFFFF = not timed), player (u8: 0 lead, 1 second, 2 third, 3 skip; 0xFF = none) |
 | last | Checksum of all preceding bytes |
 
 All numbers are little-endian. A record that fails its checks is skipped, not shown as a game.
 
 Older records are still read:
 
-- Version 3: the same with 4 bytes per stone (no column: read as column 1).
+- Version 3: the same with 4 bytes per stone (no player).
 
 Versions 1 and 2 read as league games:
 
@@ -96,7 +96,7 @@ Game listings are framed so they can be parsed from a stream that also carries l
 
 ```text
 @GAMES 2
-{"id":41,"v":4,"mode":"league","started":1795290802,"updated":1795297990,"clock":true,"shots":"MMXMMMXM","made":6,"thrown":8,"pct":75,"stones":[[3.47,13.92,1],[3.29,null,1],[null,14.02,1]],"battery_start":88,"battery_end":85}
+{"id":41,"v":4,"mode":"league","started":1795290802,"updated":1795297990,"clock":true,"shots":"MMXMMMXM","made":6,"thrown":8,"pct":75,"stones":[[3.47,13.92,null],[3.29,null,null],[null,14.02,null]],"battery_start":88,"battery_end":85}
 {"id":42,"v":4,"mode":"coach","started":1795377202,"updated":1795377300,"clock":true,"shots":"M","made":1,"thrown":1,"pct":100,"stones":[],"battery_start":85,"battery_end":null}
 @END
 ```
