@@ -33,6 +33,7 @@ extern const Font kFontDseg25;      // newest result
 extern const Font kFontDseg16;      // percentage
 extern const Font kFontSpleen6x12;  // labels, tips, help page
 extern const Bitmap kLogo;          // 176 px wordmark
+extern const Bitmap kLogoStrip;     // 106 x 22 wordmark for competition's badge strip
 extern const Sprite kRockSmall;     // a rock slot (radius 5)
 extern const Sprite kCursorSmall;   // cursor: the slot drawn bold
 extern const Sprite kCheckSmall;    // made

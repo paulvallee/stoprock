@@ -111,6 +111,7 @@ def main():
     spleen_chars = "".join(chr(c) for c in range(32, 127)) + "°"
     emit_font("kFontSpleen6x12", f["label"], spleen_chars, out)
     emit_bitmap("kLogo", logo.device_logo(), out)
+    emit_bitmap("kLogoStrip", logo.strip_logo(), out)  # competition's badge strip, drawn white
     # rocks (radius 5) for league and coach, drawn as tools/mockups/screen.py small_rock()
     emit_sprite("kRockSmall", lambda d, c: d.ellipse([c - 5, c - 5, c + 5, c + 5], outline=0, width=1), 15, out)
     emit_sprite("kCursorSmall", lambda d, c: d.ellipse([c - 5, c - 5, c + 5, c + 5], outline=0, width=3), 15, out)

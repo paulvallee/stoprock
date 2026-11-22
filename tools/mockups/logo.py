@@ -1,7 +1,7 @@
 """The stoprock wordmark: Nunito Black lettering, both o's drawn as curling rocks (side view)."""
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageChops, ImageDraw, ImageFont
 
 ROOT = Path(__file__).resolve().parents[2]
 NUNITO = ROOT / "assets" / "fonts" / "Nunito[wght].ttf"
@@ -55,8 +55,15 @@ def wordmark(band=0.085):
     return img.crop((l - m, t - m, r + m, b + m))
 
 
-def device_logo(width=176):
+def device_logo(width=176, threshold=128):
     """1-bit version for the screen: thicker band so it survives the reduction."""
     wm = wordmark(band=0.14)
     small = wm.resize((width, round(wm.height * width / wm.width)), Image.LANCZOS)
-    return small.point(lambda v: 0 if v < 128 else 255).convert("1")
+    return small.point(lambda v: 0 if v < threshold else 255).convert("1")
+
+
+def strip_logo():
+    """The small logo for competition's badge strip (drawn white on black there): 106 x 22,
+    cropped to the ink, with a heavier cut-off so the strokes hold up at this size."""
+    im = device_logo(108, threshold=150)
+    return im.crop(ImageChops.invert(im.convert("L")).getbbox())

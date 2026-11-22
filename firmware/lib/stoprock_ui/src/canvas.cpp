@@ -63,11 +63,11 @@ void Canvas::ring(float cx, float cy, float r, int width) {
     }
 }
 
-void Canvas::blit(const Bitmap& bm, int x, int y) {
+void Canvas::blit(const Bitmap& bm, int x, int y, bool black) {
     const int stride = (bm.w + 7) / 8;
     for (int j = 0; j < bm.h; ++j)
         for (int i = 0; i < bm.w; ++i)
-            if (bm.bits[j * stride + i / 8] & (0x80 >> (i % 8))) set(x + i, y + j);
+            if (bm.bits[j * stride + i / 8] & (0x80 >> (i % 8))) set(x + i, y + j, black);
 }
 
 const Glyph* findGlyph(const Font& f, uint16_t code) {

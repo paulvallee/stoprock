@@ -2,7 +2,7 @@
 from pathlib import Path
 import tempfile
 
-from PIL import BdfFontFile, Image, ImageDraw, ImageFont
+from PIL import BdfFontFile, Image, ImageChops, ImageDraw, ImageFont
 
 ROOT = Path(__file__).resolve().parents[2]
 FONTS = ROOT / "assets" / "fonts"
@@ -415,10 +415,14 @@ def competition_screen(stones, me=0, active=0, low_battery=False, tip=False, wai
     d.fontmode = "1"
     strip = H - TIP_H
     times_wide(d, f, stones, strip, grid=True, mid=COMP_MID, me=me, active=active, waiting=waiting)
+    # the badge strip: the logo white on black, and two lines right-aligned
     d.rectangle([0, strip, W - 1, H - 1], fill=0)
-    text_in_box(d, "COMPETITION", f["label"], 0, W, strip + 1, strip + 13, align="center", fill=1)
-    sub = "Battery low" if low_battery else "STOPWATCH FEATURES ONLY"
-    text_in_box(d, sub, f["label"], 0, W, strip + 13, strip + 25, align="center", fill=1)
+    from logo import strip_logo  # here, not at the top: logo.py is a sibling module
+    lg = strip_logo()
+    img.paste(1, (2, strip + (TIP_H - lg.height) // 2), ImageChops.invert(lg.convert("L")).convert("1"))
+    sub = "Battery low" if low_battery else "STOPWATCH ONLY"
+    for t, y in (("COMPETITION", strip + 1), (sub, strip + 13)):
+        d.text((W - 2 - 6 * len(t), y), t, font=f["label"], fill=1)
     if tip:
         tooltip(d, f, (f"You are {YOU_ARE[me]}", "") + POSITION_TIP, 49, strip)
     return img

@@ -391,10 +391,12 @@ void drawCompetition(Canvas& c, const Stone* stones, uint8_t count, uint8_t me, 
     const Font& label = kFontSpleen6x12;
     const int strip = H - TIP_H;
     timesWide(c, stones, count, strip, W, true, COMP_MID, me, activeCol, kGridRows, waiting);
+    // the badge strip: the logo white on black, and two lines right-aligned
     c.fillRect(0, strip, W - 1, H - 1);
-    textInBox(c, label, "COMPETITION", 0, W, strip + 1, strip + 13, kCentre, 4, false);
-    textInBox(c, label, lowBattery ? "Battery low" : "STOPWATCH FEATURES ONLY", 0, W, strip + 13, strip + 25,
-              kCentre, 4, false);
+    c.blit(kLogoStrip, 2, strip + (TIP_H - kLogoStrip.h) / 2, false);
+    const char* const lines[2] = {"COMPETITION", lowBattery ? "Battery low" : "STOPWATCH ONLY"};
+    for (int i = 0; i < 2; ++i)
+        c.text(label, W - 2 - 6 * static_cast<int>(strlen(lines[i])), strip + 1 + 12 * i, lines[i], false);
     if (tip) switchOnTip(c, me, false, 49, strip);
 }
 

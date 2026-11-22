@@ -28,7 +28,7 @@ public:
     void line(float x0, float y0, float x1, float y1, int width = 1, bool black = true);
     // Ellipse inscribed in [cx - r, cx + r] (Pillow's convention), outline of the given width.
     void ring(float cx, float cy, float r, int width);
-    void blit(const Bitmap& bm, int x, int y);
+    void blit(const Bitmap& bm, int x, int y, bool black = true);  // the bitmap's ink, in black or white
     void sprite(const Sprite& s, int cx, int cy) { blit(s.bm, cx - s.cx, cy - s.cy); }
 
     // Text: origin is where Pillow would place it. Returns the pen advance.
