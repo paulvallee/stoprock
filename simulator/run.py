@@ -45,6 +45,8 @@ class Device:
         self.uart1_port = uart1_port
         self.battery = 100                # the page's slider
         self.control = None
+        self.uart1 = None
+        self.uart1_lock = threading.Lock()
         cmd = [esp_emu, "--chip", "esp32s3", "--firmware", str(firmware),
                "--cosim-board", str(HERE / "board.json"),
                "--control-tcp", f"127.0.0.1:{control_port}",
@@ -59,15 +61,21 @@ class Device:
 
     # -- battery level: sent to the firmware's UART1 twice a second
     def _battery_feed(self):
-        sock = None
         while self.proc.poll() is None:
-            try:
-                if sock is None:
-                    sock = socket.create_connection(("127.0.0.1", self.uart1_port), timeout=2)
-                sock.sendall(f"battery {self.battery}\n".encode())
-            except OSError:
-                sock = None
+            self.send_uart1(f"battery {self.battery}")
             time.sleep(0.5)
+
+    def send_uart1(self, line):
+        """A line to the firmware's UART1 (battery level, and the rocker held at the next start-up)."""
+        with self.uart1_lock:
+            try:
+                if self.uart1 is None:
+                    self.uart1 = socket.create_connection(("127.0.0.1", self.uart1_port), timeout=2)
+                self.uart1.sendall((line + "\n").encode())
+                return True
+            except OSError:
+                self.uart1 = None
+                return False
 
     # -- emulator output
     def _read(self):
@@ -173,6 +181,15 @@ def make_handler(device):
             if self.path == "/battery":
                 device.battery = max(0, min(100, int(body.get("value", 100))))
                 self.send_response(204)
+                self.end_headers()
+                return
+            if self.path == "/hold":  # the rocker held at the next start-up: up, down or none
+                which = body.get("rocker")
+                if which not in ("up", "down", "none"):
+                    self.send_error(400)
+                    return
+                ok = device.send_uart1(f"hold {which}")
+                self.send_response(204 if ok else 503)
                 self.end_headers()
                 return
             if self.path != "/button":

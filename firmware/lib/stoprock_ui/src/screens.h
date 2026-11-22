@@ -41,7 +41,7 @@ inline uint8_t teammate(uint8_t me, uint8_t k) { return k < me ? k : k + 1; }
 // lowBattery puts a "Batt low" bar over the percentage.
 constexpr uint8_t kLeagueRows = 7;
 // focus: the half the rocker works on, shown by a bold border: your rocks (made/missed) or the
-// players (previous/next player).
+// players (up = next player, down = previous).
 enum class Focus : uint8_t { Rocks, Players };
 void drawLeague(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& shots, uint8_t me, uint8_t activeCol,
                 bool lowBattery, bool tip = false, Waiting waiting = Waiting::None, Focus focus = Focus::Rocks);

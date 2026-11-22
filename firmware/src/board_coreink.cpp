@@ -43,6 +43,7 @@ void begin() {
 }
 
 bool held(Button b) { return digitalRead(kPins[b]) == LOW; }
+bool heldAtStart(Button b) { return held(b); }
 int pin(Button b) { return kPins[b]; }
 
 void show(const stoprock::Canvas& c, stoprock::Rect r, bool full) {

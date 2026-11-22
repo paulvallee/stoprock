@@ -13,6 +13,9 @@ void begin();
 
 // True while the button is held (raw level, the app debounces).
 bool held(Button b);
+// Held when the firmware started: what picks the mode. On the CoreInk the same as held(); the
+// simulator also accepts it from the viewer, as a restart there may not keep a button's state.
+bool heldAtStart(Button b);
 // GPIO number of a button, for interrupts and wake-up.
 int pin(Button b);
 

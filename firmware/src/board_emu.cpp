@@ -10,7 +10,9 @@
 //
 // Buttons are esp-emulator push-button parts on the pins below (simulator/board.json).
 // The battery level comes from the viewer's slider: run.py sends "battery N" lines to UART1,
-// which esp-emulator bridges to a TCP port (--uart1-tcp).
+// which esp-emulator bridges to a TCP port (--uart1-tcp). Before a "restart in <mode>" the viewer
+// also sends "hold up|down|none": the rocker held for the next start-up, in case the emulator's
+// restart doesn't keep the push-buttons' state.
 #include <Arduino.h>
 #include <esp_attr.h>
 
@@ -40,8 +42,13 @@ bool clockIsSet = false;
 RTC_NOINIT_ATTR int savedBattery;
 RTC_NOINIT_ATTR uint32_t savedBatteryMagic;
 int battery = -1;
+// The rocker the viewer says is held for the next start-up (kButtonCount = none), until used.
+constexpr uint32_t kHoldMagic = 0x401DB07;
+RTC_NOINIT_ATTR uint32_t savedHold;
+RTC_NOINIT_ATTR uint32_t savedHoldMagic;
+int holdAtStart = kButtonCount;
 
-// Read any "battery N" lines waiting on UART1; returns true if one arrived.
+// Read any lines waiting on UART1 ("battery N", "hold up|down|none"); true if a battery one arrived.
 bool readBatteryLines() {
     static char line[24];
     static uint8_t len = 0;
@@ -56,6 +63,10 @@ bool readBatteryLines() {
             savedBattery = battery;
             savedBatteryMagic = kBatteryMagic;
             got = true;
+        } else if (!strncmp(line, "hold ", 5)) {
+            const char* w = line + 5;
+            savedHold = !strcmp(w, "up") ? kUp : !strcmp(w, "down") ? kDown : kButtonCount;
+            savedHoldMagic = kHoldMagic;
         }
     }
     return got;
@@ -66,6 +77,8 @@ bool readBatteryLines() {
 void begin() {
     for (int p : kPins) pinMode(p, INPUT_PULLUP);
     Serial1.begin(115200, SERIAL_8N1, kUart1Rx, kUart1Tx);
+    if (savedHoldMagic == kHoldMagic && savedHold < kButtonCount) holdAtStart = static_cast<int>(savedHold);
+    savedHoldMagic = 0;  // used once
     if (savedBatteryMagic == kBatteryMagic) {
         battery = savedBattery;
     } else {  // first start: wait briefly for the viewer's slider value
@@ -75,6 +88,7 @@ void begin() {
 }
 
 bool held(Button b) { return digitalRead(kPins[b]) == LOW; }
+bool heldAtStart(Button b) { return held(b) || holdAtStart == b; }
 int pin(Button b) { return kPins[b]; }
 
 void show(const stoprock::Canvas& c, stoprock::Rect r, bool full) {
@@ -125,7 +139,7 @@ void powerOff() {
     // off), then restart as soon as it's pressed again, as the CoreInk switches on while
     // the button is held. The app ignores a button already held when it starts.
     while (digitalRead(kPins[kSide]) == LOW) delay(20);
-    while (digitalRead(kPins[kSide]) == HIGH) delay(20);
+    while (digitalRead(kPins[kSide]) == HIGH) { readBatteryLines(); delay(20); }  // also takes "hold ..."
 }
 
 const char* name() { return "esp-emulator"; }

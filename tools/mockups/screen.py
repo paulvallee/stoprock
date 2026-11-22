@@ -427,7 +427,7 @@ def competition_screen(stones, me=0, active=0, low_battery=False, tip=False, wai
 # League: the competition layout with 7 rows a player, and below it your own rocks like a
 # scoreboard (ends across, rock 1 over rock 2) with your percentage large on the right.
 # The rocker works on one half at a time, the focus, shown by a bold border: your rocks (up/down =
-# made/missed) or the players (up/down = previous/next player). Hold up or down to move it.
+# made/missed) or the players (up = next player, down = previous). Hold up or down to move it.
 LEAGUE_ROWS_BOTTOM = 159     # 2 px line under the times
 LEAGUE_PCT_X = 134           # 2 px divider left of the percentage
 LEAGUE_SLOTS = 16

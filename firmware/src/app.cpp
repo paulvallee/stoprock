@@ -115,7 +115,7 @@ uint8_t myPosition = 0;         // 0 lead .. 3 skip (double press of the rocker 
 uint8_t activeCol = 0;          // the column (0-2) with the cursor
 uint8_t rocksForActive = 0;     // stones timed for that player since the cursor got there
 // League: what rocker up/down work on, the focus (bold border): your rocks (made/missed) or the
-// players (previous/next). Hold up 0.5 s for the players, hold down 0.5 s for your rocks.
+// players (up = next, down = previous). Hold up 0.5 s for the players, hold down 0.5 s for your rocks.
 Focus focus = Focus::Rocks;
 int64_t lastRockerPress = -kSec; // coach: when the rocker was last pressed (short presses only count)
 
@@ -587,11 +587,11 @@ void setFocus(Focus f) {
 }
 
 // League: a short press of rocker up/down, acted on when it's let go (a long press moves the
-// focus instead): made/missed, or previous/next player.
+// focus instead): made/missed, or next/previous player.
 void onRelease(uint8_t b) {
     if (mode != GameMode::League || (b != board::kUp && b != board::kDown) || buttons[b].holdFired) return;
     if (focus == Focus::Rocks) onShot(b == board::kUp);
-    else movePlayer(b == board::kUp ? -1 : 1);
+    else movePlayer(b == board::kUp ? 1 : -1);  // up = next player, down = previous
 }
 
 void onPress(uint8_t b, int64_t t) {
@@ -600,13 +600,13 @@ void onPress(uint8_t b, int64_t t) {
     s.downSince = t;
     s.holdFired = false;
     s.nextRepeat = t + kUndoHoldUs;
-    // Competition: rocker up/down moves the cursor to the previous/next player (round and
+    // Competition: rocker up/down moves the cursor to the next/previous player (round and
     // round); a double press of the centre changes your position. No undo.
     if (mode == GameMode::Competition && !isTimingButton(b)) {
         s.holdFired = true;
         activity(t);
         if (b == board::kPress) { onRockerPress(s, t); return; }
-        movePlayer(b == board::kUp ? -1 : 1);
+        movePlayer(b == board::kUp ? 1 : -1);  // up = next player, down = previous
         return;
     }
     activity(t);
@@ -771,8 +771,8 @@ void setup() {
     if (!bankStore.begin()) Serial.println("databank: no \"games\" partition, games won't be kept");
     bank.begin();
     // The mode: whatever the rocker is doing while the side button switches the device on.
-    if (board::held(board::kDown)) mode = GameMode::League;
-    else if (board::held(board::kUp)) mode = GameMode::Coach;
+    if (board::heldAtStart(board::kDown)) mode = GameMode::League;
+    else if (board::heldAtStart(board::kUp)) mode = GameMode::Coach;
     else mode = GameMode::Competition;
     newGame();  // every switch-on starts a new game
 
