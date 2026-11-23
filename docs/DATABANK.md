@@ -17,7 +17,7 @@ One record per game:
 | `mode` | How the device was switched on: `competition`, `league` or `coach` (games before format version 3 read as `league`) |
 | `shots` | Rocks in order: `M` made, `X` missed. League: your own, up to 16. Coach: the team's, up to 64, in throwing order (lead, lead, second, second, third, third, skip, skip per end). Competition: none |
 | `made`, `thrown`, `pct` | Summary of `shots`; `pct` is -1 with no rocks thrown |
-| `stones` | Every timed stone in order, as `[back-to-hog, hog-to-hog, player]`: times in seconds, `null` where that split wasn't timed; player is who threw it in a competition or league game, `"lead"`, `"second"`, `"third"` or `"skip"`, or in league `"them"` for the other team (`null` in coach games, and in games before format version 4). Up to 128 |
+| `stones` | Every timed stone in order, as `[back-to-hog, hog-to-hog, player]`: times in seconds, `null` where that split wasn't timed; player is who threw it in a competition or league game, `"lead"`, `"second"`, `"third"` or `"skip"`, or `"them"` for the other team (`null` in coach games, and in games before format version 4). Up to 128 |
 | `battery_start`, `battery_end` | Battery charge (%) at switch-on and at switch-off; `null` if unknown (no reading, a game recorded before format version 2, or a game that never switched off cleanly) |
 
 Rules:

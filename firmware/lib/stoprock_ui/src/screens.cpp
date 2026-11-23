@@ -61,7 +61,6 @@ struct SegFont {
 
 constexpr SegFont kRowFont{12, 7, 2, 2, 2, false};  // older results
 constexpr SegFont kEndFont{9, 5, 1, 1, 1, false};   // end numbers: equal-width cells, a "1" sits on the right
-constexpr SegFont kGridFont{12, 6, 2, 1, 2, true};   // competition history, three to a row
 
 enum Align { kLeft, kCentre, kRight };
 
@@ -240,50 +239,11 @@ void rectOutline(Canvas& c, int x0, int y0, int x1, int y1) {
     c.fillRect(x1, y0, x1, y1);
 }
 
-// Competition history: a column per teammate in each half, headed with their position; the
-// active one's header is highlighted. H2H times are a digit wider, so that half is wider (x 92).
+// Competition and league history: four columns, your teammates and THEM (leagueTimes). H2H times
+// are a digit wider, so the H2H half of the large row is wider (x 92).
 constexpr int COMP_MID = 92;
 constexpr int GRID_LABEL_Y0 = 49, GRID_LABEL_Y1 = 60;
-constexpr int GRID_TOP = 61, GRID_PITCH = 14;
-constexpr int GRID_TYPICAL[2] = {23, 26};  // width of "3.47" and "13.92": each column centres that width
-
-// Edges of the three columns in a half (0 = B2H, 1 = H2H), inset from the screen's sides.
-void gridColumns(int half, int mid, int* edges, int inset = 0) {
-    const int x0 = half == 0 ? inset : mid, x1 = half == 0 ? mid : W - inset;
-    for (int k = 0; k < 4; ++k) edges[k] = x0 + (x1 - x0) * k / 3;
-}
-
-void timesGrid(Canvas& c, const Stone* stones, int count, int mid, int me, int active, int rowsMax, int inset) {
-    int cols[2][4];
-    gridColumns(0, mid, cols[0], inset);
-    gridColumns(1, mid, cols[1], inset);
-    for (int half = 0; half < 2; ++half) {
-        for (int k = 0; k < 3; ++k) {
-            const int x0 = cols[half][k], x1 = cols[half][k + 1];
-            const bool on = k == active;
-            if (on) c.fillRect(x0, GRID_LABEL_Y0, x1 - 1, GRID_LABEL_Y1);
-            const char* name = kPositions[teammate(me, k)];  // on one baseline, centred by the 6 px cells
-            c.text(kFontSpleen6x12, (x0 + x1 - 6 * static_cast<int>(strlen(name))) / 2, GRID_LABEL_Y0, name, !on);
-        }
-    }
-    char buf[12];
-    int rows[3] = {0, 0, 0};
-    for (int i = 0; i < count; ++i) {
-        const int p = stones[i].player;
-        if (p > 3 || p == me) continue;
-        const int k = p < me ? p : p - 1;
-        if (rows[k] >= rowsMax) continue;
-        const int ry = GRID_TOP + rows[k]++ * GRID_PITCH;
-        const int32_t vals[2] = {stones[i].bh, stones[i].hh};
-        for (int half = 0; half < 2; ++half) {
-            if (vals[half] < 0) continue;
-            const int x0 = cols[half][k], x1 = cols[half][k + 1];
-            formatTime(vals[half], buf, sizeof buf);
-            // centred; an odd pixel goes on the right
-            segInBox(c, kGridFont, buf, x0, x1, ry, ry + GRID_PITCH, kRight, (x1 - x0 - GRID_TYPICAL[half] + 1) / 2);
-        }
-    }
-}
+constexpr int GRID_PITCH = 14;
 
 // The current stone across both halves; a stopwatch where an awaited time will appear.
 // Awaiting the B2H, the row is still empty (the new stone has no time yet).
@@ -299,11 +259,9 @@ void newestRow(Canvas& c, const Stone* stones, int count, Waiting waiting, int m
     }
 }
 
-// Back2Hog | Hog2Hog across the full width: header, newest large, older below
-// (one to a row, or with grid three to a row).
-void timesWide(Canvas& c, const Stone* stones, int count, int bottom, int labelRight, bool grid = false,
-               int mid = WIDE_MID, int me = 0, int active = 0, int rowsMax = kGridRows,
-               Waiting waiting = Waiting::None, int inset = 0) {
+// Back2Hog | Hog2Hog across the full width: header, newest large, older below, one to a row.
+void timesWide(Canvas& c, const Stone* stones, int count, int bottom, int labelRight, Waiting waiting = Waiting::None) {
+    const int mid = WIDE_MID;
     const Font& label = kFontSpleen6x12;
     textInBox(c, label, "Back2Hog", 0, mid, 0, LABEL_H, kCentre, 4);
     textInBox(c, label, "Hog2Hog", mid, labelRight, 0, LABEL_H, kCentre, 4);
@@ -311,7 +269,6 @@ void timesWide(Canvas& c, const Stone* stones, int count, int bottom, int labelR
     newestRow(c, stones, count, waiting, mid, kFontDseg25, 13, 47, 3, kStopwatch, 30);
     hline(c, 0, W - 1, 47, 2);
     vline(c, mid, 0, bottom - 1);
-    if (grid) { timesGrid(c, stones, count, mid, me, active, rowsMax, inset); return; }
     char buf[12];
     const int first = waiting == Waiting::BackToHog ? 0 : 1;  // a new stone under way: the last one is older now
     for (int i = first; i < count; ++i) {
@@ -376,33 +333,20 @@ static void tooltip(Canvas& c, const char* const* lines, int n, int top, int bot
     }
 }
 
-// Switch-on tips: your position, how to change it, and in league (not competition, which has no
-// holds) what holding the rocker does. Also shown when you change position.
+// Switch-on tips: your position, how to change it, and what holding the rocker does (competition
+// has no rocks, so only moving the last time). Also shown when you change position.
 static const char* const kYouAre[4] = {"You are LEAD", "You are SECOND", "You are THIRD", "You are SKIP"};
-static void switchOnTip(Canvas& c, uint8_t me, bool focusToo, int top, int bottom) {
-    const char* lines[7] = {kYouAre[me % 4], "", "Double click rocker to", "change your position",
-                            "", "Hold rocker down: your rocks", "Hold rocker up: move last time"};
-    tooltip(c, lines, focusToo ? 7 : 4, top, bottom);
+static void switchOnTip(Canvas& c, uint8_t me, bool league, int top, int bottom) {
+    const char* lines[7] = {kYouAre[me % 4], "", "Double click rocker to", "change your position", "",
+                            "Hold rocker down: your rocks", "Hold rocker up: move last time"};
+    if (!league) lines[5] = lines[6];  // competition: no rocks
+    tooltip(c, lines, league ? 7 : 6, top, bottom);
 }
 
-void drawCompetition(Canvas& c, const Stone* stones, uint8_t count, uint8_t me, uint8_t activeCol,
-                     bool lowBattery, bool tip, Waiting waiting) {
-    c.clear();
-    const Font& label = kFontSpleen6x12;
-    const int strip = H - TIP_H;
-    timesWide(c, stones, count, strip, W, true, COMP_MID, me, activeCol, kGridRows, waiting);
-    // the badge strip: the logo white on black, and two lines right-aligned
-    c.fillRect(0, strip, W - 1, H - 1);
-    c.blit(kLogoStrip, 2, strip + (TIP_H - kLogoStrip.h) / 2, false);
-    const char* const lines[2] = {"COMPETITION", lowBattery ? "Battery low" : "STOPWATCH ONLY"};
-    for (int i = 0; i < 2; ++i)
-        c.text(label, W - 2 - 6 * static_cast<int>(strlen(lines[i])), strip + 1 + 12 * i, lines[i], false);
-    if (tip) switchOnTip(c, me, false, 49, strip);
-}
-
-// League's four columns: your teammates in throwing order, then THEM. Each lists its stones newest
+// Competition and league's four columns: your teammates in throwing order, then THEM. Each lists its stones newest
 // first, a time a line: B2H black on white, H2H white on black.
-static void leagueTimes(Canvas& c, const Stone* stones, int count, uint8_t me, uint8_t active, int bottom) {
+static void leagueTimes(Canvas& c, const Stone* stones, int count, uint8_t me, uint8_t active, int bottom,
+                        int linesMax) {
     static const int xs[kLeagueColumns + 1] = {2, 51, 100, 149, 198};
     constexpr int kTop = 62;
     for (int k = 0; k < kLeagueColumns; ++k) {
@@ -421,7 +365,7 @@ static void leagueTimes(Canvas& c, const Stone* stones, int count, uint8_t me, u
         const int x0 = xs[k] + 1, x1 = xs[k + 1] - 1;
         const int32_t vals[2] = {stones[i].bh, stones[i].hh};
         for (int half = 0; half < 2; ++half) {
-            if (vals[half] < 0 || lines[k] >= kLeagueRows) continue;
+            if (vals[half] < 0 || lines[k] >= linesMax) continue;
             const int y = kTop + lines[k]++ * GRID_PITCH;
             const bool inverted = half == 1;
             if (inverted) c.fillRect(x0 + 1, y, x1 - 1, y + GRID_PITCH - 2);
@@ -431,11 +375,9 @@ static void leagueTimes(Canvas& c, const Stone* stones, int count, uint8_t me, u
     }
 }
 
-void drawLeague(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& shots, uint8_t me, uint8_t activeCol,
-                bool lowBattery, bool tip, Waiting waiting, Focus focus) {
-    c.clear();
-    const int top = 159;    // 2 px line under the times
-    const int split = 134;  // 2 px divider left of the percentage
+// The newest stone large, then the four columns down to bottom.
+static void fourColumns(Canvas& c, const Stone* stones, int count, uint8_t me, uint8_t active, int bottom,
+                        int linesMax, Waiting waiting) {
     const Font& label = kFontSpleen6x12;
     textInBox(c, label, "Back2Hog", 0, COMP_MID, 0, LABEL_H, kCentre, 4);
     textInBox(c, label, "Hog2Hog", COMP_MID, W, 0, LABEL_H, kCentre, 4);
@@ -443,7 +385,30 @@ void drawLeague(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& sh
     newestRow(c, stones, count, waiting, COMP_MID, kFontDseg25, 13, 47, 3, kStopwatch, 30);
     hline(c, 0, W - 1, 47, 2);
     vline(c, COMP_MID, 0, 46);
-    leagueTimes(c, stones, count, me, activeCol, top);
+    leagueTimes(c, stones, count, me, active, bottom, linesMax);
+}
+
+void drawCompetition(Canvas& c, const Stone* stones, uint8_t count, uint8_t me, uint8_t activeCol,
+                     bool lowBattery, bool tip, Waiting waiting) {
+    c.clear();
+    const Font& label = kFontSpleen6x12;
+    const int strip = H - TIP_H;
+    fourColumns(c, stones, count, me, activeCol, strip, kCompetitionRows, waiting);
+    // the badge strip: the logo white on black, and two lines right-aligned
+    c.fillRect(0, strip, W - 1, H - 1);
+    c.blit(kLogoStrip, 2, strip + (TIP_H - kLogoStrip.h) / 2, false);
+    const char* const lines[2] = {"COMPETITION", lowBattery ? "Battery low" : "STOPWATCH ONLY"};
+    for (int i = 0; i < 2; ++i)
+        c.text(label, W - 2 - 6 * static_cast<int>(strlen(lines[i])), strip + 1 + 12 * i, lines[i], false);
+    if (tip) switchOnTip(c, me, false, 49, strip);
+}
+
+void drawLeague(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& shots, uint8_t me, uint8_t activeCol,
+                bool lowBattery, bool tip, Waiting waiting, Focus focus) {
+    c.clear();
+    const int top = 159;    // 2 px line under the times
+    const int split = 134;  // 2 px divider left of the percentage
+    fourColumns(c, stones, count, me, activeCol, top, kLeagueRows, waiting);
     hline(c, 0, W - 1, top, 2);
     vline(c, split, top, H - 1, 2);
     // your rocks like a scoreboard: ends across, rock 1 over rock 2
@@ -484,7 +449,7 @@ void drawCoachTimer(Canvas& c, const Stone* stones, uint8_t count, const ShotLog
     const Font& label = kFontSpleen6x12;
     pageMarks(c, 0);
     const int bottom = 150;
-    timesWide(c, stones, count, bottom, W - 18, false, WIDE_MID, 0, 0, kGridRows, waiting);
+    timesWide(c, stones, count, bottom, W - 18, waiting);
     hline(c, 0, W - 1, bottom, 2);
     for (int p = 0; p < 4; ++p) {
         if (p) vline(c, COACH_GX[p], bottom, H - 1);

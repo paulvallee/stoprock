@@ -21,16 +21,8 @@ COACH_SHOTS = [i % 5 != 3 and i % 7 != 5 for i in range(35)]
 COACH_STONES = [(3.47, 13.92), (3.29, None), (3.51, 13.66), (None, 14.02), (3.38, None), (3.42, 13.81),
                 (3.61, 14.20), (3.33, 13.75), (None, 13.88), (3.40, 14.05), (3.55, None), (3.36, 13.97)]
 
-# competition and league sample: you're lead; 25 of your teammates' stones newest first, two each in turn
-# (2nd, 2nd, 3rd, 3rd, Skip, Skip, ...), and the third's first rock of this end just timed.
-COMP_ME = 0
-COMP_STONES = [(None if i % 5 == 3 else (320 + i * 37 % 60) / 100,
-                None if i % 7 == 4 else (1350 + i * 53 % 90) / 100,
-                1 + (i + 3) // 2 % 3) for i in range(25)]
-COMP_ACTIVE = 1
-
-# league sample: you're 2nd; your teammates' and the other team's (player 4) stones newest first, and
-# the 3rd up next
+# competition and league sample: you're 2nd; your teammates' and the other team's (player 4) stones
+# newest first, and the 3rd up next
 LEAGUE_ME = 1
 LEAGUE_STONES = [(3.41, 13.86, 4), (3.47, 13.92, 2), (3.29, None, 4), (3.51, 13.66, 2), (None, 14.02, 4),
                  (3.38, 13.71, 4), (3.42, 13.81, 0), (3.61, 14.20, 4), (3.33, 13.75, 0), (3.40, 14.05, 4),
@@ -96,8 +88,8 @@ def main():
     sheet("Start-up modes: hold the side button to switch on, plus the rocker to choose", [
         ("Off page", "How to start each mode; last game and battery",
          screen.help_page(dev, "Last game 9/12 shots made", shot_pct=75, battery=84, battery_note="~11 games battery left")),
-        ("Competition (side button only)", "Times only, full width; badge for umpires",
-         screen.competition_screen(COMP_STONES, COMP_ME, COMP_ACTIVE)),
+        ("Competition (side button only)", "Times only, by player and THEM; badge for umpires",
+         screen.competition_screen(LEAGUE_STONES, LEAGUE_ME, LEAGUE_ACTIVE)),
         ("League (+ rocker down)", "Teammates' and THEM's times; your own 16 rocks",
          screen.league_screen(LEAGUE_STONES, BASE + [False], LEAGUE_ME, LEAGUE_ACTIVE)),
         ("Coach, page 1 (+ rocker up)", "Timer priority; double-press the rocker to switch",
@@ -105,7 +97,7 @@ def main():
         ("Coach, page 2", "Rock priority: all 64 rocks, % per position",
          screen.coach_rocks_screen(COACH_STONES, COACH_SHOTS)),
         ("Competition, low battery", "The badge's second line becomes the warning",
-         screen.competition_screen(COMP_STONES, COMP_ME, COMP_ACTIVE, low_battery=True)),
+         screen.competition_screen(LEAGUE_STONES, LEAGUE_ME, LEAGUE_ACTIVE, low_battery=True)),
     ], DOCS / "modes.png")
 
     # you're 2nd: hold the rocker down to log your rocks; after one, the focus is back on the

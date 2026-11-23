@@ -25,14 +25,7 @@ int main(int argc, char** argv) {
     // start-up modes: the same samples as tools/mockups/render.py (COACH_STONES, COACH_SHOTS)
     const Stone many[] = {{347, 1392}, {329, -1},  {351, 1366}, {-1, 1402}, {338, -1},  {342, 1381},
                           {361, 1420}, {333, 1375}, {-1, 1388}, {340, 1405}, {355, -1}, {336, 1397}};
-    // competition: 25 stones, you lead, the third active, as tools/mockups/render.py COMP_STONES
-    Stone comp[25];
-    for (int i = 0; i < 25; ++i) {
-        comp[i].bh = i % 5 == 3 ? -1 : 320 + i * 37 % 60;
-        comp[i].hh = i % 7 == 4 ? -1 : 1350 + i * 53 % 90;
-        comp[i].player = static_cast<uint8_t>(1 + (i + 3) / 2 % 3);  // you're lead: 2nd, 3rd, Skip in turn
-    }
-    // league: you're 2nd, as tools/mockups/render.py LEAGUE_STONES; your rocks BASE + [False]
+    // competition and league: you're 2nd, as tools/mockups/render.py LEAGUE_STONES; your rocks BASE + [False]
     const Stone league[] = {{341, 1386, 4}, {347, 1392, 2}, {329, -1, 4},  {351, 1366, 2}, {-1, 1402, 4},
                             {338, 1371, 4}, {342, 1381, 0}, {361, 1420, 4}, {333, 1375, 0}, {340, 1405, 4},
                             {355, -1, 3},  {336, 1397, 4}, {344, 1362, 3}, {358, 1411, 4}};
@@ -53,14 +46,14 @@ int main(int argc, char** argv) {
         writePbm(c, path);
     }
 
-    drawCompetition(c, comp, 25, 0, 1, false);
+    drawCompetition(c, league, nl, 1, 1, false);
     snprintf(path, sizeof path, "%s/competition.pbm", dir);
     writePbm(c, path);
-    drawCompetition(c, comp, 25, 0, 1, true);
+    drawCompetition(c, league, nl, 1, 1, true);
     snprintf(path, sizeof path, "%s/competition-battery.pbm", dir);
     writePbm(c, path);
     for (uint8_t me = 0; me < 4; ++me) {  // each position as yours, the cursor on each column
-        drawCompetition(c, comp, 25, me, me % 3, false);
+        drawCompetition(c, league, nl, me, (me + 1) % 4, false);
         snprintf(path, sizeof path, "%s/competition-me%d.pbm", dir, me);
         writePbm(c, path);
     }
@@ -76,7 +69,7 @@ int main(int argc, char** argv) {
     }
 
     // switch-on: no stones yet, the position tip over the times
-    drawCompetition(c, comp, 0, 0, 0, false, true);
+    drawCompetition(c, league, 0, 0, 0, false, true);
     snprintf(path, sizeof path, "%s/competition-tip.pbm", dir);
     writePbm(c, path);
     drawLeague(c, league, 0, ShotLog(), 2, 0, false, true);
@@ -84,10 +77,7 @@ int main(int argc, char** argv) {
     writePbm(c, path);
 
     // a stone being timed: the stopwatch where the awaited time will appear
-    Stone half[25];  // the newest stone has its B2H, awaiting the H2H
-    for (int i = 0; i < 25; ++i) half[i] = comp[i];
-    half[0].hh = -1;
-    drawCompetition(c, comp, 25, 0, 1, false, false, Waiting::BackToHog);
+    drawCompetition(c, league, nl, 1, 1, false, false, Waiting::BackToHog);
     snprintf(path, sizeof path, "%s/competition-wait-b2h.pbm", dir);
     writePbm(c, path);
     drawLeague(c, league, nl, shots, 1, 1, false, false, Waiting::BackToHog, Focus::Rocks);

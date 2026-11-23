@@ -26,15 +26,15 @@ enum class Waiting : uint8_t { None, BackToHog, HogToHog };
 void drawHelp(Canvas& c, const char* lastGame, int shotPct = -1, int battery = -1,
               const char* batteryNote = nullptr);
 
-// Competition (switched on with the side button alone): times only, full width, and a badge
-// strip an umpire can read. lowBattery replaces the strip's second line. The history has a column
-// per teammate (the three positions other than me, 0 lead .. 3 skip, in throwing order), each
-// listing that player's stones newest first; activeCol (0-2) has its header highlighted.
-constexpr uint8_t kGridColumns = 3, kGridRows = 8;
-// tip: the switch-on tip, "Double click rocker to change position", in a box over the times.
+// Competition (switched on with the side button alone): times only, and a badge strip an umpire
+// can read. lowBattery replaces the strip's second line. The history is as in league (below): four
+// columns, your teammates and THEM, 8 lines; activeCol (0-3) has its header highlighted.
+constexpr uint8_t kCompetitionRows = 8;
+constexpr uint8_t kGridRows = 8;  // stones kept per player (addStone)
+// tip: the switch-on tip (your position, double click to change it, hold up to move) over the times.
 void drawCompetition(Canvas& c, const Stone* stones, uint8_t count, uint8_t me, uint8_t activeCol,
                      bool lowBattery, bool tip = false, Waiting waiting = Waiting::None);
-// The position shown in column k (0-2) for a player at position me.
+// The teammate in column k (0-2) for a player at position me.
 inline uint8_t teammate(uint8_t me, uint8_t k) { return k < me ? k : k + 1; }
 
 // League (side button + rocker down): the newest stone large, then four columns: your three

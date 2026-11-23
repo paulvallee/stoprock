@@ -92,7 +92,7 @@ v.rr(0, 0, CW, CH, 6, TUB)
 v.rr(1.3, 1.3, CW - 1.3, CH - 1.3, 5, BEZEL)
 sx0 = CW / 2 - SCR / 2
 v.rr(sx0 - 0.9, SCR_TOP - 0.9, sx0 + SCR + 0.9, SCR_TOP + SCR + 0.9, 2, (44, 46, 50))
-scr = screen.league_screen(render.COMP_STONES, render.BASE + [False], 0, 1)
+scr = screen.league_screen(render.LEAGUE_STONES, render.BASE + [False], render.LEAGUE_ME, render.LEAGUE_ACTIVE)
 size = int(SCR * K * SS)
 img.paste(screen.to_rgb(scr, 1).resize((size, size), Image.LANCZOS), (int(v.x(sx0)), int(v.y(SCR_TOP))))
 wm = logo.wordmark().convert("L")

@@ -19,7 +19,6 @@ def main():
     src = Path(sys.argv[1])
     out = Path(sys.argv[2]) if len(sys.argv) > 2 else None
     shots = render.BASE + [False]
-    st, me, act = render.COMP_STONES, render.COMP_ME, render.COMP_ACTIVE
     ls, lme, lact = render.LEAGUE_STONES, render.LEAGUE_ME, render.LEAGUE_ACTIVE
     refs = {
         "league": screen.league_screen(ls, shots, lme, lact),
@@ -28,8 +27,7 @@ def main():
     }
     refs["competition-tip"] = screen.competition_screen([], 0, 0, tip=True)
     refs["league-tip"] = screen.league_screen([], [], 2, 0, tip=True)
-    half = [(st[0][0], None, st[0][2])] + list(st[1:])  # the newest stone awaiting its H2H
-    refs["competition-wait-b2h"] = screen.competition_screen(st, 0, 1, waiting="b2h")
+    refs["competition-wait-b2h"] = screen.competition_screen(ls, lme, lact, waiting="b2h")
     refs["league-rocks"] = screen.league_screen(ls, shots, lme, lact, waiting="b2h", focus="rocks")
     lhalf = [(ls[0][0], None, ls[0][2])] + list(ls[1:])
     refs["league-wait-h2h"] = screen.league_screen(lhalf, shots, lme, 3, waiting="h2h")
@@ -39,11 +37,10 @@ def main():
     for n in range(17):  # the cursor at every position; each position as yours, each column active
         refs[f"league{n:02d}"] = screen.league_screen(ls, [i % 3 != 2 for i in range(n)], n % 4, n % 4,
                                                       focus="rocks" if n % 2 else "players")
-    refs["competition"] = screen.competition_screen(render.COMP_STONES, render.COMP_ME, render.COMP_ACTIVE)
-    refs["competition-battery"] = screen.competition_screen(render.COMP_STONES, render.COMP_ME, render.COMP_ACTIVE,
-                                                            low_battery=True)
+    refs["competition"] = screen.competition_screen(ls, lme, lact)
+    refs["competition-battery"] = screen.competition_screen(ls, lme, lact, low_battery=True)
     for me in range(4):  # each position as yours, the cursor on each column
-        refs[f"competition-me{me}"] = screen.competition_screen(render.COMP_STONES, me, me % 3)
+        refs[f"competition-me{me}"] = screen.competition_screen(ls, me, (me + 1) % 4)
     for n in (0, 8, 35, 63, 64):
         coach = [i % 5 != 3 and i % 7 != 5 for i in range(n)]
         st = render.COACH_STONES if n else []
