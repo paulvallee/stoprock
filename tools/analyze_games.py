@@ -64,13 +64,15 @@ def main(paths):
     adjacent, after_shot = [], []
     seen = 0
     for g in games(paths):
-        if g.get("v", 0) < 5 or g.get("mode") not in ("competition", "league"):
+        if g.get("v", 0) < 5:
             continue
         seen += 1
         print(f"\nGame {g['id']} ({g['mode']}): {len(g['stones'])} stones, {g.get('thrown', 0)} shots logged")
         print("    #  start   gap   guess  ended up")
-        # your throws (league): taken as 20 s before you logged them
-        throws = sorted(t - SHOT_LAG_S for t in (g.get("shot_times") or []) if t is not None)
+        # your throws (league): taken as 20 s before you logged them. A coach logs the whole team's,
+        # timed or not, so in coach they don't stand for throws nobody timed.
+        shot_times = (g.get("shot_times") or []) if g.get("mode") == "league" else []
+        throws = sorted(t - SHOT_LAG_S for t in shot_times if t is not None)
         prev_start, prev_team = None, None
         for i, stone in enumerate(g["stones"]):
             b2h, h2h, player, start, guess = (stone + [None] * 5)[:5]
@@ -100,7 +102,7 @@ def main(paths):
                     adjacent.append(gap)
             prev_start, prev_team = start, team(player)
     if not seen:
-        print("No competition or league games with start times (format version 5) found.")
+        print("No games with start times (format version 5) found.")
         return
     print("\nGuesses right, by the gap since the previous stone (or your throw):")
     total = [first[0] + sum(r for r, _ in by_bucket.values()), first[1] + sum(n for _, n in by_bucket.values())]

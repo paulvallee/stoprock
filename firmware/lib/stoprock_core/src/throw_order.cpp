@@ -3,7 +3,7 @@
 namespace stoprock {
 
 void ThrowOrder::reset(uint8_t me) {
-    me_ = me % 4;
+    me_ = me > 3 ? kCoach : me;
     last_ = before_ = Pos{};
     lastT_ = -1;
     lastN_ = 1;
@@ -11,10 +11,10 @@ void ThrowOrder::reset(uint8_t me) {
 }
 
 uint8_t ThrowOrder::columnOf(int s, bool ourFirst) const {
-    if ((s % 2 == 0) != ourFirst) return kThem;
+    if ((s % 2 == 0) != ourFirst) return themColumn();
     const int p = s / 4;  // our stones 0-7 (s / 2): two each, lead first
     if (p == me_) return kMine;
-    return static_cast<uint8_t>(p < me_ ? p : p - 1);
+    return static_cast<uint8_t>(p < me_ ? p : p - 1);  // a coach (me_ 4): every position
 }
 
 int ThrowOrder::throwsSince(int64_t t) const {
@@ -93,10 +93,9 @@ void ThrowOrder::move(uint8_t c) {
     if (movable_) last_ = best(before_, lastN_, c);
 }
 
-void ThrowOrder::ownShot(int e, int r, int64_t t) {
+void ThrowOrder::teamShot(int e, int k, int64_t t) {
     const int64_t at = t - kShotLagUs;
     const int n = throwsSince(at);
-    const int k = 2 * me_ + (r ? 1 : 0);  // your stone of the team's eight
     Pos pick = last_;
     int pickCost = 1 << 30;
     for (int f = 0; f < 2; ++f) {
@@ -104,6 +103,8 @@ void ThrowOrder::ownShot(int e, int r, int64_t t) {
         const int s = 2 * k + (first ? 0 : 1);
         const int pos = (e - last_.end) * 16 + s - last_.s;
         int cost = 4 * (pos > n ? pos - n : n - pos) + (pos < 1 ? 40 : 0);
+        // a coach times their own team's stones too: the shot can be the stone just timed
+        if (pos == 0 && s == last_.s && first == last_.ourFirst) cost = 4 * (n - 1);
         if (e == last_.end && first != last_.ourFirst) cost += last_.s >= 0 ? 12 : 1;
         if (e == last_.end + 1 && first == last_.ourFirst) cost += 2;
         if (cost < pickCost) {

@@ -17,7 +17,7 @@ One record per game:
 | `mode` | How the device was switched on: `competition`, `league` or `coach` (games before format version 3 read as `league`) |
 | `shots` | Rocks in order: `M` made, `X` missed. League: your own, up to 16. Coach: the team's, up to 64, in throwing order (lead, lead, second, second, third, third, skip, skip per end). Competition: none |
 | `made`, `thrown`, `pct` | Summary of `shots`; `pct` is -1 with no rocks thrown |
-| `stones` | Every timed stone in order, as `[back-to-hog, hog-to-hog, player, start, guess]`: times in seconds, `null` where that split wasn't timed; player is who threw it in a competition or league game, `"lead"`, `"second"`, `"third"` or `"skip"`, or `"them"` for the other team (`null` in coach games, and in games before format version 4); start is when the stone started (its first click), in whole seconds since switch-on; guess is who the device's throw order guessed when it started, whatever the cursor showed, so a guess that differs from player is one you corrected (start and guess `null` before format version 5, guess also in coach games). Up to 128. For an H2H-only stone, start is the click at the near hog line, about 3 s after the stone's real start |
+| `stones` | Every timed stone in order, as `[back-to-hog, hog-to-hog, player, start, guess]`: times in seconds, `null` where that split wasn't timed; player is who threw it, `"lead"`, `"second"`, `"third"` or `"skip"`, or `"them"` for the other team (`null` in games before format version 4, and in coach games before format version 5); start is when the stone started (its first click), in whole seconds since switch-on; guess is who the device's throw order guessed when it started, whatever the cursor showed, so a guess that differs from player is one you corrected (start and guess `null` before format version 5). Up to 128. For an H2H-only stone, start is the click at the near hog line, about 3 s after the stone's real start |
 | `shot_times` | When each rock in `shots` was logged, in whole seconds since switch-on (`null` before format version 5). League: about 20–30 s after you threw, once your rock stopped |
 | `battery_start`, `battery_end` | Battery charge (%) at switch-on and at switch-off; `null` if unknown (no reading, a game recorded before format version 2, or a game that never switched off cleanly) |
 
@@ -76,7 +76,7 @@ Versions 1 and 2 read as league games:
 ## Checking the throw order against real games
 
 `python tools/analyze_games.py games.txt` reads exported games (the `@GAMES` listing, or JSON lines) and
-reports, for competition and league games: each stone's start, the gap since the previous one, the device's
+reports, for every game with start times: each stone's start, the gap since the previous one, the device's
 guess and where it ended up; how often the guess was right, by gap; and the gaps between stones a throw apart
 (the other team's stone after ours, or ours after theirs), which is what the 80 s and ~56 s-a-throw rules
 assume. The player you left a stone under is taken as the truth, so move wrong times before exporting.

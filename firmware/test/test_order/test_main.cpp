@@ -151,6 +151,31 @@ static void test_mine_so_far() {
     TEST_ASSERT_EQUAL_INT(2, o.mineSoFar());  // one shot owed
 }
 
+static void test_coach_times_every_stone() {
+    // a coach times every stone and logs each of the team's rocks ~25 s after it starts
+    ThrowOrder o;
+    o.reset(ThrowOrder::kCoach);
+    TEST_ASSERT_EQUAL_UINT8(4, o.themColumn());
+    int wrong = 0, shots = 0;
+    int64_t t = 0;
+    for (int e = 0; e < 8; ++e) {
+        const bool ourFirst = e % 2 == 1;  // they have the first rock in end 1, then it swaps
+        for (int s = 0; s < 16; ++s, t += 55 * S) {
+            const uint8_t truth = o.columnOf(s, ourFirst);
+            if (s % 5 != 2) {  // a few go untimed
+                if (o.predict(t) != truth) ++wrong;
+                o.place(truth, t);
+            }
+            if (truth != o.themColumn()) {
+                o.teamShot(shots / 8, shots % 8, t + 25 * S);
+                ++shots;
+            }
+        }
+    }
+    TEST_ASSERT_EQUAL_INT(64, shots);
+    TEST_ASSERT_LESS_OR_EQUAL_INT(1, wrong);  // at most the very first stone (who throws first)
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_column_of);
@@ -163,5 +188,6 @@ int main() {
     RUN_TEST(test_throws_to_mine);
     RUN_TEST(test_cursor_follows_the_clock);
     RUN_TEST(test_mine_so_far);
+    RUN_TEST(test_coach_times_every_stone);
     return UNITY_END();
 }

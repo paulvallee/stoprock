@@ -61,6 +61,7 @@ struct SegFont {
 
 constexpr SegFont kRowFont{12, 7, 2, 2, 2, false};  // older results
 constexpr SegFont kEndFont{9, 5, 1, 1, 1, false};   // end numbers: equal-width cells, a "1" sits on the right
+constexpr SegFont kNarrowFont{12, 6, 2, 1, 2, true};  // coach's five columns: a narrow "1"
 
 enum Align { kLeft, kCentre, kRight };
 
@@ -260,32 +261,6 @@ void newestRow(Canvas& c, const Stone* stones, int count, Waiting waiting, int m
     }
 }
 
-// Back2Hog | Hog2Hog across the full width: header, newest large, older below, one to a row.
-void timesWide(Canvas& c, const Stone* stones, int count, int bottom, int labelRight, Waiting waiting = Waiting::None) {
-    const int mid = WIDE_MID;
-    const Font& label = kFontSpleen6x12;
-    textInBox(c, label, "Back2Hog", 0, mid, 0, LABEL_H, kCentre, 4);
-    textInBox(c, label, "Hog2Hog", mid, labelRight, 0, LABEL_H, kCentre, 4);
-    hline(c, 0, W - 1, LABEL_H);
-    newestRow(c, stones, count, waiting, mid, kFontDseg25, 13, 47, 3, kStopwatch, 30);
-    hline(c, 0, W - 1, 47, 2);
-    vline(c, mid, 0, bottom - 1);
-    char buf[12];
-    const int first = waiting == Waiting::BackToHog ? 0 : 1;  // a new stone under way: the last one is older now
-    for (int i = first; i < count; ++i) {
-        const int ry = 50 + (i - first) * 14;
-        if (ry + 14 > bottom) break;
-        if (stones[i].bh >= 0) {
-            formatTime(stones[i].bh, buf, sizeof buf);
-            segInBox(c, kRowFont, buf, 0, WIDE_MID, ry, ry + 14, kRight, 14);
-        }
-        if (stones[i].hh >= 0) {
-            formatTime(stones[i].hh, buf, sizeof buf);
-            segInBox(c, kRowFont, buf, WIDE_MID, W, ry, ry + 14, kRight, 14);
-        }
-    }
-}
-
 // Two small squares top right: filled = the page showing.
 void pageMarks(Canvas& c, int page) {
     for (int k = 0; k < 2; ++k) {
@@ -346,23 +321,24 @@ static void switchOnTip(Canvas& c, uint8_t me, bool league, int top, int bottom)
 
 // Competition and league's four columns: your teammates in throwing order, then THEM. Each lists its stones newest
 // first, a time a line: B2H black on white, H2H white on black.
-static void leagueTimes(Canvas& c, const Stone* stones, int count, uint8_t me, uint8_t active, int bottom,
-                        int linesMax) {
-    static const int xs[kLeagueColumns + 1] = {2, 51, 100, 149, 198};
+// A column per player (edges xs; n columns: your teammates or, for a coach (me kCoach), every
+// position, then THEM), the active one's header highlighted; each lists its stones newest first.
+static void playerColumns(Canvas& c, const Stone* stones, int count, uint8_t me, const int* xs, int n,
+                          uint8_t active, int bottom, int linesMax, const SegFont& font) {
     constexpr int kTop = 62;
-    for (int k = 0; k < kLeagueColumns; ++k) {
+    for (int k = 0; k < n; ++k) {
         const int x0 = xs[k], x1 = xs[k + 1];
         if (k) vline(c, x0, GRID_LABEL_Y0, bottom - 1);
         const bool on = k == active;
         if (on) c.fillRect(x0 + (k ? 1 : 0), GRID_LABEL_Y0, x1 - 1, GRID_LABEL_Y1);
-        const char* name = k == kLeagueColumns - 1 ? "THEM" : kPositions[teammate(me, k)];
+        const char* name = k == n - 1 ? "THEM" : kPositions[me > 3 ? k : teammate(me, k)];
         c.text(kFontSpleen6x12, (x0 + x1 - 6 * static_cast<int>(strlen(name))) / 2, GRID_LABEL_Y0, name, !on);
     }
     char buf[12];
-    int lines[kLeagueColumns] = {};
+    int lines[kCoachColumns] = {};
     for (int i = 0; i < count; ++i) {
         const int k = leagueColumn(me, stones[i].player);
-        if (k < 0) continue;
+        if (k < 0 || k >= n) continue;
         const int x0 = xs[k] + 1, x1 = xs[k + 1] - 1;
         const int32_t vals[2] = {stones[i].bh, stones[i].hh};
         for (int half = 0; half < 2; ++half) {
@@ -371,9 +347,15 @@ static void leagueTimes(Canvas& c, const Stone* stones, int count, uint8_t me, u
             const bool inverted = half == 1;
             if (inverted) c.fillRect(x0 + 1, y, x1 - 1, y + GRID_PITCH - 2);
             formatTime(vals[half], buf, sizeof buf);
-            segInBox(c, kRowFont, buf, x0, x1, y, y + GRID_PITCH - 1, kCentre, 0, !inverted);
+            segInBox(c, font, buf, x0, x1, y, y + GRID_PITCH - 1, kCentre, 0, !inverted);
         }
     }
+}
+
+static void leagueTimes(Canvas& c, const Stone* stones, int count, uint8_t me, uint8_t active, int bottom,
+                        int linesMax) {
+    static const int xs[kLeagueColumns + 1] = {2, 51, 100, 149, 198};
+    playerColumns(c, stones, count, me, xs, kLeagueColumns, active, bottom, linesMax, kRowFont);
 }
 
 // The newest stone large, then the four columns down to bottom.
@@ -445,12 +427,20 @@ void drawLeague(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& sh
     if (tip) switchOnTip(c, me, true, 49, top);
 }
 
-void drawCoachTimer(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& shots, Waiting waiting) {
+void drawCoachTimer(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& shots, Waiting waiting,
+                    uint8_t activeCol, bool tip) {
     c.clear();
     const Font& label = kFontSpleen6x12;
     pageMarks(c, 0);
     const int bottom = 150;
-    timesWide(c, stones, count, bottom, W - 18, waiting);
+    textInBox(c, label, "Back2Hog", 0, WIDE_MID, 0, LABEL_H, kCentre, 4);
+    textInBox(c, label, "Hog2Hog", WIDE_MID, W - 18, 0, LABEL_H, kCentre, 4);
+    hline(c, 0, W - 1, LABEL_H);
+    newestRow(c, stones, count, waiting, WIDE_MID, kFontDseg25, 13, 47, 3, kStopwatch, 30);
+    hline(c, 0, W - 1, 47, 2);
+    vline(c, WIDE_MID, 0, 46);
+    static const int xs[kCoachColumns + 1] = {0, 40, 80, 120, 160, 200};
+    playerColumns(c, stones, count, kCoach, xs, kCoachColumns, activeCol, bottom, kCoachRows, kNarrowFont);
     hline(c, 0, W - 1, bottom, 2);
     for (int p = 0; p < 4; ++p) {
         if (p) vline(c, COACH_GX[p], bottom, H - 1);
@@ -467,6 +457,10 @@ void drawCoachTimer(Canvas& c, const Stone* stones, uint8_t count, const ShotLog
     if (first > 6) first = 6;
     if (first < 0) first = 0;
     for (int row = 0; row < 2; ++row) endRow(c, shots, first + row, bottom + 24 + row * 15);
+    if (tip) {
+        const char* const lines[4] = {"Double click rocker to", "switch page", "", "Hold rocker up: move last time"};
+        tooltip(c, lines, 4, 49, bottom);
+    }
 }
 
 void drawCoachRocks(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& shots, Waiting waiting) {

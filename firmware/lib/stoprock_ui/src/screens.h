@@ -43,9 +43,12 @@ inline uint8_t teammate(uint8_t me, uint8_t k) { return k < me ? k : k + 1; }
 // scoreboard (ends across, rock 1 over rock 2) and your percentage. activeCol (0-3) has its header
 // highlighted. lowBattery puts a "Batt low" bar over the percentage.
 constexpr uint8_t kLeagueColumns = 4, kLeagueRows = 7;
-// The column (0-3) of a stone thrown by player for you at position me; -1: none (yours, or coach).
+// Coach: five columns, every position and THEM (me = kCoach where a position is asked for).
+constexpr uint8_t kCoach = 4, kCoachColumns = 5, kCoachRows = 6;
+// The column of a stone thrown by player for you at position me (league and competition, 0-3), or
+// for a coach (me kCoach, 0-4); -1: none (yours, or no player).
 inline int leagueColumn(uint8_t me, uint8_t player) {
-    if (player == Stone::kThem) return kLeagueColumns - 1;
+    if (player == Stone::kThem) return me > 3 ? kCoachColumns - 1 : kLeagueColumns - 1;
     if (player > 3 || player == me) return -1;
     return player < me ? player : player - 1;
 }
@@ -61,9 +64,11 @@ void drawLeague(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& sh
 void addStone(Stone* list, uint8_t& count, uint8_t capacity, const Stone& s);
 
 // Coach (side button + rocker up), 64 rocks: 8 ends x 4 positions x 2.
-// Page 1, timer priority: wide times, % per position, the previous and current end.
+// Page 1, timer priority: the newest stone large, a column per position and THEM (6 lines, narrow
+// digits; activeCol 0-4 highlighted), % per position, the previous and current end. tip: the
+// switch-on tip (double click to switch page, hold up to move the last time).
 void drawCoachTimer(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& shots,
-                    Waiting waiting = Waiting::None);
+                    Waiting waiting = Waiting::None, uint8_t activeCol = 0, bool tip = false);
 // Page 2, rock priority: the newest times only, all 64 rocks, a pie and % per position.
 void drawCoachRocks(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& shots,
                     Waiting waiting = Waiting::None);

@@ -18,8 +18,10 @@ LOGO = ROOT / "assets" / "logo"
 BASE = [True, True, False, True, True, True]  # your rocks, ends 1-3 (league)
 # coach mode sample: end 5 under way (lead's two rocks and second's first logged)
 COACH_SHOTS = [i % 5 != 3 and i % 7 != 5 for i in range(35)]
-COACH_STONES = [(3.47, 13.92), (3.29, None), (3.51, 13.66), (None, 14.02), (3.38, None), (3.42, 13.81),
-                (3.61, 14.20), (3.33, 13.75), (None, 13.88), (3.40, 14.05), (3.55, None), (3.36, 13.97)]
+COACH_STONES = [(3.47, 13.92, 4), (3.29, None, 1), (3.51, 13.66, 4), (None, 14.02, 1), (3.38, None, 4),
+                (3.42, 13.81, 0), (3.61, 14.20, 4), (3.33, 13.75, 0), (None, 13.88, 4), (3.40, 14.05, 3),
+                (3.55, None, 4), (3.36, 13.97, 3)]  # newest first; player 4 = THEM
+COACH_ACTIVE = 1  # the 2nd's second rock is next
 
 # competition and league sample: you're 2nd; your teammates' and the other team's (player 4) stones
 # newest first, and the 3rd up next
@@ -92,8 +94,8 @@ def main():
          screen.competition_screen(LEAGUE_STONES, LEAGUE_ME, LEAGUE_ACTIVE)),
         ("League (+ rocker down)", "Teammates' and THEM's times; your own 16 rocks",
          screen.league_screen(LEAGUE_STONES, BASE + [False], LEAGUE_ME, LEAGUE_ACTIVE)),
-        ("Coach, page 1 (+ rocker up)", "Timer priority; double-press the rocker to switch",
-         screen.coach_timer_screen(COACH_STONES, COACH_SHOTS)),
+        ("Coach, page 1 (+ rocker up)", "Timer priority: times by position and THEM",
+         screen.coach_timer_screen(COACH_STONES, COACH_SHOTS, active=COACH_ACTIVE)),
         ("Coach, page 2", "Rock priority: all 64 rocks, % per position",
          screen.coach_rocks_screen(COACH_STONES, COACH_SHOTS)),
         ("Competition, low battery", "The badge's second line becomes the warning",

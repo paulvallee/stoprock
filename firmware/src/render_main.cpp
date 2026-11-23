@@ -23,8 +23,9 @@ int main(int argc, char** argv) {
     Canvas c;
 
     // start-up modes: the same samples as tools/mockups/render.py (COACH_STONES, COACH_SHOTS)
-    const Stone many[] = {{347, 1392}, {329, -1},  {351, 1366}, {-1, 1402}, {338, -1},  {342, 1381},
-                          {361, 1420}, {333, 1375}, {-1, 1388}, {340, 1405}, {355, -1}, {336, 1397}};
+    const Stone many[] = {{347, 1392, 4}, {329, -1, 1},  {351, 1366, 4}, {-1, 1402, 1}, {338, -1, 4},
+                          {342, 1381, 0}, {361, 1420, 4}, {333, 1375, 0}, {-1, 1388, 4},  {340, 1405, 3},
+                          {355, -1, 4},  {336, 1397, 3}};
     // competition and league: you're 2nd, as tools/mockups/render.py LEAGUE_STONES; your rocks BASE + [False]
     const Stone league[] = {{341, 1386, 4}, {347, 1392, 2}, {329, -1, 4},  {351, 1366, 2}, {-1, 1402, 4},
                             {338, 1371, 4}, {342, 1381, 0}, {361, 1420, 4}, {333, 1375, 0}, {340, 1405, 4},
@@ -60,7 +61,7 @@ int main(int argc, char** argv) {
     for (int n : {0, 8, 35, 63, 64}) {
         ShotLog s(ShotLog::kCoachSlots);
         for (int i = 0; i < n; ++i) s.add(i % 5 != 3 && i % 7 != 5);
-        drawCoachTimer(c, many, n ? 12 : 0, s);
+        drawCoachTimer(c, many, n ? 12 : 0, s, Waiting::None, static_cast<uint8_t>(n % 5));
         snprintf(path, sizeof path, "%s/coach1-%02d.pbm", dir, n);
         writePbm(c, path);
         drawCoachRocks(c, many, n ? 12 : 0, s);
@@ -74,6 +75,9 @@ int main(int argc, char** argv) {
     writePbm(c, path);
     drawLeague(c, league, 0, ShotLog(), 2, 0, false, true);
     snprintf(path, sizeof path, "%s/league-tip.pbm", dir);
+    writePbm(c, path);
+    drawCoachTimer(c, many, 0, ShotLog(ShotLog::kCoachSlots), Waiting::None, 0, true);
+    snprintf(path, sizeof path, "%s/coach1-tip.pbm", dir);
     writePbm(c, path);
 
     // a stone being timed: the stopwatch where the awaited time will appear

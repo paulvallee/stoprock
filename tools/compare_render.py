@@ -27,6 +27,7 @@ def main():
     }
     refs["competition-tip"] = screen.competition_screen([], 0, 0, tip=True)
     refs["league-tip"] = screen.league_screen([], [], 2, 0, tip=True)
+    refs["coach1-tip"] = screen.coach_timer_screen([], [], tip=True)
     refs["competition-wait-b2h"] = screen.competition_screen(ls, lme, lact, waiting="b2h")
     refs["league-rocks"] = screen.league_screen(ls, shots, lme, lact, waiting="b2h", focus="rocks")
     lhalf = [(ls[0][0], None, ls[0][2])] + list(ls[1:])
@@ -44,7 +45,7 @@ def main():
     for n in (0, 8, 35, 63, 64):
         coach = [i % 5 != 3 and i % 7 != 5 for i in range(n)]
         st = render.COACH_STONES if n else []
-        refs[f"coach1-{n:02d}"] = screen.coach_timer_screen(st, coach)
+        refs[f"coach1-{n:02d}"] = screen.coach_timer_screen(st, coach, active=n % 5)
         refs[f"coach2-{n:02d}"] = screen.coach_rocks_screen(st, coach)
     rows, worst = [], 0
     for name, ref in refs.items():
