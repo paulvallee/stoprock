@@ -169,27 +169,55 @@ def tub():
 HANDLE_R = 14.0
 
 
-def scene_parts():
+def capsule_path(points, r):
+    """A round cord along a polyline: one capsule (hull of two spheres) per segment."""
+    balls = [Manifold.sphere(r, circular_segments=24).translate(p) for p in points]
+    return Manifold.batch_boolean([Manifold.batch_hull([a, b]) for a, b in zip(balls, balls[1:])], OpType.Add)
+
+
+BAND_T = 1.0           # silicone band thickness
+BAND_W = 20.0          # and width
+CORD_R = 1.5           # 3 mm lanyard cord
+
+
+def broom_band():
+    """A silicone band through the tunnel and round the handle, its ends overlapped and bonded
+    inside the tunnel (the doubled part)."""
     tn = TUNNEL
     back = -MOUNT_BACK - RAILS["h"]
-    hz = -MOUNT_BACK - HANDLE_R                  # the handle touches the back between the rails
-    handle = Manifold.cylinder(260, HANDLE_R, circular_segments=96).rotate((-90, 0, 0)).translate((CW / 2, -120, hz))
-    # the strap: through the tunnel, down the case's sides, round the handle (1.2 mm thick, 20 wide)
-    core = CrossSection.hull_points([(0, tn["z0"] + 0.2), (CW, tn["z0"] + 0.2), (0, back), (CW, back)]
+    hz = -MOUNT_BACK - HANDLE_R
+    z_in = tn["z0"] + 0.1                      # the band's inner face, in the tunnel
+    core = CrossSection.hull_points([(0, z_in), (CW, z_in), (0, back), (CW, back)]
                                     + [(CW / 2 + HANDLE_R * np.cos(a), hz + HANDLE_R * np.sin(a))
                                        for a in np.linspace(0, 2 * np.pi, 96, endpoint=False)])
-    ring = core.offset(1.2, JoinType.Round, circular_segments=64) - core
-    strap = Manifold.extrude(ring, 20).rotate((90, 0, 0)).translate((0, tn["cy"] + 10, 0))
-    # lanyard: flat 15 mm webbing through the tunnel, its ends rising up the sides towards the neck
-    wz = (tn["z0"] + tn["z1"]) / 2
-    through = Manifold.cube((CW + 3, 15, 0.9)).translate((-1.5, tn["cy"] - 7.5, wz - 0.45))
-    lanyard = through
-    for sx in (-1, 1):
-        x = -1.5 if sx < 0 else CW + 0.6
-        rise = Manifold.cube((0.9, 150, 15)).translate((0, 0, -7.5))
-        rise = rise.rotate((0, 0, -sx * 9)).translate((x, tn["cy"] - 7.5, wz))
-        lanyard += rise
-    return {"handle": handle, "strap": strap, "lanyard": lanyard}
+    ring = core.offset(BAND_T, JoinType.Round, circular_segments=64) - core
+    lap = CrossSection.square((CW - 12, BAND_T - 0.05)).translate((6, z_in + BAND_T))   # the overlap, on top
+    band2d = ring + lap
+    return Manifold.extrude(band2d, BAND_W).rotate((90, 0, 0)).translate((0, tn["cy"] + BAND_W / 2, 0))
+
+
+def cord_lanyard():
+    """A 3 mm cord through the tunnel; its ends rise up the sides to a sliding cord-lock bead,
+    then go on up as the neck loop."""
+    tn = TUNNEL
+    z = (tn["z0"] + tn["z1"]) / 2
+    y, bead_y = tn["cy"], tn["cy"] + 62
+    pts_l = [(CW / 2, y, z), (-0.5, y, z), (-3.0, y + 5, z), (CW / 2 - 2.2, bead_y - 6, z), (CW / 2 - 2.2, bead_y + 6, z),
+             (-25, bead_y + 120, z)]
+    pts_r = [(CW / 2, y, z), (CW + 0.5, y, z), (CW + 3.0, y + 5, z), (CW / 2 + 2.2, bead_y - 6, z), (CW / 2 + 2.2, bead_y + 6, z),
+             (CW + 25, bead_y + 120, z)]
+    cord = capsule_path(pts_l, CORD_R) + capsule_path(pts_r, CORD_R)
+    bead = Manifold.cylinder(11, 5.0, circular_segments=48).rotate((-90, 0, 0)).translate((CW / 2, bead_y - 5.5, z))
+    button = Manifold.cylinder(3, 2.4, circular_segments=32).translate((CW / 2, bead_y, z + 4.0))
+    return cord, bead + button
+
+
+def scene_parts():
+    tn = TUNNEL
+    hz = -MOUNT_BACK - HANDLE_R                  # the handle touches the back between the rails
+    handle = Manifold.cylinder(260, HANDLE_R, circular_segments=96).rotate((-90, 0, 0)).translate((CW / 2, -120, hz))
+    cord, cordlock = cord_lanyard()
+    return {"handle": handle, "band": broom_band(), "cord": cord, "cordlock": cordlock}
 
 
 # ------------------------------------------------------------------ the bezel

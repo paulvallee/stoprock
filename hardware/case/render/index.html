@@ -39,10 +39,13 @@ if (view !== 'tub' && view !== 'bezel' && view !== 'mount') {
   const scr = new THREE.Mesh(new THREE.PlaneGeometry(27.6, 27.6), new THREE.MeshBasicMaterial({ map: tex }));
   scr.position.set(22.5, 58.5 - 25, 18.55 + dz); group.add(scr);
 }
-if (view === 'lanyard') await add('model-lanyard.stl', mat(0xb8322e, { roughness: 0.85 }));
+if (view.startsWith('cord')) {
+  await add('model-cord.stl', mat(0x2f5d8a, { roughness: 0.9 }));
+  await add('model-cordlock.stl', mat(0x222428, { roughness: 0.5 }));
+}
 if (view.startsWith('broom')) {
   await add('model-handle.stl', mat(0xc9a46a, { roughness: 0.55 }));
-  await add('model-strap.stl', mat(0x24262a, { roughness: 0.95 }));
+  await add('model-band.stl', mat(0xd9542b, { roughness: 0.45 }));
 }
 if (view === 'bezel') group.children[0].visible = false;
 group.position.set(-22.5, -30.5, -10.5);
@@ -50,7 +53,8 @@ const views = {
   front: [[70, 55, 170], [0, 0, 0]], tub: [[80, 70, 150], [0, 0, 0]], exploded: [[150, 40, 120], [0, 0, 8]],
   right: [[170, 10, 40], [0, 0, 0]], bezel: [[-95, 25, 95], [0, 0, 10]],
   mount: [[-150, 55, -95], [0, 0, -6]],
-  lanyard: [[-90, 40, 210], [0, 25, 0]],
+  cord: [[-80, 95, 360], [0, 60, 0]],
+  'cord-close': [[-120, 45, 70], [-18, 12, -2]],
   broom: [[150, 120, 160], [0, -10, -10]],
   'broom-end': [[10, 230, 25], [0, 0, -12]],
   'broom-side': [[210, 25, -20], [0, 0, -14]],

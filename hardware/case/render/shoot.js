@@ -7,7 +7,7 @@ const { chromium } = require('playwright');
   page.on('pageerror', e => errs.push(String(e)));
   page.on('console', m => { if (m.type() === 'error') errs.push(m.text()); });
   const views = process.argv.slice(2).length ? process.argv.slice(2)
-    : ['front', 'bezel', 'right', 'exploded', 'tub', 'mount', 'lanyard', 'broom', 'broom-side'];
+    : ['front', 'bezel', 'right', 'exploded', 'tub', 'mount', 'cord', 'cord-close', 'broom', 'broom-side'];
   for (const v of views) {
     await page.goto(`http://127.0.0.1:8377/index.html?view=${v}`);
     await page.waitForFunction(() => document.title === 'done', null, { timeout: 60000 });
