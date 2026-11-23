@@ -9,10 +9,10 @@ will likely change once printed.
 | File | Part | Size (mm, as oriented in the file) | Volume | Approx. weight (TPU) |
 |---|---|---|---|---|
 | `stoprock-case-tub.stl` | Tub: back and walls, button pads, lanyard loop | 53.8 x 68.2 x 21.0 | 14.2 cm³ | 17 g |
-| `stoprock-case-bezel.stl` | Bezel: front frame round the screen | 43.3 x 59.3 x 2.5 | 4.0 cm³ | 5 g |
+| `stoprock-case-bezel.stl` | Bezel: front frame round the screen, faceted front | 43.3 x 59.3 x 5.1 | 5.1 cm³ | 6 g |
 
-Units are millimetres. Both files are already oriented for printing: the tub standing on its back,
-the bezel face-down. `preview.png` shows both parts and how they fit.
+Units are millimetres. Both files are already oriented for printing, each standing on its flat back
+(the bezel's faceted front facing up). `preview.png` shows both parts and how they fit.
 
 ## Material and finish
 
@@ -26,6 +26,8 @@ the bezel face-down. `preview.png` shows both parts and how they fit.
 
 - **Button pads** (top, and right side): each pad sits on a **0.8 mm web**, separated from the wall
   by a **1.0 mm gap**, so it can be pressed. The webs and gaps need to come out clean (not fused).
+- **Faceted front**: the bezel's front is made of flat triangular planes at different angles (a
+  cut-gem look). The facets are part of the design: please keep their edges crisp.
 - **Snap fit**: the bezel has a 0.35 mm bead round its edge that clicks into a 0.4 mm groove inside
   the tub's rim.
 - **Lanyard loop**: 3.5 mm thick ring with a 5 mm hole, on the tub's top corner. It will be pulled

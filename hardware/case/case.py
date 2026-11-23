@@ -15,7 +15,7 @@ from pathlib import Path
 
 import numpy as np
 import trimesh
-from manifold3d import CrossSection, JoinType, Manifold
+from manifold3d import CrossSection, JoinType, Manifold, OpType
 
 HERE = Path(__file__).resolve().parent
 SEG = 64  # segments per full circle on rounded corners
@@ -147,13 +147,53 @@ def tub():
 
 
 # ------------------------------------------------------------------ the bezel
+# The front is faceted: the outer edge is flush with the tub, and the window's corners rise to
+# different heights, so the frame is made of tilted triangular planes (a cut-gem look that also
+# stands the frame proud of the screen). Heights in mm above the tub's front, from the top-left
+# window corner, clockwise.
+FACET_RISE = (2.6, 0.8, 2.2, 0.6)
+FACET_INNER_MID_RISE = (1.2, 2.0, 0.9, 1.7)  # the middle of each window side: top, right, bottom, left
+FACET_MID_RISE = 0.0        # the middle of each outer side (0: the outer edge stays flush)
+FACET_CHAMFER = 4.0         # the outer outline cuts the plate's rounded corners at 45 degrees
+
+
+def facets(w, h):
+    """The faceted top: convex pieces (one per triangle, down to the plate's front face) unioned."""
+    x0, x1 = CW / 2 - w / 2, CW / 2 + w / 2
+    y0, y1 = CH / 2 - h / 2, CH / 2 + h / 2
+    c = FACET_CHAMFER
+    # window corners, clockwise from top-left
+    wx0, wx1 = CW / 2 - SCREEN / 2, CW / 2 + SCREEN / 2
+    wy0, wy1 = SCREEN_CY - SCREEN / 2, SCREEN_CY + SCREEN / 2
+    inner = [(wx0, wy1), (wx1, wy1), (wx1, wy0), (wx0, wy0)]
+    inner = [(x, y, CT + r) for (x, y), r in zip(inner, FACET_RISE)]
+    # outer outline, clockwise from the top-left corner: each corner is cut by a chamfer (two points)
+    corners = [((x0, y1 - c), (x0 + c, y1)), ((x1 - c, y1), (x1, y1 - c)),
+               ((x1, y0 + c), (x1 - c, y0)), ((x0 + c, y0), (x0, y0 + c))]
+    tris = []
+    for k in range(4):
+        a, b = inner[k], inner[(k + 1) % 4]
+        m = ((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, CT + FACET_INNER_MID_RISE[k])   # window side's middle
+        A2 = (*corners[k][1], CT)               # end of this corner's chamfer
+        B1 = (*corners[(k + 1) % 4][0], CT)     # start of the next corner's chamfer
+        M = ((A2[0] + B1[0]) / 2, (A2[1] + B1[1]) / 2, CT + FACET_MID_RISE)
+        A1 = (*corners[k][0], CT)
+        tris += [(A1, A2, a), (A2, M, a), (M, m, a), (M, b, m), (M, B1, b)]
+    pieces = []
+    for t in tris:
+        pts = [p for p in t] + [(x, y, CT - 0.3) for x, y, _ in t]
+        pieces.append(Manifold.hull_points(pts))
+    return Manifold.batch_boolean(pieces, OpType.Add)
+
+
 def bezel():
     w, h = CAV_W + 2 * RABBET - 0.2, CAV_H + 2 * RABBET - 0.2      # sits in the rim's rabbet
     r = DEV_R + FIT + RABBET - 0.1
     plate = prism_z(CW / 2, CH / 2, w, h, r, DEV_Z1, CT)
     bead_w, bead_h = w + 2 * BEAD, h + 2 * BEAD
     plate += prism_z(CW / 2, CH / 2, bead_w, bead_h, r + BEAD, GROOVE_Z[0] + 0.05, GROOVE_Z[1] - 0.05)
-    plate -= prism_z(CW / 2, SCREEN_CY, SCREEN, SCREEN, 1.5, DEV_Z1 - 1, CT + 1)             # screen window
+    plate += facets(w, h)
+    plate -= prism_z(CW / 2, SCREEN_CY, SCREEN, SCREEN, 1.5, DEV_Z1 - 1, CT + 5)             # screen window
     plate -= Manifold.cylinder(CT - DEV_Z1 - 0.6, 1.5, circular_segments=SEG).translate((LED[0], LED[1], DEV_Z1 - 0.01))  # LED: 0.6 mm skin
     return plate
 
@@ -161,7 +201,7 @@ def bezel():
 # ------------------------------------------------------------------ export
 def to_trimesh(m):
     mesh = m.to_mesh()
-    return trimesh.Trimesh(np.asarray(mesh.vert_properties)[:, :3], np.asarray(mesh.tri_verts), process=True)
+    return trimesh.Trimesh(np.asarray(mesh.vert_properties)[:, :3], np.asarray(mesh.tri_verts), process=False)  # merging near-duplicate points can break the closed mesh
 
 
 def main():
@@ -172,8 +212,7 @@ def main():
         tm = to_trimesh(m)
         assert tm.is_watertight, name
         printable = tm.copy()
-        if name == "bezel":  # print it face down
-            printable.apply_transform(trimesh.transformations.rotation_matrix(np.pi, [1, 0, 0]))
+        # both print as modelled: the tub on its back, the bezel on its flat back (faceted front up)
         printable.apply_translation(-printable.bounds[0])
         out = HERE / f"stoprock-case-{name}.stl"
         printable.export(out)
