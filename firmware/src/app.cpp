@@ -10,6 +10,7 @@
 #include "databank.h"
 #include "screens.h"
 #include "shots.h"
+#include "throw_order.h"
 #include "timing.h"
 
 using namespace stoprock;
@@ -24,7 +25,8 @@ constexpr int64_t kUndoHoldUs = kSec / 2;   // 0.5 s
 constexpr int64_t kPowerHoldUs = 3 * kSec;
 constexpr int64_t kDoublePressUs = 400000;     // two rocker presses within 0.4 s: a double press
 constexpr uint8_t kRocksPerPlayer = 2;         // each player throws two rocks an end
-constexpr int64_t kFocusHoldUs = kSec / 2;     // league: hold rocker up/down this long to move the focus
+constexpr int64_t kFocusHoldUs = kSec / 2;     // league: hold rocker down (up from your rocks) to move the focus
+constexpr int64_t kMoveStepUs = kSec / 3;      // league: holding rocker up moves the newest time a column left this often
 constexpr int64_t kAwakeAfterPressUs = 2 * kSec;    // stay awake this long after a rocker press
 constexpr int64_t kAwakeAfterWakeUs = 40000;        // time to confirm the button that woke us
 constexpr int64_t kAuditEveryUs = 10 * 60 * kSec;   // clock audit sample interval
@@ -40,7 +42,7 @@ constexpr uint32_t kMinGameSecondsForBattery = 60;
 constexpr int64_t kBatteryCheckUs = 30 * kSec;
 constexpr uint32_t kMinGameSecondsForBattery = 20 * 60;
 #endif
-constexpr int kMaxStones = 25;  // kept for the screen: at least a screenful of each player
+constexpr int kMaxStones = 32;  // kept for the screen: at least a screenful of each player (and THEM)
 
 const char* const kPositionNames[4] = {"lead", "second", "third", "skip"};
 
@@ -108,15 +110,25 @@ bool isTimingButton(uint8_t b) { return b == board::kTop || b == board::kSide; }
 // nothing = competition, down = league, up = coach (docs/SPEC.md section 2).
 GameMode mode = GameMode::Competition;
 uint8_t coachPage = 0;          // coach: 0 timer priority, 1 rock priority
-// Competition and league: you time your teammates' stones, a column each. The cursor is on the
-// player about to throw; it moves on by itself after their second rock. In competition the
-// rocker moves it too; in league, logging your own shot puts it on the player after you.
+// Competition and league: you time your teammates' stones, a column each (league: and the other
+// team's, a fourth column). The cursor is on the player about to throw. In competition it moves on
+// by itself after their second rock; in league the throw order (ThrowOrder) puts it on whoever
+// throws next. The rocker moves it too.
 uint8_t myPosition = 0;         // 0 lead .. 3 skip (double press of the rocker centre; kept)
-uint8_t activeCol = 0;          // the column (0-2) with the cursor
-uint8_t rocksForActive = 0;     // stones timed for that player since the cursor got there
-// League: what rocker up/down work on, the focus (bold border): your rocks (made/missed) or the
-// players (up = next, down = previous). Hold up 0.5 s for the players, hold down 0.5 s for your rocks.
-Focus focus = Focus::Rocks;
+uint8_t activeCol = 0;          // the column (competition 0-2, league 0-3) with the cursor
+uint8_t rocksForActive = 0;     // competition: stones timed for that player since the cursor got there
+// League: what rocker up/down work on, the focus (bold border): the players' columns (up = next,
+// down = previous) or your rocks (made/missed). Hold down 0.5 s for your rocks; logging a shot (or
+// holding up 0.5 s) goes back to the columns. On the columns, holding up moves the newest time.
+Focus focus = Focus::Players;
+ThrowOrder order;               // league: where in the end the game is
+bool manualCursor = false;      // league: the cursor was put where it is with the rocker: leave it there
+int64_t stoneStart = -1;        // league: when the stone being timed started
+uint8_t moveSteps = 0;          // league: columns the newest time has moved during this hold of rocker up
+// League: when your throw is next, the focus moves to your rocks by itself this long after the
+// stone before yours started (about 13 s after it's done, if it was timed), ready for your shot.
+constexpr int64_t kOwnShotFocusUs = 30 * kSec;
+int64_t rocksFocusAt = -1;      // ... then; -1 = not due
 int64_t lastRockerPress = -kSec; // coach: when the rocker was last pressed (short presses only count)
 
 TimingEngine timing;
@@ -190,7 +202,11 @@ void newGame() {
     shots.setCapacity(mode == GameMode::Coach ? ShotLog::kCoachSlots : ShotLog::kLeagueSlots);
     activeCol = 0;
     rocksForActive = 0;
-    focus = Focus::Rocks;
+    focus = Focus::Players;
+    order.reset(myPosition);
+    manualCursor = false;
+    rocksFocusAt = -1;
+    if (mode == GameMode::League) activeCol = order.predict();
     // "Double click rocker to change position", for the first 5 s (not in coach: no positions)
     tipWaiting = mode != GameMode::Coach;
     tipUntil = -1;
@@ -209,7 +225,7 @@ struct Model {
     GameMode mode = GameMode::League;
     uint8_t page = 0;       // coach: which page
     uint8_t me = 0;         // competition: your position
-    uint8_t activeCol = 0;  // competition: the column with the cursor
+    uint8_t activeCol = 0;  // competition and league: the column with the cursor
     Stone stones[kMaxStones];
     uint8_t stoneCount = 0;
     ShotLog shots;          // the shots on screen (deferred while a stone is timed)
@@ -218,7 +234,7 @@ struct Model {
     bool full = false;      // next update is a ghost-clearing full refresh
     bool tip = false;       // the switch-on position tip
     Waiting waiting = Waiting::None;  // a stone being timed: the stopwatch shows where its time will go
-    Focus focus = Focus::Rocks;       // league: what the rocker works on
+    Focus focus = Focus::Players;     // league: what the rocker works on
     char lastGame[40] = "";
     int shotPct = -1;       // help page: last game's shot percentage
     int battery = -1;       // help page: charge at switch-off
@@ -297,10 +313,36 @@ void syncModel(bool full = false) {
 }
 
 // ------------------------------------------------------------------ timing
-// A new stone, newest first. Competition files it in the active column (see addStone()).
+// League: the player whose stones are in column col (0-3): a teammate, or THEM.
+uint8_t leaguePlayer(uint8_t col) {
+    return col >= kLeagueColumns - 1 ? Stone::kThem : teammate(myPosition, col);
+}
+
+// A new stone, newest first, filed under the player in the active column (see addStone()).
 void pushStone(Stone s) {
-    s.player = mode == GameMode::Coach ? Stone::kNoPlayer : teammate(myPosition, activeCol);
+    if (mode == GameMode::Coach) s.player = Stone::kNoPlayer;
+    else if (mode == GameMode::League) s.player = leaguePlayer(activeCol);
+    else s.player = teammate(myPosition, activeCol);
     addStone(stones, stoneCount, kMaxStones, s);
+    if (mode == GameMode::League) {
+        order.place(activeCol, stoneStart);
+        manualCursor = false;
+    }
+}
+
+// League: the cursor on whoever the throw order says throws next (unless you put it somewhere).
+void cursorToNext(int64_t start = -1) {
+    if (mode != GameMode::League || manualCursor) return;
+    activeCol = order.predict(start);
+}
+
+// League: if your throw is next, or after one more (nobody timing the one between), the focus
+// moves to your rocks once the stone before yours should be done.
+void planRocksFocus() {
+    rocksFocusAt = -1;
+    if (mode != GameMode::League || order.lastStart() < 0) return;
+    const int k = order.throwsToMine();
+    if (k == 1 || k == 2) rocksFocusAt = order.lastStart() + (k - 1) * ThrowOrder::kThrowUs + kOwnShotFocusUs;
 }
 
 void closeStone(int64_t now) {
@@ -311,19 +353,21 @@ void closeStone(int64_t now) {
 // A timed stone finished (with an H2H, or a B2H only). Every kStonesPerClean-th stone gets a
 // ghost-clearing full refresh at the safe moment, delay after it closed.
 void countTimedStone(int64_t now, int64_t delay) {
-    // After the player's second rock, the cursor moves on to the next player.
-    if (mode != GameMode::Coach && stoneCount > 0 && stones[0].player == teammate(myPosition, activeCol) &&
+    // League: the cursor goes on whoever throws next, and the rocker back to the columns.
+    if (mode == GameMode::League) {
+        cursorToNext();
+        if (focus == Focus::Rocks) Serial.println("focus: players (after a timed stone)");
+        focus = Focus::Players;
+        Serial.printf("timing: next up, column %d\n", activeCol + 1);
+        planRocksFocus();
+    }
+    // Competition: after the player's second rock, the cursor moves on to the next player.
+    if (mode == GameMode::Competition && stoneCount > 0 && stones[0].player == teammate(myPosition, activeCol) &&
         ++rocksForActive >= kRocksPerPlayer) {
         rocksForActive = 0;
         activeCol = (activeCol + 1) % kGridColumns;
         Serial.printf("timing: next player, %s\n", kPositionNames[teammate(myPosition, activeCol)]);
         syncModel();
-    }
-    // League: once a stone has been timed, the rocker goes back to your rocks (the players focus
-    // is only for putting the cursor right). The screen update that follows shows it.
-    if (mode == GameMode::League && focus == Focus::Players) {
-        focus = Focus::Rocks;
-        Serial.println("focus: rocks (after a timed stone)");
     }
     // every kStonesPerClean-th stone: a ghost-clearing full refresh once it's safe
     if (++stonesSinceClean >= kStonesPerClean) refreshAt = now + delay;
@@ -347,12 +391,17 @@ void handleOutcome(const Outcome& o, int64_t now) {
     switch (o.event) {
     case TimingEvent::Started:
         sleptAtAnchor = sleptUs;
+        stoneStart = now;
+        rocksFocusAt = -1;  // someone's throwing: not you
+        cursorToNext(now);  // the time since the last stone says how many throws went untimed
         // no LED: the case covers it, and the stopwatch icon shows timing in progress
         Serial.println("timing: start");
         syncModel();  // a stopwatch where the time will appear
         break;
     case TimingEvent::Restarted:
         sleptAtAnchor = sleptUs;
+        stoneStart = now;
+        cursorToNext(now);
         Serial.println("timing: double press, restart");
         break;
     case TimingEvent::BH:
@@ -530,10 +579,13 @@ void onShot(bool made) {
     if (!shots.add(made)) { sound.play(kError); return; }
     if (made) sound.play(kMade); else sound.play(kMissed);
     Serial.printf("shots: %s, %d/%d\n", made ? "made" : "missed", shots.madeCount(), shots.count());
-    if (mode == GameMode::League) {  // you just threw: the player after you is next
-        const uint8_t next = (myPosition + 1) % 4;
-        activeCol = next < myPosition ? next : next - 1;
-        rocksForActive = 0;
+    if (mode == GameMode::League) {  // you just threw: whoever's after you is next, and back to the columns
+        const int i = shots.count() - 1;
+        order.ownShot(i / 2, i % 2, esp_timer_get_time());
+        manualCursor = false;
+        if (!timing.active()) cursorToNext();
+        focus = Focus::Players;
+        planRocksFocus();  // your second rock, if nobody times the stone between
     }
     saveShots();
     if (!timing.active()) syncModel();
@@ -565,6 +617,10 @@ void onRockerPress(ButtonState& s, int64_t t) {
             prefs.putUChar("mypos", myPosition);
             activeCol = 0;
             rocksForActive = 0;
+            order.reset(myPosition);
+            manualCursor = false;
+            rocksFocusAt = -1;
+            cursorToNext();
             Serial.printf("position: you are %s\n", kPositionNames[myPosition]);
             tipWaiting = false;  // show "You are ..." (the switch-on tip) for 5 s
             tipUntil = t + kTipUs;
@@ -577,25 +633,59 @@ void onRockerPress(ButtonState& s, int64_t t) {
 
 // The player cursor one column left (-1) or right (+1), round and round.
 void movePlayer(int dir) {
-    activeCol = (activeCol + (dir < 0 ? kGridColumns - 1 : 1)) % kGridColumns;
+    const uint8_t n = mode == GameMode::League ? kLeagueColumns : kGridColumns;
+    activeCol = (activeCol + (dir < 0 ? n - 1 : 1)) % n;
     rocksForActive = 0;
+    manualCursor = true;
+    rocksFocusAt = -1;  // you're on the columns on purpose
     sound.play(kClick);
-    Serial.printf("timing: %s next\n", kPositionNames[teammate(myPosition, activeCol)]);
+    if (mode == GameMode::League && activeCol == kLeagueColumns - 1) Serial.println("timing: THEM next");
+    else Serial.printf("timing: %s next\n", kPositionNames[teammate(myPosition, activeCol)]);
     syncModel();
 }
 
-// League: rocker up/down held 0.5 s moves the focus (up: players, down: your rocks).
+// League, rocker up held on the columns: the newest time moves a column left every 0.33 s (round
+// and round), shown where it is. Returns false when there's no time to move.
+bool stepMove() {
+    const int col = stoneCount > 0 ? leagueColumn(myPosition, stones[0].player) : -1;
+    if (col < 0) { sound.play(kError); return false; }
+    const uint8_t to = static_cast<uint8_t>((col + kLeagueColumns - 1) % kLeagueColumns);
+    stones[0].player = leaguePlayer(to);
+    activeCol = to;
+    ++moveSteps;
+    sound.play(kClick);
+    syncModel();
+    return true;
+}
+
+// ... and let go: it stays in that column, and the throw order is put right to match.
+void finishMove() {
+    const uint8_t col = static_cast<uint8_t>(leagueColumn(myPosition, stones[0].player));
+    bank.setLastPlayer(stones[0].player, board::clockNow());
+    order.move(col);
+    manualCursor = false;
+    if (timing.state() == TimingState::WaitingHH) activeCol = col;  // that stone is still being timed
+    else cursorToNext(timing.state() == TimingState::Started ? stoneStart : -1);
+    if (!timing.active()) planRocksFocus();
+    Serial.printf("timing: newest time moved to column %d\n", col + 1);
+    syncModel();
+}
+
+// League: rocker down held 0.5 s moves the focus to your rocks, rocker up held 0.5 s back to the columns.
 void setFocus(Focus f) {
     focus = f;
+    rocksFocusAt = -1;
     sound.play(kClick);
     Serial.printf("focus: %s\n", f == Focus::Players ? "players" : "rocks");
     syncModel();
 }
 
 // League: a short press of rocker up/down, acted on when it's let go (a long press moves the
-// focus instead): made/missed, or next/previous player.
+// focus or the newest time instead): made/missed, or next/previous player.
 void onRelease(uint8_t b) {
-    if (mode != GameMode::League || (b != board::kUp && b != board::kDown) || buttons[b].holdFired) return;
+    if (mode != GameMode::League || (b != board::kUp && b != board::kDown)) return;
+    if (b == board::kUp && moveSteps > 0) { finishMove(); return; }
+    if (buttons[b].holdFired) return;
     if (focus == Focus::Rocks) onShot(b == board::kUp);
     else movePlayer(b == board::kUp ? 1 : -1);  // up = next player, down = previous
 }
@@ -606,6 +696,7 @@ void onPress(uint8_t b, int64_t t) {
     s.downSince = t;
     s.holdFired = false;
     s.nextRepeat = t + kUndoHoldUs;
+    if (b == board::kUp) moveSteps = 0;
     // Competition: rocker up/down moves the cursor to the next/previous player (round and
     // round); a double press of the centre changes your position. No undo.
     if (mode == GameMode::Competition && !isTimingButton(b)) {
@@ -616,7 +707,7 @@ void onPress(uint8_t b, int64_t t) {
         return;
     }
     activity(t);
-    // League: rocker up/down act when let go, or move the focus when held (pollButtons).
+    // League: rocker up/down act when let go, or move the focus or the newest time when held (pollButtons).
     if (mode == GameMode::League && (b == board::kUp || b == board::kDown)) return;
     switch (b) {
     case board::kTop:
@@ -666,11 +757,18 @@ void pollButtons(int64_t now) {
                 if (!onUndo()) s.holdFired = true;
             }
             if (b == board::kSide && now - s.downSince >= kPowerHoldUs) { s.holdFired = true; showHelpAndPowerOff(); }
-            if (mode == GameMode::League && (b == board::kUp || b == board::kDown) &&
+            // League: hold down for your rocks; hold up for the columns, or on the columns to move
+            // the newest time a column left every 0.33 s (let go where it belongs).
+            const bool rocker = b == board::kUp || b == board::kDown;
+            if (mode == GameMode::League && rocker && (b == board::kDown || focus == Focus::Rocks) &&
                 now - s.downSince >= kFocusHoldUs) {
                 s.holdFired = true;  // not a short press when it's let go
                 activity(now);
                 setFocus(b == board::kUp ? Focus::Players : Focus::Rocks);
+            } else if (mode == GameMode::League && b == board::kUp && focus == Focus::Players &&
+                       now - s.downSince >= kMoveStepUs * (moveSteps + 1)) {
+                activity(now);
+                if (!stepMove()) s.holdFired = true;
             }
         }
     }
@@ -827,6 +925,14 @@ void loop() {
         tipUntil = -1;
         if (!timing.active()) syncModel();
     }
+    if (rocksFocusAt >= 0 && now >= rocksFocusAt) {  // your throw: ready to log it
+        rocksFocusAt = -1;
+        if (mode == GameMode::League && !timing.active() && focus == Focus::Players) {
+            focus = Focus::Rocks;
+            Serial.println("focus: rocks (your throw)");
+            syncModel();
+        }
+    }
 
     if (now >= nextBatteryCheck) {
         nextBatteryCheck = now + kBatteryCheckUs;
@@ -852,6 +958,7 @@ void loop() {
         int64_t wake = lastActivity + kPowerOffUs;
         if (refreshAt >= 0 && refreshAt < wake) wake = refreshAt;
         if (tipUntil >= 0 && tipUntil < wake) wake = tipUntil;
+        if (rocksFocusAt >= 0 && rocksFocusAt < wake) wake = rocksFocusAt;
         if (nextAuditAt < wake) wake = nextAuditAt;
         if (timing.active() && timing.deadline() + 1000 < wake) wake = timing.deadline() + 1000;
         const int64_t before = esp_timer_get_time();

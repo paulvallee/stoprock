@@ -51,8 +51,8 @@ first run also downloads the push-button part (`pushbutton.wasm`) from the esp-e
 |---|---|---|
 | <kbd>Space</kbd> or <kbd>T</kbd> | **top** | Timing click |
 | <kbd>S</kbd> | **side / power** | Timing click; hold 3 s to switch off (shows the help page; press it again to switch back on) |
-| <kbd>↑</kbd> | rocker **▲** | Made shot |
-| <kbd>↓</kbd> | rocker **▼** | Missed shot |
+| <kbd>↑</kbd> | rocker **▲** | Made shot (league: next column, or made once you hold <kbd>↓</kbd> for your rocks) |
+| <kbd>↓</kbd> | rocker **▼** | Missed shot (league: previous column; hold it for your rocks) |
 | <kbd>Enter</kbd> | rocker **●** | Hold 0.5 s to undo the last shot; keep holding to undo another every 0.5 s. Coach mode: press twice quickly to switch page |
 
 The **Restart in** buttons also tell the firmware which rocker is held over the second serial port,
@@ -67,7 +67,7 @@ changes.
 | Mode | Switch on with | What to try |
 |---|---|---|
 | Competition | <kbd>S</kbd> | Times only, full width, the badge strip at the bottom; a column per teammate; the highlighted player gets the next times and moves on after two rocks; <kbd>↑</kbd> moves it to the next player, <kbd>↓</kbd> to the previous one, <kbd>Enter</kbd> twice quickly changes your own position |
-| League | <kbd>↓</kbd> + <kbd>S</kbd> | Teammates' times by player, your 16 rocks along the bottom; logging your shot moves the player cursor to the player after you; hold <kbd>↑</kbd> to move the player cursor (<kbd>↑</kbd> next, <kbd>↓</kbd> previous), hold <kbd>↓</kbd> (or time a stone) to log shots again; <kbd>Enter</kbd> twice quickly changes your position |
+| League | <kbd>↓</kbd> + <kbd>S</kbd> | Times in four columns: your three teammates and THEM (Hog2Hog white on black); the cursor follows the throw order by itself. <kbd>↑</kbd>/<kbd>↓</kbd> next/previous column; hold <kbd>↑</kbd> to move the newest time a column left every 0.33 s (let go where it belongs); hold <kbd>↓</kbd> to log your rocks (<kbd>↑</kbd> made, <kbd>↓</kbd> missed, then back to the columns); <kbd>Enter</kbd> twice quickly changes your position |
 | Coach | <kbd>↑</kbd> + <kbd>S</kbd> | 64 rocks for the whole team; <kbd>Enter</kbd> twice quickly switches between the timer page and the rocks page |
 
 The **Battery** slider sets the battery level the firmware reads (`run.py` sends it to the emulated chip's

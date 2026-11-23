@@ -50,7 +50,7 @@ const char* modeName(GameMode m) {
 //   18 battery % at start   19 battery % at end (0xFF = unknown)   20 mode (0 league, 1 competition, 2 coach)
 //   21-23 reserved (0)   24-31 shot bits (u64)
 //   then per stone: back-to-hog (u16), hog-to-hog (u16), hundredths, 0xFFFF = not timed;
-//   player (u8: who threw it in competition and league, 0 lead .. 3 skip; 0xFF = none)
+//   player (u8: who threw it in competition and league, 0 lead .. 3 skip, 4 the other team; 0xFF = none)
 //   last byte: checksum of everything before it
 //
 // Version 3: the same with 4 bytes per stone (no player).
@@ -120,7 +120,7 @@ bool Databank::decode(const uint8_t* in, size_t len, GameRecord& r) {
     for (uint16_t i = 0; i < n; ++i, p += stoneSize) {
         r.stones[i].backToHog = get16(p);
         r.stones[i].hogToHog = get16(p + 2);
-        if (stoneSize > 4) r.stones[i].player = p[4] < 4 ? p[4] : StoneTimes::kNoPlayer;
+        if (stoneSize > 4) r.stones[i].player = p[4] <= StoneTimes::kThem ? p[4] : StoneTimes::kNoPlayer;
     }
     return true;
 }
@@ -154,9 +154,9 @@ int Databank::toJson(const GameRecord& r, char* out, size_t len) {
         add(appendTime(out + (n < len ? n : len), room(), r.stones[i].backToHog));
         add(snprintf(out + (n < len ? n : len), room(), ","));
         add(appendTime(out + (n < len ? n : len), room(), r.stones[i].hogToHog));
-        static const char* const kNames[4] = {"\"lead\"", "\"second\"", "\"third\"", "\"skip\""};
+        static const char* const kNames[5] = {"\"lead\"", "\"second\"", "\"third\"", "\"skip\"", "\"them\""};
         const uint8_t p = r.stones[i].player;
-        add(snprintf(out + (n < len ? n : len), room(), ",%s]", p < 4 ? kNames[p] : "null"));
+        add(snprintf(out + (n < len ? n : len), room(), ",%s]", p <= StoneTimes::kThem ? kNames[p] : "null"));
     }
     add(snprintf(out + (n < len ? n : len), room(), "],\"battery_start\":"));
     add(r.batteryStart == GameRecord::kNoBattery ? snprintf(out + (n < len ? n : len), room(), "null")
@@ -220,6 +220,13 @@ void Databank::addStone(uint16_t backToHog, uint16_t hogToHog, uint32_t now, uin
 void Databank::setLastHogToHog(uint16_t hogToHog, uint32_t now) {
     if (current_.stoneCount == 0) return;
     current_.stones[current_.stoneCount - 1].hogToHog = hogToHog;
+    current_.updated = now;
+    save();
+}
+
+void Databank::setLastPlayer(uint8_t player, uint32_t now) {
+    if (current_.stoneCount == 0) return;
+    current_.stones[current_.stoneCount - 1].player = player;
     current_.updated = now;
     save();
 }

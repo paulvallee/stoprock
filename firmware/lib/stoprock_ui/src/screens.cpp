@@ -34,13 +34,13 @@ struct SegFont {
         for (; *s; ++s, ++n) total += charWidth(*s);
         return n ? total + gap * (n - 1) : 0;
     }
-    void digit(Canvas& c, char ch, int x, int y) const {
+    void digit(Canvas& c, char ch, int x, int y, bool black = true) const {
         static const char* const kSegs[10] = {"abcdef", "bc", "abged", "abgcd", "fgbc",
                                               "afgcd", "afgedc", "abc", "abcdefg", "abcdfg"};
         if (ch < '0' || ch > '9') return;
         const char* segs = kSegs[ch - '0'];
         const int m = (h - t) / 2, k = (t == 1) ? 1 : t - 1, extra = (t == 1) ? 1 : 0;
-        auto r = [&](int x0, int y0, int x1, int y1) { c.fillRect(x + x0, y + y0, x + x1 - 1, y + y1 - 1); };
+        auto r = [&](int x0, int y0, int x1, int y1) { c.fillRect(x + x0, y + y0, x + x1 - 1, y + y1 - 1, black); };
         if (strchr(segs, 'a')) r(k, 0, w - k, t);
         if (strchr(segs, 'g')) r(k, m, w - k, m + t);
         if (strchr(segs, 'd')) r(k, h - t, w - k, h);
@@ -49,11 +49,11 @@ struct SegFont {
         if (strchr(segs, 'e')) r(0, m + k, t, h - k);
         if (strchr(segs, 'c')) r(w - t, m + k, w, h - k);
     }
-    void draw(Canvas& c, const char* s, int x, int y) const {
+    void draw(Canvas& c, const char* s, int x, int y, bool black = true) const {
         for (; *s; ++s) {
-            if (*s == '.') c.fillRect(x, y + h - dot, x + dot - 1, y + h - 1);
-            else if (*s == '1' && prop) digit(c, *s, x - (w - t), y);
-            else digit(c, *s, x, y);
+            if (*s == '.') c.fillRect(x, y + h - dot, x + dot - 1, y + h - 1, black);
+            else if (*s == '1' && prop) digit(c, *s, x - (w - t), y, black);
+            else digit(c, *s, x, y, black);
             x += charWidth(*s) + gap;
         }
     }
@@ -75,11 +75,11 @@ void textInBox(Canvas& c, const Font& f, const char* s, double x0, double x1, do
 }
 
 void segInBox(Canvas& c, const SegFont& f, const char* s, double x0, double x1, double y0, double y1,
-              Align a, double margin) {
+              Align a, double margin, bool black = true) {
     const int w = f.width(s);
     double x = a == kRight ? x1 - margin - w : a == kLeft ? x0 + margin : floor((x0 + x1 - w) / 2);
     double y = floor((y0 + y1 - f.h) / 2);
-    f.draw(c, s, static_cast<int>(x), static_cast<int>(y));
+    f.draw(c, s, static_cast<int>(x), static_cast<int>(y), black);
 }
 
 void formatTime(int32_t hundredths, char* out, size_t n) {
@@ -377,11 +377,11 @@ static void tooltip(Canvas& c, const char* const* lines, int n, int top, int bot
 }
 
 // Switch-on tips: your position, how to change it, and in league (not competition, which has no
-// focus) how to move the focus. Also shown when you change position.
+// holds) what holding the rocker does. Also shown when you change position.
 static const char* const kYouAre[4] = {"You are LEAD", "You are SECOND", "You are THIRD", "You are SKIP"};
 static void switchOnTip(Canvas& c, uint8_t me, bool focusToo, int top, int bottom) {
     const char* lines[7] = {kYouAre[me % 4], "", "Double click rocker to", "change your position",
-                            "", "Long hold rocker to", "change focus players/rocks"};
+                            "", "Hold rocker down: your rocks", "Hold rocker up: move last time"};
     tooltip(c, lines, focusToo ? 7 : 4, top, bottom);
 }
 
@@ -400,12 +400,50 @@ void drawCompetition(Canvas& c, const Stone* stones, uint8_t count, uint8_t me, 
     if (tip) switchOnTip(c, me, false, 49, strip);
 }
 
+// League's four columns: your teammates in throwing order, then THEM. Each lists its stones newest
+// first, a time a line: B2H black on white, H2H white on black.
+static void leagueTimes(Canvas& c, const Stone* stones, int count, uint8_t me, uint8_t active, int bottom) {
+    static const int xs[kLeagueColumns + 1] = {2, 51, 100, 149, 198};
+    constexpr int kTop = 62;
+    for (int k = 0; k < kLeagueColumns; ++k) {
+        const int x0 = xs[k], x1 = xs[k + 1];
+        if (k) vline(c, x0, GRID_LABEL_Y0, bottom - 1);
+        const bool on = k == active;
+        if (on) c.fillRect(x0 + (k ? 1 : 0), GRID_LABEL_Y0, x1 - 1, GRID_LABEL_Y1);
+        const char* name = k == kLeagueColumns - 1 ? "THEM" : kPositions[teammate(me, k)];
+        c.text(kFontSpleen6x12, (x0 + x1 - 6 * static_cast<int>(strlen(name))) / 2, GRID_LABEL_Y0, name, !on);
+    }
+    char buf[12];
+    int lines[kLeagueColumns] = {};
+    for (int i = 0; i < count; ++i) {
+        const int k = leagueColumn(me, stones[i].player);
+        if (k < 0) continue;
+        const int x0 = xs[k] + 1, x1 = xs[k + 1] - 1;
+        const int32_t vals[2] = {stones[i].bh, stones[i].hh};
+        for (int half = 0; half < 2; ++half) {
+            if (vals[half] < 0 || lines[k] >= kLeagueRows) continue;
+            const int y = kTop + lines[k]++ * GRID_PITCH;
+            const bool inverted = half == 1;
+            if (inverted) c.fillRect(x0 + 1, y, x1 - 1, y + GRID_PITCH - 2);
+            formatTime(vals[half], buf, sizeof buf);
+            segInBox(c, kRowFont, buf, x0, x1, y, y + GRID_PITCH - 1, kCentre, 0, !inverted);
+        }
+    }
+}
+
 void drawLeague(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& shots, uint8_t me, uint8_t activeCol,
                 bool lowBattery, bool tip, Waiting waiting, Focus focus) {
     c.clear();
     const int top = 159;    // 2 px line under the times
     const int split = 134;  // 2 px divider left of the percentage
-    timesWide(c, stones, count, top, W, true, COMP_MID, me, activeCol, kLeagueRows, waiting, 2);
+    const Font& label = kFontSpleen6x12;
+    textInBox(c, label, "Back2Hog", 0, COMP_MID, 0, LABEL_H, kCentre, 4);
+    textInBox(c, label, "Hog2Hog", COMP_MID, W, 0, LABEL_H, kCentre, 4);
+    hline(c, 0, W - 1, LABEL_H);
+    newestRow(c, stones, count, waiting, COMP_MID, kFontDseg25, 13, 47, 3, kStopwatch, 30);
+    hline(c, 0, W - 1, 47, 2);
+    vline(c, COMP_MID, 0, 46);
+    leagueTimes(c, stones, count, me, activeCol, top);
     hline(c, 0, W - 1, top, 2);
     vline(c, split, top, H - 1, 2);
     // your rocks like a scoreboard: ends across, rock 1 over rock 2
@@ -505,10 +543,10 @@ void addStone(Stone* list, uint8_t& count, uint8_t capacity, const Stone& s) {
     const Stone dropped = list[capacity - 1];  // the oldest: pushed off the end
     memmove(&list[1], &list[0], sizeof(Stone) * (capacity - 1));
     list[0] = s;
-    auto group = [](const Stone& s) { return s.player < 4 ? s.player : 4; };  // 4: no player
-    int per[5] = {};
+    auto group = [](const Stone& s) { return s.player <= Stone::kThem ? s.player : 5; };  // 5: no player
+    int per[6] = {};
     for (int i = 0; i < capacity; ++i) ++per[group(list[i])];
-    if (group(dropped) == 4 || per[group(dropped)] >= kGridRows) return;  // nothing to keep it for
+    if (group(dropped) == 5 || per[group(dropped)] >= kGridRows) return;  // nothing to keep it for
     for (int i = capacity - 1; i > 0; --i) {
         if (per[group(list[i])] > kGridRows) {
             // drop this one instead, and keep the other as the oldest

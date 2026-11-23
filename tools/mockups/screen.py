@@ -100,7 +100,7 @@ class SegFont:
     def width(self, s):
         return sum(self._width(c) for c in s) + self.gap * (len(s) - 1)
 
-    def _digit(self, d, ch, x, y):
+    def _digit(self, d, ch, x, y, fill=0):
         w, h, t = self.w, self.h, self.t
         segs = SEGMENTS.get(ch, "")
         m = (h - t) // 2
@@ -108,7 +108,7 @@ class SegFont:
         extra = 1 if t == 1 else 0
 
         def r(x0, y0, x1, y1):
-            d.rectangle([x + x0, y + y0, x + x1 - 1, y + y1 - 1], fill=0)
+            d.rectangle([x + x0, y + y0, x + x1 - 1, y + y1 - 1], fill=fill)
 
         if "a" in segs: r(c, 0, w - c, t)
         if "g" in segs: r(c, m, w - c, m + t)
@@ -118,20 +118,20 @@ class SegFont:
         if "e" in segs: r(0, m + c, t, h - c)
         if "c" in segs: r(w - t, m + c, w, h - c)
 
-    def draw(self, d, s, x, y):
+    def draw(self, d, s, x, y, fill=0):
         for ch in s:
             if ch == ".":
-                d.rectangle([x, y + self.h - self.dot, x + self.dot - 1, y + self.h - 1], fill=0)
+                d.rectangle([x, y + self.h - self.dot, x + self.dot - 1, y + self.h - 1], fill=fill)
             elif ch == "1" and self.prop:
-                self._digit(d, ch, x - (self.w - self.t), y)
+                self._digit(d, ch, x - (self.w - self.t), y, fill)
             else:
-                self._digit(d, ch, x, y)
+                self._digit(d, ch, x, y, fill)
             x += self._width(ch) + self.gap
 
-    def draw_in_box(self, d, s, x0, x1, y0, y1, align="right", margin=4):
+    def draw_in_box(self, d, s, x0, x1, y0, y1, align="right", margin=4, fill=0):
         w = self.width(s)
         x = {"right": x1 - margin - w, "left": x0 + margin}.get(align, (x0 + x1 - w) // 2)
-        self.draw(d, s, x, (y0 + y1 - self.h) // 2)
+        self.draw(d, s, x, (y0 + y1 - self.h) // 2, fill)
 
 
 _fonts = None
@@ -384,10 +384,10 @@ def times_wide(d, f, stones, bottom, label_right=W, grid=False, mid=WIDE_MID, me
 
 
 # Switch-on tips ("" = a half-line gap): your position, how to change it, and in league (not
-# competition, which has no focus) how to move the focus. Also shown when you change position.
+# competition, which has no holds) what holding the rocker does. Also shown when you change position.
 YOU_ARE = ("LEAD", "SECOND", "THIRD", "SKIP")
 POSITION_TIP = ("Double click rocker to", "change your position")
-FOCUS_TIP = ("Long hold rocker to", "change focus players/rocks")
+LEAGUE_TIP = ("Hold rocker down: your rocks", "Hold rocker up: move last time")
 
 
 def tooltip(d, f, lines, top, bottom):
@@ -428,25 +428,73 @@ def competition_screen(stones, me=0, active=0, low_battery=False, tip=False, wai
     return img
 
 
-# League: the competition layout with 7 rows a player, and below it your own rocks like a
+# League: four columns of times, your three teammates in throwing order and the other team
+# (THEM), each listing its stones newest first, a time a line: Back2Hog black on white, Hog2Hog
+# white on black. The newest stone is also shown large at the top. Below, your own rocks like a
 # scoreboard (ends across, rock 1 over rock 2) with your percentage large on the right.
-# The rocker works on one half at a time, the focus, shown by a bold border: your rocks (up/down =
-# made/missed) or the players (up = next player, down = previous). Hold up or down to move it.
+# The rocker works on one half at a time, the focus, shown by a bold border: the columns (up =
+# next column, down = previous: the cursor, the highlighted header, goes on whoever is about to
+# throw; it also moves there by itself) or your rocks (up/down = made/missed). Hold down to log your
+# rocks; logging one goes back to the columns. Hold up on the columns to move the newest time a
+# column left every 0.33 s, put down where it is when let go.
 LEAGUE_ROWS_BOTTOM = 159     # 2 px line under the times
 LEAGUE_PCT_X = 134           # 2 px divider left of the percentage
 LEAGUE_SLOTS = 16
+LEAGUE_COLS = [2, 51, 100, 149, 198]  # edges of the four columns
+LEAGUE_TOP = 62              # first line
+LEAGUE_LINES = 7
+THEM = 4                     # a stone's player: the other team
 
 
-def league_screen(stones, shots, me=0, active=0, low_battery=False, tip=False, waiting=None, focus="rocks"):
-    """stones: (b2h, h2h, position) newest first; shots: True made / False missed, in order;
-    me: your position; active: the teammate column (0-2) with the cursor."""
+def league_columns(me):
+    """The players in the four columns for you at position me: your teammates, then THEM."""
+    return teammates(me) + [THEM]
+
+
+def league_times(d, f, stones, me, active, bottom):
+    xs, players = LEAGUE_COLS, league_columns(me)
+    for k, p in enumerate(players):
+        x0, x1 = xs[k], xs[k + 1]
+        if k:
+            d.line([(x0, GRID_LABEL[0]), (x0, bottom - 1)], fill=0)
+        on = k == active
+        if on:
+            d.rectangle([x0 + (1 if k else 0), GRID_LABEL[0], x1 - 1, GRID_LABEL[1]], fill=0)
+        name = "THEM" if p == THEM else POSITION_NAMES[p]
+        d.text(((x0 + x1 - 6 * len(name)) // 2, GRID_LABEL[0]), name, font=f["label"], fill=1 if on else 0)
+    lines = [0] * 4
+    for stone in stones:
+        if stone[2] not in players:
+            continue
+        k = players.index(stone[2])
+        x0, x1 = xs[k] + 1, xs[k + 1] - 1
+        for val, inverted in ((stone[0], False), (stone[1], True)):
+            if val is None or lines[k] >= LEAGUE_LINES:
+                continue
+            y = LEAGUE_TOP + lines[k] * GRID_PITCH
+            lines[k] += 1
+            if inverted:
+                d.rectangle([x0 + 1, y, x1 - 1, y + GRID_PITCH - 2], fill=0)
+            f["row"].draw_in_box(d, f"{val:.2f}", x0, x1, y, y + GRID_PITCH - 1, align="center",
+                                 fill=1 if inverted else 0)
+
+
+def league_screen(stones, shots, me=0, active=0, low_battery=False, tip=False, waiting=None, focus="players"):
+    """stones: (b2h, h2h, player 0-3 or THEM) newest first; shots: True made / False missed, in
+    order; me: your position; active: the column (0-3) with the cursor."""
     f = fonts()
     img = Image.new("1", (W, H), 1)
     d = ImageDraw.Draw(img)
     d.fontmode = "1"
     top = LEAGUE_ROWS_BOTTOM
-    times_wide(d, f, stones, top, grid=True, mid=COMP_MID, me=me, active=active, rows_max=7, waiting=waiting,
-               inset=2)
+    mid = COMP_MID
+    text_in_box(d, "Back2Hog", f["label"], 0, mid, 0, 12, align="center")
+    text_in_box(d, "Hog2Hog", f["label"], mid, W, 0, 12, align="center")
+    d.line([(0, 12), (W - 1, 12)], fill=0)
+    newest_row(d, f, stones, waiting, mid, f["big"], 13, 47, 3, STOPWATCH_BIG, 30)
+    d.line([(0, 47), (W - 1, 47)], fill=0, width=2)
+    d.line([(mid, 0), (mid, 46)], fill=0)
+    league_times(d, f, stones, me, active, top)
     d.line([(0, top), (W - 1, top)], fill=0, width=2)
     split = LEAGUE_PCT_X
     d.line([(split, top), (split, H - 1)], fill=0, width=2)
@@ -470,7 +518,7 @@ def league_screen(stones, shots, me=0, active=0, low_battery=False, tip=False, w
     if shots:
         big_percent(d, f["pct"], percent_of(sum(shots), len(shots)), x0, W, y0, H)
     if tip:
-        tooltip(d, f, (f"You are {YOU_ARE[me]}", "") + POSITION_TIP + ("",) + FOCUS_TIP, 49, top)
+        tooltip(d, f, (f"You are {YOU_ARE[me]}", "") + POSITION_TIP + ("",) + LEAGUE_TIP, 49, top)
     return img
 
 

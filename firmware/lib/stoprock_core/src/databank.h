@@ -23,7 +23,8 @@ struct StoneTimes {
     uint16_t backToHog = kNoTime;
     uint16_t hogToHog = kNoTime;
     static constexpr uint8_t kNoPlayer = 0xFF;
-    uint8_t player = kNoPlayer;  // competition and league: who threw it, 0 lead .. 3 skip; kNoPlayer in coach
+    static constexpr uint8_t kThem = 4;  // league: a stone of the other team's
+    uint8_t player = kNoPlayer;  // competition and league: who threw it, 0 lead .. 3 skip, kThem; kNoPlayer in coach
 };
 
 // How the device was switched on (see docs/SPEC.md). 0 = league, so older records read as league.
@@ -73,6 +74,8 @@ public:
     void setShots(uint8_t count, uint64_t bits, uint32_t now);
     // A stone's first result: a B2H (hogToHog = kNoTime), or an H2H with no B2H.
     void addStone(uint16_t backToHog, uint16_t hogToHog, uint32_t now, uint8_t player = StoneTimes::kNoPlayer);
+    // The newest stone was filed under the wrong player (league: moved with the rocker).
+    void setLastPlayer(uint8_t player, uint32_t now);
     // The H2H that completes the last stone's B2H.
     void setLastHogToHog(uint16_t hogToHog, uint32_t now);
     // The game ends (switch-off): note the battery. Kept only if the game is stored.

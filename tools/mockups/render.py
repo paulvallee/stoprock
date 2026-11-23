@@ -29,6 +29,14 @@ COMP_STONES = [(None if i % 5 == 3 else (320 + i * 37 % 60) / 100,
                 1 + (i + 3) // 2 % 3) for i in range(25)]
 COMP_ACTIVE = 1
 
+# league sample: you're 2nd; your teammates' and the other team's (player 4) stones newest first, and
+# the 3rd up next
+LEAGUE_ME = 1
+LEAGUE_STONES = [(3.41, 13.86, 4), (3.47, 13.92, 2), (3.29, None, 4), (3.51, 13.66, 2), (None, 14.02, 4),
+                 (3.38, 13.71, 4), (3.42, 13.81, 0), (3.61, 14.20, 4), (3.33, 13.75, 0), (3.40, 14.05, 4),
+                 (3.55, None, 3), (3.36, 13.97, 4), (3.44, 13.62, 3), (3.58, 14.11, 4)]
+LEAGUE_ACTIVE = 1
+
 
 def caption_font(size, bold=False):
     path = f"/usr/share/fonts/truetype/dejavu/DejaVuSans{'-Bold' if bold else ''}.ttf"
@@ -79,10 +87,10 @@ def main():
     sheet("stoprock screens", [
         ("Switched off: help page", "Shown after power-off; e-ink keeps it with no power",
          screen.help_page(dev, "Last game 9/12 shots made", shot_pct=75, battery=84, battery_note="~11 games battery left")),
-        ("League", "Teammates' times by player; your rocks and % below",
-         screen.league_screen(COMP_STONES, BASE + [False], COMP_ME, COMP_ACTIVE)),
+        ("League", "Teammates' and THEM's times; your rocks and % below",
+         screen.league_screen(LEAGUE_STONES, BASE + [False], LEAGUE_ME, LEAGUE_ACTIVE)),
         ("Low battery", "A bar over the percentage until charged",
-         screen.league_screen(COMP_STONES, BASE + [False], COMP_ME, COMP_ACTIVE, low_battery=True)),
+         screen.league_screen(LEAGUE_STONES, BASE + [False], LEAGUE_ME, LEAGUE_ACTIVE, low_battery=True)),
     ], DOCS / "screens.png", header=header)
 
     sheet("Start-up modes: hold the side button to switch on, plus the rocker to choose", [
@@ -90,8 +98,8 @@ def main():
          screen.help_page(dev, "Last game 9/12 shots made", shot_pct=75, battery=84, battery_note="~11 games battery left")),
         ("Competition (side button only)", "Times only, full width; badge for umpires",
          screen.competition_screen(COMP_STONES, COMP_ME, COMP_ACTIVE)),
-        ("League (+ rocker down)", "Teammates' times by player; your own 16 rocks",
-         screen.league_screen(COMP_STONES, BASE + [False], COMP_ME, COMP_ACTIVE)),
+        ("League (+ rocker down)", "Teammates' and THEM's times; your own 16 rocks",
+         screen.league_screen(LEAGUE_STONES, BASE + [False], LEAGUE_ME, LEAGUE_ACTIVE)),
         ("Coach, page 1 (+ rocker up)", "Timer priority; double-press the rocker to switch",
          screen.coach_timer_screen(COACH_STONES, COACH_SHOTS)),
         ("Coach, page 2", "Rock priority: all 64 rocks, % per position",
@@ -100,14 +108,15 @@ def main():
          screen.competition_screen(COMP_STONES, COMP_ME, COMP_ACTIVE, low_battery=True)),
     ], DOCS / "modes.png")
 
-    # you're lead: logging your own rock puts the cursor on the player after you (2nd, column 0)
-    def lg(shots):
-        return screen.league_screen(COMP_STONES, shots, COMP_ME, 0)
+    # you're 2nd: hold the rocker down to log your rocks; after one, the focus is back on the
+    # columns and the other team is up next
+    def lg(shots, focus="players", active=3):
+        return screen.league_screen(LEAGUE_STONES, shots, LEAGUE_ME, active, focus=focus)
     sheet("Logging your shots with the rocker (ring = cursor on your next rock)", [
-        ("1. Rocker UP", "Rock fills with a check, cursor moves on", lg(BASE + [True])),
-        ("2. Rocker UP (by mistake)", "It was actually a miss", lg(BASE + [True, True])),
-        ("3. HOLD rocker 0.5 s", "Undo: cursor steps back and clears that rock", lg(BASE + [True])),
-        ("4. Rocker DOWN", "Rock fills with an X, cursor moves on", lg(BASE + [True, False])),
+        ("1. HOLD rocker DOWN 0.5 s", "The bold border moves to your rocks", lg(BASE, "rocks", 1)),
+        ("2. Rocker UP", "Check; back to the columns, THEM up next", lg(BASE + [True])),
+        ("3. HOLD rocker centre 0.5 s", "Undo: cursor steps back and clears that rock", lg(BASE)),
+        ("4. Hold DOWN, then DOWN", "Rock fills with an X", lg(BASE + [False])),
     ], DOCS / "rocker-storyboard.png", cols=2)
 
 

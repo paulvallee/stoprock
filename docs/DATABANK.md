@@ -17,7 +17,7 @@ One record per game:
 | `mode` | How the device was switched on: `competition`, `league` or `coach` (games before format version 3 read as `league`) |
 | `shots` | Rocks in order: `M` made, `X` missed. League: your own, up to 16. Coach: the team's, up to 64, in throwing order (lead, lead, second, second, third, third, skip, skip per end). Competition: none |
 | `made`, `thrown`, `pct` | Summary of `shots`; `pct` is -1 with no rocks thrown |
-| `stones` | Every timed stone in order, as `[back-to-hog, hog-to-hog, player]`: times in seconds, `null` where that split wasn't timed; player is who threw it in a competition or league game, `"lead"`, `"second"`, `"third"` or `"skip"` (`null` in coach games, and in games before format version 4). Up to 128 |
+| `stones` | Every timed stone in order, as `[back-to-hog, hog-to-hog, player]`: times in seconds, `null` where that split wasn't timed; player is who threw it in a competition or league game, `"lead"`, `"second"`, `"third"` or `"skip"`, or in league `"them"` for the other team (`null` in coach games, and in games before format version 4). Up to 128 |
 | `battery_start`, `battery_end` | Battery charge (%) at switch-on and at switch-off; `null` if unknown (no reading, a game recorded before format version 2, or a game that never switched off cleanly) |
 
 Rules:
@@ -54,7 +54,7 @@ Keys in the namespace `bank`:
 | 20 | Mode: 0 league, 1 competition, 2 coach |
 | 21–23 | Reserved (0) |
 | 24–31 | Shot bits (u64): bit *i* set = rock *i* made |
-| 32 … 32 + 5*n* − 1 | Per stone: back-to-hog, hog-to-hog (u16 hundredths; 0xFFFF = not timed), player (u8: 0 lead, 1 second, 2 third, 3 skip; 0xFF = none) |
+| 32 … 32 + 5*n* − 1 | Per stone: back-to-hog, hog-to-hog (u16 hundredths; 0xFFFF = not timed), player (u8: 0 lead, 1 second, 2 third, 3 skip, 4 the other team; 0xFF = none) |
 | last | Checksum of all preceding bytes |
 
 All numbers are little-endian. A record that fails its checks is skipped, not shown as a game.

@@ -20,22 +20,25 @@ def main():
     out = Path(sys.argv[2]) if len(sys.argv) > 2 else None
     shots = render.BASE + [False]
     st, me, act = render.COMP_STONES, render.COMP_ME, render.COMP_ACTIVE
+    ls, lme, lact = render.LEAGUE_STONES, render.LEAGUE_ME, render.LEAGUE_ACTIVE
     refs = {
-        "league": screen.league_screen(st, shots, me, act),
-        "league-battery": screen.league_screen(st, shots, me, act, low_battery=True),
+        "league": screen.league_screen(ls, shots, lme, lact),
+        "league-battery": screen.league_screen(ls, shots, lme, lact, low_battery=True),
         "help": screen.help_page(logo.device_logo(), "Last game 9/12 shots made", shot_pct=75, battery=84, battery_note="~11 games battery left"),
     }
     refs["competition-tip"] = screen.competition_screen([], 0, 0, tip=True)
     refs["league-tip"] = screen.league_screen([], [], 2, 0, tip=True)
     half = [(st[0][0], None, st[0][2])] + list(st[1:])  # the newest stone awaiting its H2H
     refs["competition-wait-b2h"] = screen.competition_screen(st, 0, 1, waiting="b2h")
-    refs["league-players"] = screen.league_screen(st, shots, 0, 1, focus="players")
-    refs["league-wait-h2h"] = screen.league_screen(half, shots, 0, 1, waiting="h2h")
+    refs["league-rocks"] = screen.league_screen(ls, shots, lme, lact, waiting="b2h", focus="rocks")
+    lhalf = [(ls[0][0], None, ls[0][2])] + list(ls[1:])
+    refs["league-wait-h2h"] = screen.league_screen(lhalf, shots, lme, 3, waiting="h2h")
     cs = render.COACH_STONES
     refs["coach1-wait-b2h"] = screen.coach_timer_screen(cs, render.COACH_SHOTS, waiting="b2h")
     refs["coach2-wait-h2h"] = screen.coach_rocks_screen([(cs[0][0], None)] + cs[1:], render.COACH_SHOTS, waiting="h2h")
     for n in range(17):  # the cursor at every position; each position as yours, each column active
-        refs[f"league{n:02d}"] = screen.league_screen(st, [i % 3 != 2 for i in range(n)], n % 4, n % 3)
+        refs[f"league{n:02d}"] = screen.league_screen(ls, [i % 3 != 2 for i in range(n)], n % 4, n % 4,
+                                                      focus="rocks" if n % 2 else "players")
     refs["competition"] = screen.competition_screen(render.COMP_STONES, render.COMP_ME, render.COMP_ACTIVE)
     refs["competition-battery"] = screen.competition_screen(render.COMP_STONES, render.COMP_ME, render.COMP_ACTIVE,
                                                             low_battery=True)

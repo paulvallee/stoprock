@@ -11,8 +11,9 @@ namespace stoprock {
 struct Stone {
     int32_t bh = -1;
     int32_t hh = -1;
-    uint8_t player = kNoPlayer;  // competition and league: who threw it, 0 lead .. 3 skip
+    uint8_t player = kNoPlayer;  // competition and league: who threw it, 0 lead .. 3 skip, or kThem
     static constexpr uint8_t kNoPlayer = 0xFF;
+    static constexpr uint8_t kThem = 4;  // league: the other team
 };
 
 // While a stone is being timed: which time is awaited. The screens show a stopwatch where it will
@@ -36,19 +37,27 @@ void drawCompetition(Canvas& c, const Stone* stones, uint8_t count, uint8_t me, 
 // The position shown in column k (0-2) for a player at position me.
 inline uint8_t teammate(uint8_t me, uint8_t k) { return k < me ? k : k + 1; }
 
-// League (side button + rocker down): the competition layout with 7 rows a player, and below it
-// your own 16 rocks like a scoreboard (ends across, rock 1 over rock 2) and your percentage.
-// lowBattery puts a "Batt low" bar over the percentage.
-constexpr uint8_t kLeagueRows = 7;
-// focus: the half the rocker works on, shown by a bold border: your rocks (made/missed) or the
-// players (up = next player, down = previous).
+// League (side button + rocker down): the newest stone large, then four columns: your three
+// teammates in throwing order and the other team (THEM), each listing its stones newest first, a
+// time a line (7 lines): B2H black on white, H2H white on black. Below, your own 16 rocks like a
+// scoreboard (ends across, rock 1 over rock 2) and your percentage. activeCol (0-3) has its header
+// highlighted. lowBattery puts a "Batt low" bar over the percentage.
+constexpr uint8_t kLeagueColumns = 4, kLeagueRows = 7;
+// The column (0-3) of a stone thrown by player for you at position me; -1: none (yours, or coach).
+inline int leagueColumn(uint8_t me, uint8_t player) {
+    if (player == Stone::kThem) return kLeagueColumns - 1;
+    if (player > 3 || player == me) return -1;
+    return player < me ? player : player - 1;
+}
+// focus: the half the rocker works on, shown by a bold border: the players' columns (up = next,
+// down = previous) or your rocks (made/missed).
 enum class Focus : uint8_t { Rocks, Players };
 void drawLeague(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& shots, uint8_t me, uint8_t activeCol,
-                bool lowBattery, bool tip = false, Waiting waiting = Waiting::None, Focus focus = Focus::Rocks);
+                bool lowBattery, bool tip = false, Waiting waiting = Waiting::None, Focus focus = Focus::Players);
 
 // Put a stone at the front of a newest-first list. When the list is full, the stone dropped is
-// the oldest of a player with more than a screenful (kGridRows), so a player who has thrown
-// less keeps their times. With no players (league, coach) it simply drops the oldest.
+// the oldest of a player (or THEM) with more than kGridRows, so a player who has thrown less
+// keeps their times. With no players (coach) it simply drops the oldest.
 void addStone(Stone* list, uint8_t& count, uint8_t capacity, const Stone& s);
 
 // Coach (side button + rocker up), 64 rocks: 8 ends x 4 positions x 2.

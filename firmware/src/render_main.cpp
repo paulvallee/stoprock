@@ -32,19 +32,23 @@ int main(int argc, char** argv) {
         comp[i].hh = i % 7 == 4 ? -1 : 1350 + i * 53 % 90;
         comp[i].player = static_cast<uint8_t>(1 + (i + 3) / 2 % 3);  // you're lead: 2nd, 3rd, Skip in turn
     }
-    // league: the same stones, your rocks as tools/mockups/render.py BASE + [False]
+    // league: you're 2nd, as tools/mockups/render.py LEAGUE_STONES; your rocks BASE + [False]
+    const Stone league[] = {{341, 1386, 4}, {347, 1392, 2}, {329, -1, 4},  {351, 1366, 2}, {-1, 1402, 4},
+                            {338, 1371, 4}, {342, 1381, 0}, {361, 1420, 4}, {333, 1375, 0}, {340, 1405, 4},
+                            {355, -1, 3},  {336, 1397, 4}, {344, 1362, 3}, {358, 1411, 4}};
+    const uint8_t nl = sizeof league / sizeof league[0];
     ShotLog shots;
     for (bool m : {true, true, false, true, true, true, false}) shots.add(m);
-    drawLeague(c, comp, 25, shots, 0, 1, false);
+    drawLeague(c, league, nl, shots, 1, 1, false);
     snprintf(path, sizeof path, "%s/league.pbm", dir);
     writePbm(c, path);
-    drawLeague(c, comp, 25, shots, 0, 1, true);
+    drawLeague(c, league, nl, shots, 1, 1, true);
     snprintf(path, sizeof path, "%s/league-battery.pbm", dir);
     writePbm(c, path);
     for (int n = 0; n <= 16; ++n) {  // the cursor at every position; each position as yours, each column active
         ShotLog s;
         for (int i = 0; i < n; ++i) s.add(i % 3 != 2);
-        drawLeague(c, comp, 25, s, n % 4, n % 3, false);
+        drawLeague(c, league, nl, s, n % 4, n % 4, false, false, Waiting::None, n % 2 ? Focus::Rocks : Focus::Players);
         snprintf(path, sizeof path, "%s/league%02d.pbm", dir, n);
         writePbm(c, path);
     }
@@ -75,7 +79,7 @@ int main(int argc, char** argv) {
     drawCompetition(c, comp, 0, 0, 0, false, true);
     snprintf(path, sizeof path, "%s/competition-tip.pbm", dir);
     writePbm(c, path);
-    drawLeague(c, comp, 0, ShotLog(), 2, 0, false, true);
+    drawLeague(c, league, 0, ShotLog(), 2, 0, false, true);
     snprintf(path, sizeof path, "%s/league-tip.pbm", dir);
     writePbm(c, path);
 
@@ -86,10 +90,13 @@ int main(int argc, char** argv) {
     drawCompetition(c, comp, 25, 0, 1, false, false, Waiting::BackToHog);
     snprintf(path, sizeof path, "%s/competition-wait-b2h.pbm", dir);
     writePbm(c, path);
-    drawLeague(c, comp, 25, shots, 0, 1, false, false, Waiting::None, Focus::Players);
-    snprintf(path, sizeof path, "%s/league-players.pbm", dir);
+    drawLeague(c, league, nl, shots, 1, 1, false, false, Waiting::BackToHog, Focus::Rocks);
+    snprintf(path, sizeof path, "%s/league-rocks.pbm", dir);
     writePbm(c, path);
-    drawLeague(c, half, 25, shots, 0, 1, false, false, Waiting::HogToHog);
+    Stone lhalf[sizeof league / sizeof league[0]];
+    for (int i = 0; i < nl; ++i) lhalf[i] = league[i];
+    lhalf[0].hh = -1;
+    drawLeague(c, lhalf, nl, shots, 1, 3, false, false, Waiting::HogToHog);
     snprintf(path, sizeof path, "%s/league-wait-h2h.pbm", dir);
     writePbm(c, path);
     {

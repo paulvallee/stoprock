@@ -310,6 +310,15 @@ static void test_stone_players_and_version_3() {
     TEST_ASSERT_EQUAL_UINT8(2, g.stones[0].player);
     TEST_ASSERT_EQUAL_UINT16(1392, g.stones[0].hogToHog);
     TEST_ASSERT_EQUAL_UINT8(1, g.stones[1].player);
+    // league: the other team's stone, filed under a teammate then moved
+    db.addStone(338, 1381, 4, 0);
+    db.setLastPlayer(StoneTimes::kThem, 5);
+    TEST_ASSERT_TRUE(db.load(1, g));
+    TEST_ASSERT_EQUAL_UINT8(StoneTimes::kThem, g.stones[2].player);
+    TEST_ASSERT_EQUAL_UINT8(1, g.stones[1].player);
+    char json[400];
+    Databank::toJson(g, json, sizeof json);
+    TEST_ASSERT_NOT_NULL(strstr(json, "[3.38,13.81,\"them\"]"));
     // a version 3 record: the same header, 4 bytes per stone, no player
     uint8_t buf[Databank::kMaxRecordSize];
     memset(buf, 0, 32);
