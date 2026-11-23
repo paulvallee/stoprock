@@ -7,9 +7,13 @@
 Coordinates in millimetres: X across the width, Y up the height (Y = 0 at the bottom, where
 USB-C is), Z through the thickness (Z = 0 the back).
 
-Positions come from M5Stack's CoreInk dimension drawing (40 x 56 x 16 mm). Where a feature sits
-through the thickness, and a few positions read off the drawing by scale, are marked "MEASURE":
-check them on the device before printing for use.
+Positions come from M5Stack's 3D model of the CoreInk's enclosure (front and back shells; not
+included here), measured by slicing its walls, and agree with M5Stack's dimension drawing.
+In that model's coordinates (x -20..20 across, y -52..4 bottom to top, z 0..16 back to front) the
+openings are: screen window x -14.25..14.5, y -35.25..-7; top button x 3.1..9.0, z 3.2..8.7 (top
+edge); power button y -40..-33.75, z 3.05..13.05 (right side); dial window y -25.25..-6.75,
+z 5.05..16 (right side, open to the front face); bottom opening (USB-C and Grove) x -6..6.25,
+z 2.3..12.05; reset oval x -17..-10.9, y -18..-7.9 (back). The left side has no openings.
 """
 from pathlib import Path
 
@@ -32,8 +36,17 @@ CT = FLOOR + DEV_T + BEZEL_T
 CASE_R = 6.0
 CAV_W, CAV_H = DEV_W + 2 * FIT, DEV_H + 2 * FIT
 DEV_Z0, DEV_Z1 = FLOOR, FLOOR + DEV_T    # the device's back and front faces
-MID_Z = FLOOR + DEV_T / 2                # middle of the device's thickness: buttons, ports (MEASURE)
+MID_Z = FLOOR + DEV_T / 2                # middle of the device's thickness
 DEV_X0, DEV_TOP = WALL, WALL + DEV_H     # the device's left edge and top, in case coordinates
+
+
+def dev(x=None, y=None, z=None):
+    """Case coordinates of a point given in the CoreInk model's coordinates (see the top)."""
+    out = []
+    if x is not None: out.append(x + 20 + WALL)
+    if y is not None: out.append(y + 52 + WALL)
+    if z is not None: out.append(z + FLOOR)
+    return out[0] if len(out) == 1 else tuple(out)
 
 RABBET = 1.2         # the tub's rim is cut back this much inside, for the bezel to sit in
 GROOVE = 0.4         # snap groove in the rim (the bezel's bead clicks into it)
@@ -45,21 +58,18 @@ MOAT = 1.0           # gap round a pad that frees it from the wall
 PROUD = 1.5          # how far pads stand out
 NUB = 0.15           # how far a pad's inner nub reaches into the 0.2 mm fit gap (tune by test print)
 
-# From the drawing (front view: the screen's frame about 29 mm square, centred across, its centre
-# 25 mm below the top; the visible area is 27.6 mm square)
-SCREEN = 30.0
-SCREEN_CY = DEV_TOP - 25.0
+# Openings, from the CoreInk model (see the top): centres and sizes, in case coordinates
+SCREEN = 30.0                                          # window (the CoreInk's is 28.75 x 28.25)
+SCREEN_CY = dev(y=(-35.25 - 7.0) / 2)
 
-TOP_BTN = dict(cx=DEV_X0 + 26.0, w=12.0, t=7.0)        # top button: 22.3-29.7 mm from the left
-SIDE_BTN = dict(cy=WALL + 15.0, h=10.0, t=7.0)         # right side, 15 mm above the bottom: power (the drawing's
-                                                       # controls are top button, dial, this oval and the back's reset,
-                                                       # so by elimination this is power; the left side has no control)
-# Rocker (dial) cut-out, right side: as small as the dial allows at the CoreInk (its window in the
-# CoreInk's shell is about 16 mm long, 10.7-26.7 mm below the top, per the drawing, plus 0.5 mm each
-# end), with a chamfer round the outside so a thumb reaches the dial through the 2.5 mm wall.
-ROCKER = dict(cy=DEV_TOP - 18.7, h=17.0, t=9.0, chamfer=1.2)
-USB = dict(cx=DEV_X0 + 21.0, w=12.5, t=7.0)            # bottom, about centred (MEASURE its depth)
-RESET = (DEV_X0 + 6.0, DEV_TOP - 15.0)                  # back: 6 mm from the left edge, 15 mm below the top
+TOP_BTN = dict(cx=dev(x=6.05), cz=dev(z=5.95), w=12.0, t=7.0)       # top button: 5.9 wide, 5.5 deep
+SIDE_BTN = dict(cy=dev(y=-36.9), cz=dev(z=8.05), h=6.5, t=10.0)     # power, right side: 6.25 x 10 oval
+# Rocker (dial) cut-out, right side: the CoreInk's own dial window (18.5 mm long, from 5 mm off the
+# back right through to the front face) plus 0.5 mm at each end and 0.25 mm at the back edge, with a
+# chamfer round the outside so a thumb reaches the dial through the 2.5 mm wall.
+ROCKER = dict(cy=dev(y=-16.0), cz=dev(z=(4.8 + 16.25) / 2), h=19.5, t=11.45, chamfer=1.2)
+USB = dict(cx=dev(x=0.125), cz=dev(z=7.2), w=12.5, t=10.0)          # bottom: 12.25 x 9.75 opening
+RESET = (dev(x=-13.95), dev(y=-12.95))                              # back: centre of the reset oval
 LOOP = None  # the old corner loop (dict(c=(-1.5, CH + 1.5), r_out=5.75, r_in=2.5, t=3.5)); replaced by the mount
 
 # Back mount, for a lanyard or a broom: the back is thicker and has one tunnel running across it,
@@ -160,34 +170,34 @@ def tub():
     # top button (outside towards +Y)
     tb = TOP_BTN
     face_top = CH / 2 + CAV_H / 2
-    moat, add = pad(lambda a0, a1, grow: prism_y(tb["cx"], MID_Z, tb["w"] + 2 * grow, tb["t"] + 2 * grow, 1.5 + grow, a0, a1),
-                    +1, lambda a0, a1: Manifold.cylinder(a1 - a0, 1.2, circular_segments=SEG).rotate((-90, 0, 0)).translate((tb["cx"], a0, MID_Z)),
+    moat, add = pad(lambda a0, a1, grow: prism_y(tb["cx"], tb["cz"], tb["w"] + 2 * grow, tb["t"] + 2 * grow, 1.5 + grow, a0, a1),
+                    +1, lambda a0, a1: Manifold.cylinder(a1 - a0, 1.2, circular_segments=SEG).rotate((-90, 0, 0)).translate((tb["cx"], a0, tb["cz"])),
                     face_top, +1)
     body = body - moat + add
 
     # side button (power), right wall (outside towards +X), with a low guard rim round it
     sb = SIDE_BTN
     face_right = CW / 2 + CAV_W / 2
-    moat, add = pad(lambda a0, a1, grow: prism_x(sb["cy"], MID_Z, sb["h"] + 2 * grow, sb["t"] + 2 * grow, 1.5 + grow, a0, a1),
-                    +1, lambda a0, a1: Manifold.cylinder(a1 - a0, 1.2, circular_segments=SEG).rotate((0, 90, 0)).translate((a0, sb["cy"], MID_Z)),
+    moat, add = pad(lambda a0, a1, grow: prism_x(sb["cy"], sb["cz"], sb["h"] + 2 * grow, sb["t"] + 2 * grow, 1.5 + grow, a0, a1),
+                    +1, lambda a0, a1: Manifold.cylinder(a1 - a0, 1.2, circular_segments=SEG).rotate((0, 90, 0)).translate((a0, sb["cy"], sb["cz"])),
                     face_right, +1)
     body = body - moat + add
-    rim_out = prism_x(sb["cy"], MID_Z, sb["h"] + 6.4, sb["t"] + 6.4, 4.7, CW - 0.01, CW + PROUD - 0.3)
-    rim_in = prism_x(sb["cy"], MID_Z, sb["h"] + 4.4, sb["t"] + 4.4, 3.7, CW - 0.02, CW + PROUD)
+    rim_out = prism_x(sb["cy"], sb["cz"], sb["h"] + 6.4, sb["t"] + 6.4, 4.7, CW - 0.01, CW + PROUD - 0.3)
+    rim_in = prism_x(sb["cy"], sb["cz"], sb["h"] + 4.4, sb["t"] + 4.4, 3.7, CW - 0.02, CW + PROUD)
     body += rim_out - rim_in
 
     # rocker: an open cut-out in the right wall (a soft cover is a later iteration)
     rk = ROCKER
     x_in, c = CW - WALL - 0.5, rk["chamfer"]
-    body -= prism_x(rk["cy"], MID_Z, rk["h"], rk["t"], 2.0, x_in, CW + 0.5)
+    body -= prism_x(rk["cy"], rk["cz"], rk["h"], rk["t"], 2.0, x_in, CW + 0.5)
     # the chamfer: a tapered cut growing by c each side over the outer c mm of the wall
     flare = Manifold.extrude(rrect(rk["t"], rk["h"], 2.0), c + 0.02,
                              scale_top=((rk["t"] + 2 * c) / rk["t"], (rk["h"] + 2 * c) / rk["h"]))
-    body -= flare.rotate((0, 90, 0)).translate((CW - c - 0.01, rk["cy"], MID_Z))
+    body -= flare.rotate((0, 90, 0)).translate((CW - c - 0.01, rk["cy"], rk["cz"]))
 
     # USB-C opening, bottom wall
     us = USB
-    body -= prism_y(us["cx"], MID_Z, us["w"], us["t"], 2.0, -0.5, WALL + 0.5)
+    body -= prism_y(us["cx"], us["cz"], us["w"], us["t"], 2.0, -0.5, WALL + 0.5)
 
 
     # lanyard loop at the top-left corner (replaced by the back mount)

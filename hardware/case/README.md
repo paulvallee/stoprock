@@ -14,13 +14,12 @@ groove in the tub's rim. Concept sketch: [`docs/mockups/case-concept.png`](../..
 | `QUOTE.md` | What to send a print shop with the STLs |
 | `stoprock-case-quote.zip` | STLs + preview + QUOTE.md, ready to attach |
 
-Positions come from M5Stack's CoreInk dimension drawing. It also settles which side button is power
-(the oval below the dial, on the right; by elimination, as the drawing's other controls are the top
-button, the dial and the reset on the back) and that the long feature on the left side is not a
-control (the case covers it). The values still marked `MEASURE` in `case.py` are where the buttons,
-dial and USB-C sit through the thickness: modelled at mid-thickness, as the drawing suggests, with
-generous openings. A quick check on the device is still worthwhile. The first prints are for fit: expect to
-tune the 0.2 mm fit gap, the button nubs and the snap bead.
+Positions come from M5Stack's 3D model of the CoreInk's enclosure (not included in this repository),
+measured by slicing its walls: the screen window, top button, power button (right side, below the
+dial), dial window, bottom opening (USB-C and Grove) and reset. The left side has no openings. The
+real enclosure model sits in the case with no overlap (checked with `render/` and the `fit-*` views,
+given the model as `render/model-coreink.stl`). The first prints are for fit: expect to tune the
+0.2 mm fit gap, the button nubs and the snap bead.
 
 The concept sketch puts the power button on the left; the drawing shows it on the right, below the
 dial, and the model follows the drawing.

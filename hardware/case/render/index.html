@@ -29,7 +29,8 @@ const group = new THREE.Group(); scene.add(group);
 const exploded = view === 'exploded';
 await add('model-tub.stl', mat(0x3b3f46));
 await add('model-bezel.stl', mat(0x6a717b, { flatShading: true }), [0, 0, exploded ? 16 : 0]);
-if (view !== 'tub' && view !== 'bezel' && view !== 'mount') {
+if (view.startsWith('fit')) await add('model-coreink.stl', mat(0xe9e9e4, { roughness: 0.5 }));
+if (view !== 'tub' && view !== 'bezel' && view !== 'mount' && view !== 'back' && !view.startsWith('fit')) {
   const dz = exploded ? 8 : 0;
   const dev = new THREE.Mesh(new THREE.BoxGeometry(40, 56, 16), mat(0xe9e9e4, { roughness: 0.5 }));
   dev.position.set(22.5, 30.5, 10.5 + dz); group.add(dev);
@@ -54,6 +55,10 @@ const views = {
   right: [[170, 10, 40], [0, 0, 0]], bezel: [[-95, 25, 95], [0, 0, 10]],
   mount: [[-150, 55, -95], [0, 0, -6]],
   back: [[-30, 20, -175], [0, 0, -6]],
+  'fit-right': [[120, 5, 40], [22, 8, 2]],
+  'fit-top': [[15, 120, 45], [5, 30, 2]],
+  'fit-bottom': [[10, -120, 50], [0, -30, 2]],
+  'fit-back': [[-25, 20, -130], [-12, 12, -10]],
   rocker: [[115, 30, 25], [22, 9, 0]],
   cord: [[-80, 95, 360], [0, 60, 0]],
   'cord-close': [[-120, 45, 70], [-18, 12, -2]],
