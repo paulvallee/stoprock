@@ -319,6 +319,12 @@ void countTimedStone(int64_t now, int64_t delay) {
         Serial.printf("timing: next player, %s\n", kPositionNames[teammate(myPosition, activeCol)]);
         syncModel();
     }
+    // League: once a stone has been timed, the rocker goes back to your rocks (the players focus
+    // is only for putting the cursor right). The screen update that follows shows it.
+    if (mode == GameMode::League && focus == Focus::Players) {
+        focus = Focus::Rocks;
+        Serial.println("focus: rocks (after a timed stone)");
+    }
     // every kStonesPerClean-th stone: a ghost-clearing full refresh once it's safe
     if (++stonesSinceClean >= kStonesPerClean) refreshAt = now + delay;
 }
