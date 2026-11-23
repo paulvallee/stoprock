@@ -161,6 +161,7 @@ stoprock logo (176 px), then Spleen 6×12:
      rocker up   = coach mode
 
  [TIMING] use top or side button
+         hold up = move last time
 
  [SHOTS] up/down = made/missed
             hold = undo last shot

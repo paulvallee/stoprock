@@ -237,6 +237,7 @@ def help_page(device_logo, last_game, shot_pct=None, battery=None, battery_note=
     eq_line("rocker up   = coach mode")
     y += 5
     tag("TIMING", "use top or side button")
+    eq_line("hold up = move last time")
     y += 3
     tag("SHOTS", "up/down = made/missed")
     eq_line("hold = undo last shot")

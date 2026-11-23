@@ -188,6 +188,7 @@ void drawHelp(Canvas& c, const char* lastGame, int shotPct, int battery, const c
     eqLine("rocker up   = coach mode");
     y += 5;
     tag("TIMING", "use top or side button");
+    eqLine("hold up = move last time");
     y += 3;
     tag("SHOTS", "up/down = made/missed");
     eqLine("hold = undo last shot");
