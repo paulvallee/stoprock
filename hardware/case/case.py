@@ -54,7 +54,10 @@ TOP_BTN = dict(cx=DEV_X0 + 26.0, w=12.0, t=7.0)        # top button: 22.3-29.7 m
 SIDE_BTN = dict(cy=WALL + 15.0, h=10.0, t=7.0)         # right side, 15 mm above the bottom: power (the drawing's
                                                        # controls are top button, dial, this oval and the back's reset,
                                                        # so by elimination this is power; the left side has no control)
-ROCKER = dict(cy=DEV_TOP - 20.0, h=20.0, t=9.0)        # right side, about 10-30 mm below the top: open cut-out
+# Rocker (dial) cut-out, right side: as small as the dial allows at the CoreInk (its window in the
+# CoreInk's shell is about 16 mm long, 10.7-26.7 mm below the top, per the drawing, plus 0.5 mm each
+# end), with a chamfer round the outside so a thumb reaches the dial through the 2.5 mm wall.
+ROCKER = dict(cy=DEV_TOP - 18.7, h=17.0, t=9.0, chamfer=1.2)
 USB = dict(cx=DEV_X0 + 21.0, w=12.5, t=7.0)            # bottom, about centred (MEASURE its depth)
 RESET = (DEV_X0 + 6.0, DEV_TOP - 15.0)                  # back: 6 mm from the left edge, 15 mm below the top
 LOOP = None  # the old corner loop (dict(c=(-1.5, CH + 1.5), r_out=5.75, r_in=2.5, t=3.5)); replaced by the mount
@@ -175,7 +178,12 @@ def tub():
 
     # rocker: an open cut-out in the right wall (a soft cover is a later iteration)
     rk = ROCKER
-    body -= prism_x(rk["cy"], MID_Z, rk["h"], rk["t"], 2.0, CW - WALL - 0.5, CW + 0.5)
+    x_in, c = CW - WALL - 0.5, rk["chamfer"]
+    body -= prism_x(rk["cy"], MID_Z, rk["h"], rk["t"], 2.0, x_in, CW + 0.5)
+    # the chamfer: a tapered cut growing by c each side over the outer c mm of the wall
+    flare = Manifold.extrude(rrect(rk["t"], rk["h"], 2.0), c + 0.02,
+                             scale_top=((rk["t"] + 2 * c) / rk["t"], (rk["h"] + 2 * c) / rk["h"]))
+    body -= flare.rotate((0, 90, 0)).translate((CW - c - 0.01, rk["cy"], MID_Z))
 
     # USB-C opening, bottom wall
     us = USB
