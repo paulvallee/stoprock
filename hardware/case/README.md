@@ -1,6 +1,6 @@
 # Case
 
-A two-part TPU case for the CoreInk: a **tub** (back and walls, with the button pads, strap tunnel,
+A two-part white TPU case for the CoreInk (white to match it, as some of it shows through): a **tub** (back and walls, with the button pads, strap tunnel,
 rocker cut-out, USB-C opening and reset pinhole) and a **bezel** (the front frame, with a faceted cut-gem front) that snaps into a
 groove in the tub's rim. Concept sketch: [`docs/mockups/case-concept.png`](../../docs/mockups/case-concept.png).
 

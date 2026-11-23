@@ -27,12 +27,12 @@ const add = async (file, material, offset = [0, 0, 0]) => {
 };
 const group = new THREE.Group(); scene.add(group);
 const exploded = view === 'exploded';
-await add('model-tub.stl', mat(0x3b3f46));
-await add('model-bezel.stl', mat(0x6a717b, { flatShading: true }), [0, 0, exploded ? 16 : 0]);
+await add('model-tub.stl', mat(0xf0efe9, { roughness: 0.85 }));   // white TPU
+await add('model-bezel.stl', mat(0xf0efe9, { roughness: 0.85, flatShading: true }), [0, 0, exploded ? 16 : 0]);
 if (view.startsWith('fit')) await add('model-coreink.stl', mat(0xe9e9e4, { roughness: 0.5 }));
 if (view !== 'tub' && view !== 'bezel' && view !== 'mount' && view !== 'back' && !view.startsWith('fit')) {
   const dz = exploded ? 8 : 0;
-  const dev = new THREE.Mesh(new THREE.BoxGeometry(40, 56, 16), mat(0xe9e9e4, { roughness: 0.5 }));
+  const dev = new THREE.Mesh(new THREE.BoxGeometry(40, 56, 16), mat(0xd6dbe2, { roughness: 0.5 }));   // the CoreInk, a cooler white to tell it apart
   dev.position.set(22.5, 30.5, 10.5 + dz); group.add(dev);
   const tex = new THREE.TextureLoader().load('screen.png');
   tex.colorSpace = THREE.SRGBColorSpace;
@@ -49,6 +49,7 @@ if (view.startsWith('broom')) {
   await add('model-band.stl', mat(0xd9542b, { roughness: 0.45 }));
 }
 if (view === 'bezel') group.children[0].visible = false;
+if (view === 'tub') group.children[1].visible = false;
 group.position.set(-22.5, -30.5, -10.5);
 const views = {
   front: [[70, 55, 170], [0, 0, 0]], tub: [[80, 70, 150], [0, 0, 0]], exploded: [[150, 40, 120], [0, 0, 8]],

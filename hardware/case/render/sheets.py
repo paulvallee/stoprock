@@ -42,7 +42,7 @@ sheet([("front", "Assembled, front"), ("bezel", "Bezel: faceted front"), ("right
        ("exploded", "Exploded: tub, CoreInk, bezel"), ("tub", "Tub alone: pocket, USB-C opening, top pad"),
        ("back", "Back: debossed wordmark, reset pinhole")],
       "stoprock case: two TPU parts (tub + bezel) for an M5Stack CoreInk",
-      f"Tub {size('tub')}   |   Bezel {size('bezel')}   |   TPU 95A   |   the white block is the CoreInk, for context",
+      f"Tub {size('tub')}   |   Bezel {size('bezel')}   |   TPU 95A   |   white TPU; the blue-grey block is the CoreInk, for context",
       HERE.parent / "preview.png", 3)
 sheet([("cord", "Cord lanyard; a sliding bead or knot closes the V"), ("cord-close", "Close-up: the cord entering the tunnel at the side"),
        ("broom", "Silicone band round a broom handle"), ("broom-side", "The same, from the side")],

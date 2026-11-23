@@ -16,8 +16,9 @@ Units are millimetres. Both files are already oriented for printing, each standi
 
 ## Material and finish
 
-- **TPU, Shore 95A** (FDM), black or charcoal. If you also print TPU by MJF or SLS (about 88-90A),
-  please quote that too, and say which you'd recommend for the features below.
+- **TPU, Shore 95A** (FDM), **white**, to match the white device it holds. If you also print TPU by
+  SLS (naturally white, about 88-90A), please quote that too, and say which you'd recommend for the
+  features below. (MJF TPU usually comes grey or dyed black, so it doesn't suit the colour.)
 - Solid parts: **100% infill** (or enough perimeters that the thin features are solid).
 - Layer height 0.2 mm or finer. Standard as-printed finish; no painting.
 - Tolerance ±0.2 mm or better where possible.
