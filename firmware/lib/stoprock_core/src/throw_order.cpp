@@ -67,6 +67,12 @@ int ThrowOrder::throwsToMine() const {
     return -1;
 }
 
+int ThrowOrder::mineSoFar() const {
+    int n = last_.end * 2;
+    for (int s = 0; s <= last_.s; ++s) n += columnOf(s, last_.ourFirst) == kMine;
+    return n;
+}
+
 int64_t ThrowOrder::nextChange(int64_t t) const {
     if (lastT_ < 0) return -1;
     const int n = throwsSince(t);

@@ -46,6 +46,9 @@ public:
     // may move on then. -1: never (nothing placed yet, or far past the end).
     int64_t nextChange(int64_t t) const;
     int64_t lastStart() const { return lastT_; }
+    // Your throws so far, up to and including the last throw placed (two an end): compared with
+    // the shots logged, how many you still owe.
+    int mineSoFar() const;
 
     int end() const { return last_.end; }
     int lastThrow() const { return last_.s; }  // -1: none yet this end

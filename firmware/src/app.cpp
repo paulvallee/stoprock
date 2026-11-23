@@ -378,9 +378,12 @@ void countTimedStone(int64_t now, int64_t delay) {
         planFollow(now);
         Serial.printf("timing: next up, column %d\n", activeCol + 1);
     }
+    // League: the rocker goes to the times, or to your rocks if you threw since your last logged shot
+    // (one owed: more means you aren't logging them, so don't pull the focus down every stone).
     if (mode == GameMode::League) {
-        if (focus == Focus::Rocks) Serial.println("focus: players (after a timed stone)");
-        focus = Focus::Players;
+        const Focus f = order.mineSoFar() - shots.count() == 1 ? Focus::Rocks : Focus::Players;
+        if (f != focus) Serial.printf("focus: %s (after a timed stone)\n", f == Focus::Rocks ? "rocks, a shot to log" : "players");
+        focus = f;
         planRocksFocus();
     }
     // every kStonesPerClean-th stone: a ghost-clearing full refresh once it's safe
@@ -409,6 +412,10 @@ void handleOutcome(const Outcome& o, int64_t now) {
         rocksFocusAt = -1;  // someone's throwing: not you
         followAt = -1;      // the cursor stays on this stone's column until it's done
         cursorToNext(now);  // the time since the last stone says how many throws went untimed
+        if (mode == GameMode::League && focus == Focus::Rocks) {  // timing: the rocker back on the times
+            focus = Focus::Players;
+            Serial.println("focus: players (timing)");
+        }
         // no LED: the case covers it, and the stopwatch icon shows timing in progress
         Serial.println("timing: start");
         syncModel();  // a stopwatch where the time will appear

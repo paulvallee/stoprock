@@ -137,6 +137,20 @@ static void test_cursor_follows_the_clock() {
     TEST_ASSERT_EQUAL_INT64(308 * S, firstThird);
 }
 
+static void test_mine_so_far() {
+    const int64_t S2 = 1000000;
+    ThrowOrder o;
+    o.reset(0);  // lead, throwing first
+    TEST_ASSERT_EQUAL_INT(0, o.mineSoFar());
+    o.ownShot(0, 0, 45 * S2);
+    TEST_ASSERT_EQUAL_INT(1, o.mineSoFar());
+    o.place(ThrowOrder::kThem, 70 * S2);
+    TEST_ASSERT_EQUAL_INT(1, o.mineSoFar());
+    o.place(ThrowOrder::kThem, 180 * S2);  // their next, after your second rock (not logged yet)
+    TEST_ASSERT_EQUAL_INT(3, o.lastThrow());
+    TEST_ASSERT_EQUAL_INT(2, o.mineSoFar());  // one shot owed
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_column_of);
@@ -148,5 +162,6 @@ int main() {
     RUN_TEST(test_your_shot_pins_the_order);
     RUN_TEST(test_throws_to_mine);
     RUN_TEST(test_cursor_follows_the_clock);
+    RUN_TEST(test_mine_so_far);
     return UNITY_END();
 }
