@@ -17,7 +17,8 @@ One record per game:
 | `mode` | How the device was switched on: `competition`, `league` or `coach` (games before format version 3 read as `league`) |
 | `shots` | Rocks in order: `M` made, `X` missed. League: your own, up to 16. Coach: the team's, up to 64, in throwing order (lead, lead, second, second, third, third, skip, skip per end). Competition: none |
 | `made`, `thrown`, `pct` | Summary of `shots`; `pct` is -1 with no rocks thrown |
-| `stones` | Every timed stone in order, as `[back-to-hog, hog-to-hog, player]`: times in seconds, `null` where that split wasn't timed; player is who threw it in a competition or league game, `"lead"`, `"second"`, `"third"` or `"skip"`, or `"them"` for the other team (`null` in coach games, and in games before format version 4). Up to 128 |
+| `stones` | Every timed stone in order, as `[back-to-hog, hog-to-hog, player, start, guess]`: times in seconds, `null` where that split wasn't timed; player is who threw it in a competition or league game, `"lead"`, `"second"`, `"third"` or `"skip"`, or `"them"` for the other team (`null` in coach games, and in games before format version 4); start is when the stone started (its first click), in whole seconds since switch-on; guess is who the device's throw order guessed when it started, whatever the cursor showed, so a guess that differs from player is one you corrected (start and guess `null` before format version 5, guess also in coach games). Up to 128. For an H2H-only stone, start is the click at the near hog line, about 3 s after the stone's real start |
+| `shot_times` | When each rock in `shots` was logged, in whole seconds since switch-on (`null` before format version 5). League: about 20–30 s after you threw, once your rock stopped |
 | `battery_start`, `battery_end` | Battery charge (%) at switch-on and at switch-off; `null` if unknown (no reading, a game recorded before format version 2, or a game that never switched off cleanly) |
 
 Rules:
@@ -26,7 +27,8 @@ Rules:
   never split while you're playing.
 - A game is written only once it has a shot or a time in it.
 - It is rewritten on every change, so a game is complete up to the last press even if the battery dies.
-- Up to **500 games**. When a 501st is stored, the oldest is dropped, synced or not.
+- Up to **500 games**. When a 501st is stored, the oldest is dropped, synced or not. If the flash fills up
+  first (a full game is up to about 1.2 KB), the oldest games are dropped to make room for the one being played.
 
 ## Storage
 
@@ -37,12 +39,12 @@ the flash and commits each record atomically.
 Keys in the namespace `bank`:
 
 - `meta`: version (1), oldest id, next id, last acknowledged id, as little-endian u32s.
-- `g<id>`: one game, record format version 4:
+- `g<id>`: one game, record format version 5:
 
 | Bytes | Field |
 |---|---|
 | 0 | `'G'` |
-| 1 | Format version (4) |
+| 1 | Format version (5) |
 | 2 | Flags: bit 0 = clock set |
 | 3 | Rocks thrown (0–64) |
 | 4–7 | id |
@@ -54,13 +56,15 @@ Keys in the namespace `bank`:
 | 20 | Mode: 0 league, 1 competition, 2 coach |
 | 21–23 | Reserved (0) |
 | 24–31 | Shot bits (u64): bit *i* set = rock *i* made |
-| 32 … 32 + 5*n* − 1 | Per stone: back-to-hog, hog-to-hog (u16 hundredths; 0xFFFF = not timed), player (u8: 0 lead, 1 second, 2 third, 3 skip, 4 the other team; 0xFF = none) |
+| 32 … 32 + 8*n* − 1 | Per stone: back-to-hog, hog-to-hog (u16 hundredths; 0xFFFF = not timed), player (u8: 0 lead, 1 second, 2 third, 3 skip, 4 the other team; 0xFF = none), guess (u8, the same codes: who the throw order guessed when the stone started), start (u16 seconds since switch-on; 0xFFFF = unknown) |
+| then 2 per rock thrown | When each rock was logged (u16 seconds since switch-on; 0xFFFF = unknown) |
 | last | Checksum of all preceding bytes |
 
 All numbers are little-endian. A record that fails its checks is skipped, not shown as a game.
 
 Older records are still read:
 
+- Version 4: the same with 5 bytes per stone (no guess or start) and no shot times.
 - Version 3: the same with 4 bytes per stone (no player).
 
 Versions 1 and 2 read as league games:
@@ -68,6 +72,14 @@ Versions 1 and 2 read as league games:
 - Version 2: a 24-byte header. Bytes 0–15 as above (rocks thrown 0–16), 16–17 shot bits, 18–19 stone count,
   20–21 battery at switch-on and switch-off, 22–23 reserved; stones from byte 24.
 - Version 1: the same as version 2 with bytes 20–23 reserved: the battery reads as unknown.
+
+## Checking the throw order against real games
+
+`python tools/analyze_games.py games.txt` reads exported games (the `@GAMES` listing, or JSON lines) and
+reports, for competition and league games: each stone's start, the gap since the previous one, the device's
+guess and where it ended up; how often the guess was right, by gap; and the gaps between stones a throw apart
+(the other team's stone after ours, or ours after theirs), which is what the 80 s and ~56 s-a-throw rules
+assume. The player you left a stone under is taken as the truth, so move wrong times before exporting.
 
 ## Battery drain log
 
@@ -85,7 +97,7 @@ and replies. One command per line.
 
 | Command | Reply |
 |---|---|
-| `bank` | `@BANK {"first":1,"last":42,"synced":40,"current":42,"version":4}` |
+| `bank` | `@BANK {"first":1,"last":42,"synced":40,"current":42,"version":5}` |
 | `games` | Every stored game |
 | `games new` | Games after the last acknowledged one |
 | `game <id>` | Games from that id on |
@@ -97,8 +109,8 @@ Game listings are framed so they can be parsed from a stream that also carries l
 
 ```text
 @GAMES 2
-{"id":41,"v":4,"mode":"league","started":1795290802,"updated":1795297990,"clock":true,"shots":"MMXMMMXM","made":6,"thrown":8,"pct":75,"stones":[[3.47,13.92,null],[3.29,null,null],[null,14.02,null]],"battery_start":88,"battery_end":85}
-{"id":42,"v":4,"mode":"coach","started":1795377202,"updated":1795377300,"clock":true,"shots":"M","made":1,"thrown":1,"pct":100,"stones":[],"battery_start":85,"battery_end":null}
+{"id":41,"v":5,"mode":"league","started":1795290802,"updated":1795297990,"clock":true,"shots":"MX","made":1,"thrown":2,"pct":50,"stones":[[3.47,13.92,"lead",12,"lead"],[3.29,null,"them",66,"them"],[null,14.02,"third",290,"them"]],"shot_times":[148,262],"battery_start":88,"battery_end":85}
+{"id":42,"v":5,"mode":"coach","started":1795377202,"updated":1795377300,"clock":true,"shots":"M","made":1,"thrown":1,"pct":100,"stones":[],"shot_times":[41],"battery_start":85,"battery_end":null}
 @END
 ```
 

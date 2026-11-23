@@ -173,7 +173,7 @@ static void test_encode_decode_round_trip_and_corruption() {
     r.stones[1] = StoneTimes{NONE, 1402};
     uint8_t buf[Databank::kMaxRecordSize];
     const size_t n = Databank::encode(r, buf);
-    TEST_ASSERT_EQUAL_size_t(Databank::kHeaderSize + 2 * Databank::kStoneSize + 1, n);
+    TEST_ASSERT_EQUAL_size_t(Databank::kHeaderSize + 2 * Databank::kStoneSize + 7 * Databank::kShotTimeSize + 1, n);
     GameRecord back;
     TEST_ASSERT_TRUE(Databank::decode(buf, n, back));
     TEST_ASSERT_EQUAL_UINT32(77, back.id);
@@ -318,7 +318,7 @@ static void test_stone_players_and_version_3() {
     TEST_ASSERT_EQUAL_UINT8(1, g.stones[1].player);
     char json[400];
     Databank::toJson(g, json, sizeof json);
-    TEST_ASSERT_NOT_NULL(strstr(json, "[3.38,13.81,\"them\"]"));
+    TEST_ASSERT_NOT_NULL(strstr(json, "[3.38,13.81,\"them\",null,null]"));
     // a version 3 record: the same header, 4 bytes per stone, no player
     uint8_t buf[Databank::kMaxRecordSize];
     memset(buf, 0, 32);
@@ -351,18 +351,89 @@ static void test_json_line() {
     r.shotBits = 0b101;
     r.stoneCount = 2;
     r.stones[0] = StoneTimes{347, 1392};
-    r.stones[1] = StoneTimes{NONE, 1402, 2};  // thrown by the third
-    char out[256];
+    r.stones[1] = StoneTimes{NONE, 1402, 2, 4, 95};  // thrown by the third, guessed as THEM, 95 s in
+    r.shotTimes[0] = 30;
+    r.shotTimes[2] = 212;
+    char out[400];
     Databank::toJson(r, out, sizeof out);
     TEST_ASSERT_EQUAL_STRING(
-        "{\"id\":12,\"v\":4,\"mode\":\"league\",\"started\":100,\"updated\":200,\"clock\":true,\"shots\":\"MXM\","
-        "\"made\":2,\"thrown\":3,\"pct\":67,\"stones\":[[3.47,13.92,null],[null,14.02,\"third\"]],"
-        "\"battery_start\":null,\"battery_end\":null}",
+        "{\"id\":12,\"v\":5,\"mode\":\"league\",\"started\":100,\"updated\":200,\"clock\":true,\"shots\":\"MXM\","
+        "\"made\":2,\"thrown\":3,\"pct\":67,\"stones\":[[3.47,13.92,null,null,null],[null,14.02,\"third\",95,\"them\"]],"
+        "\"shot_times\":[30,null,212],\"battery_start\":null,\"battery_end\":null}",
         out);
     char small[20];
     const int need = Databank::toJson(r, small, sizeof small);
     TEST_ASSERT_EQUAL_INT((int)strlen(out), need);   // reports the length it needed
     TEST_ASSERT_EQUAL_size_t(sizeof small - 1, strlen(small));
+}
+
+static void test_version_5_times_and_guesses() {
+    MemStore st;
+    Databank db(st);
+    db.begin();
+    db.startGame(0, true, 80, GameMode::League);
+    db.setShots(1, 1, 1, 70);                       // your first rock, logged 70 s in
+    db.addStone(341, NONE, 2, StoneTimes::kThem, StoneTimes::kThem, 96);
+    db.setLastHogToHog(1386, 3);
+    db.addStone(347, 1392, 4, 2, StoneTimes::kThem, 205);  // guessed THEM, filed as the third
+    db.setShots(2, 1, 5, 260);
+    db.setShots(1, 1, 6);                           // undo: the time goes with the rock
+    db.setShots(2, 3, 7, 275);
+    GameRecord g;
+    TEST_ASSERT_TRUE(db.load(1, g));
+    TEST_ASSERT_EQUAL_UINT16(96, g.stones[0].start);
+    TEST_ASSERT_EQUAL_UINT8(StoneTimes::kThem, g.stones[0].guess);
+    TEST_ASSERT_EQUAL_UINT8(2, g.stones[1].player);
+    TEST_ASSERT_EQUAL_UINT8(StoneTimes::kThem, g.stones[1].guess);
+    TEST_ASSERT_EQUAL_UINT16(205, g.stones[1].start);
+    TEST_ASSERT_EQUAL_UINT16(70, g.shotTimes[0]);
+    TEST_ASSERT_EQUAL_UINT16(275, g.shotTimes[1]);
+    // a version 4 record still reads: 5 bytes per stone, no shot times
+    uint8_t buf[Databank::kMaxRecordSize];
+    memset(buf, 0, 32);
+    buf[0] = 'G';
+    buf[1] = 4;
+    buf[3] = 1;                                     // one rock
+    buf[4] = 9;
+    buf[16] = 1;
+    buf[18] = buf[19] = 0xFF;
+    buf[32] = 0x5B; buf[33] = 0x01; buf[34] = 0x70; buf[35] = 0x05; buf[36] = 4;
+    const size_t n = 32 + 5 + 1;
+    uint8_t c = 0x5A;
+    for (size_t i = 0; i + 1 < n; ++i) c = static_cast<uint8_t>((c << 1 | c >> 7) ^ buf[i]);
+    buf[n - 1] = c;
+    TEST_ASSERT_TRUE(Databank::decode(buf, n, g));
+    TEST_ASSERT_EQUAL_UINT8(StoneTimes::kThem, g.stones[0].player);
+    TEST_ASSERT_EQUAL_UINT8(StoneTimes::kNoPlayer, g.stones[0].guess);
+    TEST_ASSERT_EQUAL_UINT16(NONE, g.stones[0].start);
+    TEST_ASSERT_EQUAL_UINT16(NONE, g.shotTimes[0]);
+}
+
+// Flash full: the oldest games make room for the one being played.
+class SmallStore : public MemStore {
+public:
+    size_t limit = 0;
+    bool put(const char* key, const void* d, size_t len) override {
+        size_t used = 0;
+        for (auto& kv : data) if (kv.first != key) used += kv.second.size();
+        if (used + len > limit) return false;
+        return MemStore::put(key, d, len);
+    }
+};
+
+static void test_full_flash_drops_the_oldest() {
+    SmallStore st;
+    st.limit = 2000;
+    Databank db(st);
+    db.begin();
+    for (int game = 0; game < 6; ++game) {
+        db.startGame(game, true, 80, GameMode::Competition);
+        for (int i = 0; i < 40; ++i) db.addStone(340, 1390, game, 1, 1, static_cast<uint16_t>(i * 50));
+    }
+    GameRecord g;
+    TEST_ASSERT_TRUE(db.load(db.lastId(), g));
+    TEST_ASSERT_EQUAL_UINT16(40, g.stoneCount);  // the game being played was kept whole
+    TEST_ASSERT_TRUE(db.firstId() > 1);           // older ones were dropped for it
 }
 
 int main() {
@@ -382,5 +453,7 @@ int main() {
     RUN_TEST(test_coach_game_of_64_shots_and_mode);
     RUN_TEST(test_stone_players_and_version_3);
     RUN_TEST(test_json_line);
+    RUN_TEST(test_version_5_times_and_guesses);
+    RUN_TEST(test_full_flash_drops_the_oldest);
     return UNITY_END();
 }

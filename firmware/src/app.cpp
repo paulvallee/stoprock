@@ -25,7 +25,7 @@ constexpr int64_t kUndoHoldUs = kSec / 2;   // 0.5 s
 constexpr int64_t kPowerHoldUs = 3 * kSec;
 constexpr int64_t kDoublePressUs = 400000;     // two rocker presses within 0.4 s: a double press
 constexpr int64_t kFocusHoldUs = kSec / 2;     // league: hold rocker down (up from your rocks) to move the focus
-constexpr int64_t kMoveStepUs = kSec / 2;      // competition and league: holding rocker up moves the newest time a column left this often
+constexpr int64_t kMoveStepUs = kSec / 2;      // competition and league: holding rocker up moves the newest time a column right this often
 constexpr int64_t kAwakeAfterPressUs = 2 * kSec;    // stay awake this long after a rocker press
 constexpr int64_t kAwakeAfterWakeUs = 40000;        // time to confirm the button that woke us
 constexpr int64_t kAuditEveryUs = 10 * 60 * kSec;   // clock audit sample interval
@@ -123,6 +123,7 @@ Focus focus = Focus::Players;
 ThrowOrder order;               // competition and league: where in the end the game is
 bool manualCursor = false;      // the cursor was put where it is with the rocker: leave it there
 int64_t stoneStart = -1;        // when the stone being timed started
+int64_t gameStartUs = 0;        // when this game started (switch-on)
 uint8_t moveSteps = 0;          // columns the newest time has moved during this hold of rocker up
 // League: when your throw is next, the focus moves to your rocks by itself this long after the
 // stone before yours started (about 13 s after it's done, if it was timed), ready for your shot.
@@ -207,6 +208,8 @@ void newGame() {
     manualCursor = false;
     rocksFocusAt = -1;
     followAt = -1;
+    stoneStart = -1;
+    gameStartUs = esp_timer_get_time();
     activeCol = order.predict();
     // "Double click rocker to change position", for the first 5 s (not in coach: no positions)
     tipWaiting = mode != GameMode::Coach;
@@ -215,7 +218,17 @@ void newGame() {
     Serial.printf("game: new, %s mode\n", modeName(mode));
 }
 
-void saveShots() { bank.setShots(shots.count(), shots.bits(), board::clockNow()); }
+// Seconds since this switch-on (gameStartUs), for the databank's stone and shot times.
+uint16_t secondsIn(int64_t us) {
+    if (us < 0 || us < gameStartUs) return StoneTimes::kNoTime;
+    const int64_t s = (us - gameStartUs) / kSec;
+    return s >= StoneTimes::kNoTime ? StoneTimes::kNoTime - 1 : static_cast<uint16_t>(s);
+}
+
+// shotAt: when a rock just logged was logged (secondsIn), kept with it in the databank.
+void saveShots(uint16_t shotAt = StoneTimes::kNoTime) {
+    bank.setShots(shots.count(), shots.bits(), board::clockNow(), shotAt);
+}
 
 uint16_t toStored(int32_t hundredths) {
     return hundredths < 0 || hundredths >= StoneTimes::kNoTime ? StoneTimes::kNoTime : static_cast<uint16_t>(hundredths);
@@ -320,8 +333,12 @@ uint8_t leaguePlayer(uint8_t col) {
 }
 
 // A new stone, newest first, filed under the player in the active column (see addStone()).
+// stoneGuess: who the throw order guessed for it, whatever the cursor said (kept in the databank,
+// to check the guesses against real games).
+uint8_t stoneGuess = Stone::kNoPlayer;
 void pushStone(Stone s) {
     s.player = mode == GameMode::Coach ? Stone::kNoPlayer : leaguePlayer(activeCol);
+    stoneGuess = mode == GameMode::Coach ? Stone::kNoPlayer : leaguePlayer(order.predict(stoneStart));
     addStone(stones, stoneCount, kMaxStones, s);
     if (mode != GameMode::Coach) {
         order.place(activeCol, stoneStart);
@@ -405,7 +422,8 @@ void handleOutcome(const Outcome& o, int64_t now) {
     case TimingEvent::BH:
         noteResult(o.us);
         pushStone(Stone{toHundredths(o.us), -1});
-        bank.addStone(toStored(stones[0].bh), StoneTimes::kNoTime, board::clockNow(), stones[0].player);
+        bank.addStone(toStored(stones[0].bh), StoneTimes::kNoTime, board::clockNow(), stones[0].player, stoneGuess,
+                      secondsIn(stoneStart));
         Serial.printf("timing: B2H %.2f\n", o.us / 1e6);
         syncModel();
         break;
@@ -416,7 +434,8 @@ void handleOutcome(const Outcome& o, int64_t now) {
             bank.setLastHogToHog(toStored(stones[0].hh), board::clockNow());
         } else {
             pushStone(Stone{-1, toHundredths(o.us)});
-            bank.addStone(StoneTimes::kNoTime, toStored(stones[0].hh), board::clockNow(), stones[0].player);
+            bank.addStone(StoneTimes::kNoTime, toStored(stones[0].hh), board::clockNow(), stones[0].player,
+                          stoneGuess, secondsIn(stoneStart));
         }
         Serial.printf("timing: H2H %.2f\n", o.us / 1e6);
         closeStone(now);
@@ -588,7 +607,7 @@ void onShot(bool made) {
         focus = Focus::Players;
         planRocksFocus();  // your second rock, if nobody times the stone between
     }
-    saveShots();
+    saveShots(secondsIn(esp_timer_get_time()));
     if (!timing.active()) syncModel();
 }
 
@@ -642,12 +661,12 @@ void movePlayer(int dir) {
     syncModel();
 }
 
-// Rocker up held on the columns: the newest time moves a column left every 0.5 s (round
+// Rocker up held on the columns: the newest time moves a column right every 0.5 s (round
 // and round), shown where it is. Returns false when there's no time to move.
 bool stepMove() {
     const int col = stoneCount > 0 ? leagueColumn(myPosition, stones[0].player) : -1;
     if (col < 0) { sound.play(kError); return false; }
-    const uint8_t to = static_cast<uint8_t>((col + kLeagueColumns - 1) % kLeagueColumns);
+    const uint8_t to = static_cast<uint8_t>((col + 1) % kLeagueColumns);  // the way rocker up moves the cursor
     stones[0].player = leaguePlayer(to);
     activeCol = to;
     ++moveSteps;
@@ -757,7 +776,7 @@ void pollButtons(int64_t now) {
             }
             if (b == board::kSide && now - s.downSince >= kPowerHoldUs) { s.holdFired = true; showHelpAndPowerOff(); }
             // League: hold down for your rocks; hold up for the columns. Competition and league: hold
-            // up on the columns to move the newest time a column left every 0.5 s (let go where it belongs).
+            // up on the columns to move the newest time a column right every 0.5 s (let go where it belongs).
             const bool rocker = b == board::kUp || b == board::kDown;
             if (mode == GameMode::League && rocker && (b == board::kDown || focus == Focus::Rocks) &&
                 now - s.downSince >= kFocusHoldUs) {
@@ -776,7 +795,7 @@ void pollButtons(int64_t now) {
 // Databank export, framed so an app can parse it: "@GAMES n", n JSON lines, "@END".
 void printGames(uint32_t fromId) {
     static GameRecord g;
-    static char json[3600];  // a full coach game: 64 shots, 128 stones
+    static char json[6400];  // a full coach game: 64 shots and their times, 128 stones
     uint32_t n = 0;
     for (uint32_t id = fromId; id <= bank.lastId(); ++id) n += bank.load(id, g) ? 1 : 0;
     Serial.printf("@GAMES %lu\n", static_cast<unsigned long>(n));

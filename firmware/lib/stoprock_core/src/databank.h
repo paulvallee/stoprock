@@ -23,8 +23,11 @@ struct StoneTimes {
     uint16_t backToHog = kNoTime;
     uint16_t hogToHog = kNoTime;
     static constexpr uint8_t kNoPlayer = 0xFF;
-    static constexpr uint8_t kThem = 4;  // league: a stone of the other team's
+    static constexpr uint8_t kThem = 4;  // a stone of the other team's
     uint8_t player = kNoPlayer;  // competition and league: who threw it, 0 lead .. 3 skip, kThem; kNoPlayer in coach
+    // Version 5, for checking the throw order against real games:
+    uint8_t guess = kNoPlayer;   // who the device guessed when the stone started (player above: where it ended up)
+    uint16_t start = kNoTime;    // when the stone started, seconds since switch-on (the first click)
 };
 
 // How the device was switched on (see docs/SPEC.md). 0 = league, so older records read as league.
@@ -46,17 +49,22 @@ struct GameRecord {
     uint8_t batteryStart = kNoBattery;  // charge % at switch-on
     uint8_t batteryEnd = kNoBattery;    // charge % at switch-off (unknown if it never switched off cleanly)
     StoneTimes stones[kMaxStones];
+    uint16_t shotTimes[64];   // version 5: when each rock was logged, seconds since switch-on (kNoTime = unknown)
+
+    GameRecord() { for (uint16_t& t : shotTimes) t = StoneTimes::kNoTime; }
 
     bool empty() const { return shotCount == 0 && stoneCount == 0; }
 };
 
 class Databank {
 public:
-    static constexpr uint8_t kVersion = 4;            // record format version (1-3 still readable)
-    static constexpr size_t kHeaderSize = 32;         // versions 3 and 4
+    static constexpr uint8_t kVersion = 5;            // record format version (1-4 still readable)
+    static constexpr size_t kHeaderSize = 32;         // versions 3 to 5
     static constexpr size_t kOldHeaderSize = 24;      // versions 1 and 2
-    static constexpr size_t kStoneSize = 5;           // version 4; 4 before (no player)
-    static constexpr size_t kMaxRecordSize = kHeaderSize + kStoneSize * GameRecord::kMaxStones + 1;
+    static constexpr size_t kStoneSize = 8;           // version 5; 5 in version 4 (no guess, start), 4 before (no player)
+    static constexpr size_t kShotTimeSize = 2;        // version 5: per rock logged
+    static constexpr size_t kMaxRecordSize =
+        kHeaderSize + kStoneSize * GameRecord::kMaxStones + kShotTimeSize * 64 + 1;
     static constexpr uint32_t kDefaultCapacity = 500;
 
     explicit Databank(KeyValueStore& store, uint32_t capacity = kDefaultCapacity)
@@ -71,9 +79,12 @@ public:
 
     // The game in progress. Change it through the calls below.
     const GameRecord& current() const { return current_; }
-    void setShots(uint8_t count, uint64_t bits, uint32_t now);
-    // A stone's first result: a B2H (hogToHog = kNoTime), or an H2H with no B2H.
-    void addStone(uint16_t backToHog, uint16_t hogToHog, uint32_t now, uint8_t player = StoneTimes::kNoPlayer);
+    // shotAt: when a rock just added was logged (seconds since switch-on), for its shot time.
+    void setShots(uint8_t count, uint64_t bits, uint32_t now, uint16_t shotAt = StoneTimes::kNoTime);
+    // A stone's first result: a B2H (hogToHog = kNoTime), or an H2H with no B2H. guess and start:
+    // see StoneTimes.
+    void addStone(uint16_t backToHog, uint16_t hogToHog, uint32_t now, uint8_t player = StoneTimes::kNoPlayer,
+                  uint8_t guess = StoneTimes::kNoPlayer, uint16_t start = StoneTimes::kNoTime);
     // The newest stone was filed under the wrong player (league: moved with the rocker).
     void setLastPlayer(uint8_t player, uint32_t now);
     // The H2H that completes the last stone's B2H.

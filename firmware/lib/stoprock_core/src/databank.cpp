@@ -44,15 +44,19 @@ const char* modeName(GameMode m) {
     }
 }
 
-// Layout, version 4: a 32-byte header, 5 bytes per timed stone, then a checksum byte.
+// Layout, version 5: a 32-byte header, 8 bytes per timed stone, 2 per rock logged, then a checksum byte.
 //   0 'G'   1 version   2 flags (bit 0: clock set)   3 shot count (0-64)
 //   4-7 id   8-11 started   12-15 updated   16-17 stone count
 //   18 battery % at start   19 battery % at end (0xFF = unknown)   20 mode (0 league, 1 competition, 2 coach)
 //   21-23 reserved (0)   24-31 shot bits (u64)
 //   then per stone: back-to-hog (u16), hog-to-hog (u16), hundredths, 0xFFFF = not timed;
-//   player (u8: who threw it in competition and league, 0 lead .. 3 skip, 4 the other team; 0xFF = none)
+//   player (u8: who threw it in competition and league, 0 lead .. 3 skip, 4 the other team; 0xFF = none),
+//   guess (u8: who the device guessed when it started, the same codes), start (u16: seconds since
+//   switch-on, 0xFFFF = unknown)
+//   then per rock logged (shot count): when, u16 seconds since switch-on (0xFFFF = unknown)
 //   last byte: checksum of everything before it
 //
+// Version 4: the same with 5 bytes per stone (no guess or start) and no shot times.
 // Version 3: the same with 4 bytes per stone (no player).
 // Older versions (read only; their games read back as league):
 // Layout, version 2: a 24-byte header, 4 bytes per timed stone, then a checksum byte.
@@ -83,7 +87,10 @@ size_t Databank::encode(const GameRecord& r, uint8_t* out) {
         put16(p, r.stones[i].backToHog);
         put16(p + 2, r.stones[i].hogToHog);
         p[4] = r.stones[i].player;
+        p[5] = r.stones[i].guess;
+        put16(p + 6, r.stones[i].start);
     }
+    for (uint8_t i = 0; i < shots; ++i, p += kShotTimeSize) put16(p, r.shotTimes[i]);
     *p = checksum(out, p - out);
     return (p - out) + 1;
 }
@@ -94,8 +101,9 @@ bool Databank::decode(const uint8_t* in, size_t len, GameRecord& r) {
     const size_t header = v3 ? kHeaderSize : kOldHeaderSize;
     if (len < header + 1 || in[3] > (v3 ? 64 : 16) || (v3 && in[20] > 2)) return false;
     const uint16_t n = get16(in + (v3 ? 16 : 18));
-    const size_t stoneSize = in[1] >= 4 ? kStoneSize : 4;
-    if (n > GameRecord::kMaxStones || len != header + stoneSize * n + 1) return false;
+    const size_t stoneSize = in[1] >= 5 ? kStoneSize : in[1] == 4 ? 5 : 4;
+    const size_t shotTimes = in[1] >= 5 ? kShotTimeSize * in[3] : 0;
+    if (n > GameRecord::kMaxStones || len != header + stoneSize * n + shotTimes + 1) return false;
     if (in[len - 1] != checksum(in, len - 1)) return false;
     r = GameRecord();
     r.clockSet = in[2] & 1;
@@ -121,7 +129,13 @@ bool Databank::decode(const uint8_t* in, size_t len, GameRecord& r) {
         r.stones[i].backToHog = get16(p);
         r.stones[i].hogToHog = get16(p + 2);
         if (stoneSize > 4) r.stones[i].player = p[4] <= StoneTimes::kThem ? p[4] : StoneTimes::kNoPlayer;
+        if (stoneSize > 5) {
+            r.stones[i].guess = p[5] <= StoneTimes::kThem ? p[5] : StoneTimes::kNoPlayer;
+            r.stones[i].start = get16(p + 6);
+        }
     }
+    if (shotTimes)
+        for (uint8_t i = 0; i < r.shotCount; ++i, p += kShotTimeSize) r.shotTimes[i] = get16(p);
     return true;
 }
 
@@ -155,8 +169,16 @@ int Databank::toJson(const GameRecord& r, char* out, size_t len) {
         add(snprintf(out + (n < len ? n : len), room(), ","));
         add(appendTime(out + (n < len ? n : len), room(), r.stones[i].hogToHog));
         static const char* const kNames[5] = {"\"lead\"", "\"second\"", "\"third\"", "\"skip\"", "\"them\""};
-        const uint8_t p = r.stones[i].player;
-        add(snprintf(out + (n < len ? n : len), room(), ",%s]", p <= StoneTimes::kThem ? kNames[p] : "null"));
+        const uint8_t p = r.stones[i].player, g = r.stones[i].guess;
+        add(snprintf(out + (n < len ? n : len), room(), ",%s,", p <= StoneTimes::kThem ? kNames[p] : "null"));
+        if (r.stones[i].start == StoneTimes::kNoTime) add(snprintf(out + (n < len ? n : len), room(), "null"));
+        else add(snprintf(out + (n < len ? n : len), room(), "%u", r.stones[i].start));
+        add(snprintf(out + (n < len ? n : len), room(), ",%s]", g <= StoneTimes::kThem ? kNames[g] : "null"));
+    }
+    add(snprintf(out + (n < len ? n : len), room(), "],\"shot_times\":["));
+    for (uint8_t i = 0; i < r.shotCount; ++i) {
+        if (r.shotTimes[i] == StoneTimes::kNoTime) add(snprintf(out + (n < len ? n : len), room(), i ? ",null" : "null"));
+        else add(snprintf(out + (n < len ? n : len), room(), i ? ",%u" : "%u", r.shotTimes[i]));
     }
     add(snprintf(out + (n < len ? n : len), room(), "],\"battery_start\":"));
     add(r.batteryStart == GameRecord::kNoBattery ? snprintf(out + (n < len ? n : len), room(), "null")
@@ -203,16 +225,18 @@ void Databank::startGame(uint32_t now, bool clockSet, int batteryPercent, GameMo
     currentStored_ = false;
 }
 
-void Databank::setShots(uint8_t count, uint64_t bits, uint32_t now) {
+void Databank::setShots(uint8_t count, uint64_t bits, uint32_t now, uint16_t shotAt) {
+    for (uint8_t i = current_.shotCount; i < count && i < 64; ++i) current_.shotTimes[i] = shotAt;
     current_.shotCount = count;
     current_.shotBits = bits;
     current_.updated = now;
     save();
 }
 
-void Databank::addStone(uint16_t backToHog, uint16_t hogToHog, uint32_t now, uint8_t player) {
+void Databank::addStone(uint16_t backToHog, uint16_t hogToHog, uint32_t now, uint8_t player, uint8_t guess,
+                        uint16_t start) {
     if (current_.stoneCount >= GameRecord::kMaxStones) return;  // a full game is 128 stones
-    current_.stones[current_.stoneCount++] = StoneTimes{backToHog, hogToHog, player};
+    current_.stones[current_.stoneCount++] = StoneTimes{backToHog, hogToHog, player, guess, start};
     current_.updated = now;
     save();
 }
@@ -267,7 +291,15 @@ void Databank::save() {
     char key[16];
     const size_t n = encode(current_, buf);
     keyFor(current_.id, key);
-    store_.put(key, buf, n);
+    // Flash full: make room by dropping the oldest games (never this one), as the 500-game cap would.
+    while (!store_.put(key, buf, n) && first_ < current_.id) {
+        char old[16];
+        keyFor(first_, old);
+        store_.remove(old);
+        ++first_;
+        if (synced_ < first_ - 1) synced_ = first_ - 1;
+        saveMeta();
+    }
 }
 
 void Databank::trim() {
