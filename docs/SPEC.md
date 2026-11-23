@@ -96,7 +96,7 @@ A stone gives at most one **B2H** (back line, or tee line, to hog line) followed
 
 ## 6. Games and the databank
 
-- **Every switch-on starts a new game.** Light sleep between stones doesn't restart the chip, so it never splits a game. (If the device switches itself off after 5 minutes idle, the next switch-on is a new game.)
+- **Every switch-on starts a new game.** Light sleep between stones doesn't restart the chip, so it never splits a game. (If the device switches itself off after 2 hours idle, the next switch-on is a new game. Two hours is a whole game: someone who times only a stone or two, say in the last end, keeps the game going.)
 - A game is written to flash only once it has a shot or a time in it, so switching on and off doesn't leave empty games.
 - The **databank** keeps every game in its own flash partition: start time, shots (made/missed in order), every timed stone's back-to-hog and hog-to-hog times, and the battery charge at switch-on and switch-off (the battery drain log). Up to 500 games; when full, the oldest is dropped. Each game has a number that is never reused.
 - A companion app reads new games and acknowledges them; nothing is deleted on acknowledgement. Format and commands: [`DATABANK.md`](DATABANK.md).
@@ -108,7 +108,7 @@ A stone gives at most one **B2H** (back line, or tee line, to hog line) followed
 |---|---|---|
 | Awake | Any press | — |
 | Light sleep | Whenever nothing is happening: straight after each timing click once its beep and any screen update are done (including between the clicks of a stone), and 2 s after a rocker press | Any button (the waking press counts as a normal press and is timed from the moment of waking), or a timer: ghost clearing, a stone's 20 s timeout, the clock audit |
-| Off | 5 min with no press, or side button held 3 s | Side button held |
+| Off | 2 hours with no press, or side button held 3 s | Side button held |
 
 - On switching off, the screen gets one full refresh to the **help page** (section 9), which the e-ink keeps with no power.
 - The screen controller stays awake (not in its deep sleep) during a game so updates start immediately; it goes into deep sleep only at power-off.

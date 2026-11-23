@@ -29,7 +29,9 @@ constexpr int64_t kMoveStepUs = 2 * kSec / 3;  // competition and league: holdin
 constexpr int64_t kAwakeAfterPressUs = 2 * kSec;    // stay awake this long after a rocker press
 constexpr int64_t kAwakeAfterWakeUs = 40000;        // time to confirm the button that woke us
 constexpr int64_t kAuditEveryUs = 10 * 60 * kSec;   // clock audit sample interval
-constexpr int64_t kPowerOffUs = 5 * 60 * kSec;
+// Switch off after 2 hours with no press: a game is about that long, and someone who times only a
+// stone or two in the last end mustn't lose the game to it. Light sleep costs little more meanwhile.
+constexpr int64_t kPowerOffUs = 2 * 60 * 60 * kSec;
 constexpr int64_t kCleanAfterHhUs = 5 * kSec;
 constexpr uint8_t kStonesPerClean = 4;         // ghost-clearing full refresh after every 4th timed stone
 #ifdef STOPROCK_BOARD_EMU
