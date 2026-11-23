@@ -1,0 +1,43 @@
+{
+  "about": "M5Stack CoreInk (current revision): outside dimensions and the openings in its enclosure, as measured for the stoprock case. Millimetres. See DIMENSIONS.md.",
+  "coordinates": "Origin at the bottom-left-back corner as seen from the front (screen towards you, USB-C at the bottom). x: 0 at the left edge to 40 at the right. y: 0 at the bottom to 56 at the top. z: 0 at the back face to 16 at the front face. Features on the back are given in the same x as seen from the front (mirror x to read them from behind: 40 - x).",
+  "body": {
+    "width": 40.0, "height": 56.0, "depth": 16.0,
+    "outline_corner_radius": 4.4,
+    "face_edge_radius": 0.3,
+    "wall_thickness_range": [0.9, 1.7],
+    "weight_g": 31.5,
+    "battery_mAh": 390
+  },
+  "front": {
+    "screen_window": {"x": [5.75, 34.5], "y": [16.75, 45.0], "note": "opening in the front shell; the display's visible area is 27.6 x 27.6 (M5Stack)"},
+    "screen_window_centre": [20.125, 30.875],
+    "corner_holes": {"diameter": 4.85, "centres": [[4, 4], [36, 4], [4, 52], [36, 52]], "note": "from M5Stack's dimension drawing (32 x 48 mm apart)"},
+    "dial_notch": {"x": [37.75, 40.0], "y": [27.0, 45.0], "note": "the front shell is cut back round the dial"}
+  },
+  "top": {
+    "recessed_panel": {"x": [9.5, 30.75], "z": [2.8, 15.4], "note": "a panel set slightly below the top face across most of the width"},
+    "button": {"x": [23.1, 29.0], "z": [3.2, 8.7], "centre": [26.05, 5.95], "note": "the top button's key, flush with the top face; M5Stack's drawing gives 7.4 wide, 22.3-29.7 from the left, including its surround"},
+    "rear_recess": {"x": [9.0, 31.25], "y": [47.5, 55.5], "note": "an opening in the back face at the top, behind the panel (expansion connector)"}
+  },
+  "right": {
+    "dial_window": {"y": [26.75, 45.25], "z": [5.05, 16.0], "centre_y": 36.0, "note": "the 3-way dial (up / press / down); the window runs through to the front face"},
+    "power_button": {"y": [12.0, 18.25], "z": [3.05, 13.05], "centre": [15.1, 8.05], "note": "oval, wider front-to-back than tall"}
+  },
+  "left": {
+    "openings": [],
+    "note": "no openings or controls"
+  },
+  "bottom": {
+    "port_opening": {"x": [14.0, 26.25], "z": [2.3, 12.05], "centre": [20.125, 7.2], "note": "USB-C and Grove (HY2.0-4P) ports"}
+  },
+  "back": {
+    "reset_button": {"x": [3.0, 9.1], "y": [34.0, 44.1], "centre": [6.05, 39.05], "note": "oval; x as seen from the front (from behind it is 6 mm from the right edge)"},
+    "expansion_header_window": {"x": [3.5, 8.75], "y": [8.75, 29.75], "note": "2 x 8 pin, 2.54 mm pitch"},
+    "buzzer_grille": {"centre": [20.125, 28.125], "outer_diameter": 12.0, "centre_hole_diameter": 2.0},
+    "slot": {"x": [12.5, 27.75], "y": [38.75, 42.0]},
+    "small_holes": {"x": [37.25, 38.5], "y_centres": [29.75, 32.25, 34.75, 37.25, 39.75, 42.25], "size": [1.25, 1.5]},
+    "screw_holes": {"diameter": 3.75, "centres": [[11.1, 4.1], [29.1, 4.1]]},
+    "corner_holes": {"diameter": 6.25, "centres": [[4.1, 4.1], [36.1, 4.1], [4.1, 52.1], [36.1, 52.1]]}
+  }
+}

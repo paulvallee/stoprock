@@ -7,14 +7,10 @@
 Coordinates in millimetres: X across the width, Y up the height (Y = 0 at the bottom, where
 USB-C is), Z through the thickness (Z = 0 the back).
 
-Positions come from M5Stack's 3D model of the CoreInk's enclosure (front and back shells; not
-included here), measured by slicing its walls, and agree with M5Stack's dimension drawing.
-In that model's coordinates (x -20..20 across, y -52..4 bottom to top, z 0..16 back to front) the
-openings are: screen window x -14.25..14.5, y -35.25..-7; top button x 3.1..9.0, z 3.2..8.7 (top
-edge); power button y -40..-33.75, z 3.05..13.05 (right side); dial window y -25.25..-6.75,
-z 5.05..16 (right side, open to the front face); bottom opening (USB-C and Grove) x -6..6.25,
-z 2.3..12.05; reset oval x -17..-10.9, y -18..-7.9 (back). The left side has no openings.
+The CoreInk's dimensions and the positions of its buttons, dial and ports come from our own record,
+hardware/coreink/coreink.json (see hardware/coreink/DIMENSIONS.md).
 """
+import json
 from pathlib import Path
 
 import numpy as np
@@ -22,10 +18,11 @@ import trimesh
 from manifold3d import CrossSection, JoinType, Manifold, OpType
 
 HERE = Path(__file__).resolve().parent
+CI = json.loads((HERE.parent / "coreink" / "coreink.json").read_text())   # the CoreInk's dimensions
 SEG = 64  # segments per full circle on rounded corners
 
 # ------------------------------------------------------------------ dimensions (mm)
-DEV_W, DEV_H, DEV_T = 40.0, 56.0, 16.0   # CoreInk, per M5Stack's drawing
+DEV_W, DEV_H, DEV_T = CI["body"]["width"], CI["body"]["height"], CI["body"]["depth"]
 DEV_R = 3.0                              # its corner radius (MEASURE)
 FIT = 0.2                                # clearance round the device, each side
 WALL = 2.5                               # side walls
@@ -41,12 +38,17 @@ DEV_X0, DEV_TOP = WALL, WALL + DEV_H     # the device's left edge and top, in ca
 
 
 def dev(x=None, y=None, z=None):
-    """Case coordinates of a point given in the CoreInk model's coordinates (see the top)."""
+    """Case coordinates of a point given in the CoreInk's own coordinates (coreink.json: x from its
+    left edge, y up from its bottom, z from its back face)."""
     out = []
-    if x is not None: out.append(x + 20 + WALL)
-    if y is not None: out.append(y + 52 + WALL)
+    if x is not None: out.append(x + WALL)
+    if y is not None: out.append(y + WALL)
     if z is not None: out.append(z + FLOOR)
     return out[0] if len(out) == 1 else tuple(out)
+
+
+def mid(r):
+    return (r[0] + r[1]) / 2
 
 RABBET = 1.2         # the tub's rim is cut back this much inside, for the bezel to sit in
 GROOVE = 0.4         # snap groove in the rim (the bezel's bead clicks into it)
@@ -58,18 +60,22 @@ MOAT = 1.0           # gap round a pad that frees it from the wall
 PROUD = 1.5          # how far pads stand out
 NUB = 0.15           # how far a pad's inner nub reaches into the 0.2 mm fit gap (tune by test print)
 
-# Openings, from the CoreInk model (see the top): centres and sizes, in case coordinates
+# Openings, from coreink.json: centres and sizes, in case coordinates
+_f, _t, _r, _b, _k = CI["front"], CI["top"], CI["right"], CI["bottom"], CI["back"]
 SCREEN = 30.0                                          # window (the CoreInk's is 28.75 x 28.25)
-SCREEN_CY = dev(y=(-35.25 - 7.0) / 2)
+SCREEN_CY = dev(y=mid(_f["screen_window"]["y"]))
 
-TOP_BTN = dict(cx=dev(x=6.05), cz=dev(z=5.95), w=12.0, t=7.0)       # top button: 5.9 wide, 5.5 deep
-SIDE_BTN = dict(cy=dev(y=-36.9), cz=dev(z=8.05), h=6.5, t=10.0)     # power, right side: 6.25 x 10 oval
-# Rocker (dial) cut-out, right side: the CoreInk's own dial window (18.5 mm long, from 5 mm off the
-# back right through to the front face) plus 0.5 mm at each end and 0.25 mm at the back edge, with a
-# chamfer round the outside so a thumb reaches the dial through the 2.5 mm wall.
-ROCKER = dict(cy=dev(y=-16.0), cz=dev(z=(4.8 + 16.25) / 2), h=19.5, t=11.45, chamfer=1.2)
-USB = dict(cx=dev(x=0.125), cz=dev(z=7.2), w=12.5, t=10.0)          # bottom: 12.25 x 9.75 opening
-RESET = (dev(x=-13.95), dev(y=-12.95))                              # back: centre of the reset oval
+TOP_BTN = dict(cx=dev(x=mid(_t["button"]["x"])), cz=dev(z=mid(_t["button"]["z"])), w=12.0, t=7.0)
+SIDE_BTN = dict(cy=dev(y=mid(_r["power_button"]["y"])), cz=dev(z=mid(_r["power_button"]["z"])), h=6.5, t=10.0)
+# Rocker (dial) cut-out, right side: the CoreInk's dial window plus 0.5 mm at each end and 0.25 mm
+# at the back edge (it runs through to the front face), with a chamfer round the outside so a thumb
+# reaches the dial through the 2.5 mm wall.
+_dial = _r["dial_window"]
+ROCKER = dict(cy=dev(y=mid(_dial["y"])), cz=dev(z=(_dial["z"][0] - 0.25 + _dial["z"][1] + 0.25) / 2),
+              h=_dial["y"][1] - _dial["y"][0] + 1.0, t=_dial["z"][1] - _dial["z"][0] + 0.5, chamfer=1.2)
+_port = _b["port_opening"]
+USB = dict(cx=dev(x=mid(_port["x"])), cz=dev(z=mid(_port["z"])), w=12.5, t=10.0)   # bottom: 12.25 x 9.75
+RESET = (dev(x=mid(_k["reset_button"]["x"])), dev(y=mid(_k["reset_button"]["y"])))
 LOOP = None  # the old corner loop (dict(c=(-1.5, CH + 1.5), r_out=5.75, r_in=2.5, t=3.5)); replaced by the mount
 
 # Back mount, for a lanyard or a broom: the back is thicker and has one tunnel running across it,
