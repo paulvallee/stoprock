@@ -51,19 +51,25 @@ SCREEN = 30.0
 SCREEN_CY = DEV_TOP - 25.0
 
 TOP_BTN = dict(cx=DEV_X0 + 26.0, w=12.0, t=7.0)        # top button: 22.3-29.7 mm from the left
-SIDE_BTN = dict(cy=WALL + 15.0, h=10.0, t=7.0)         # right side, 15 mm above the bottom: power (MEASURE: confirm)
+SIDE_BTN = dict(cy=WALL + 15.0, h=10.0, t=7.0)         # right side, 15 mm above the bottom: power (the drawing's
+                                                       # controls are top button, dial, this oval and the back's reset,
+                                                       # so by elimination this is power; the left side has no control)
 ROCKER = dict(cy=DEV_TOP - 20.0, h=20.0, t=9.0)        # right side, about 10-30 mm below the top: open cut-out
 USB = dict(cx=DEV_X0 + 21.0, w=12.5, t=7.0)            # bottom, about centred (MEASURE its depth)
 RESET = (DEV_X0 + 6.0, DEV_TOP - 15.0)                  # back: 6 mm from the left edge, 15 mm below the top
 LOOP = None  # the old corner loop (dict(c=(-1.5, CH + 1.5), r_out=5.75, r_in=2.5, t=3.5)); replaced by the mount
 
 # Back mount, for a lanyard or a broom: the back is thicker and has one tunnel running across it,
-# open at both sides, in the upper third. Flat lanyard webbing through it hangs the case upright
-# and centred; a 20 mm hook-and-loop strap through it wraps a broom handle. Two low rails down the
-# back keep the case square on a round handle.
+# open at both sides, in the upper third. A lanyard cord through it hangs the case upright and
+# centred; a silicone band through it (its bonded overlap inside) holds the case on a broom handle.
+# The back stays flat, so the tub prints standing on it (two rails down the back were dropped: the
+# tub would have stood on them).
 MOUNT_BACK = 2.0                 # how much thicker the back is (outer back at z = -MOUNT_BACK)
 TUNNEL = dict(cy=DEV_TOP - 16.0, w=21.0, z0=-0.6, z1=1.4)   # across X; 21 x 2 mm opening
-RAILS = dict(dx=10.5, w=3.0, h=1.2, y0=8.0, y1=CH - 8.0)    # centre +- dx; h proud of the back
+RAILS = None   # was dict(dx=10.5, w=3.0, h=1.2, y0=8.0, y1=CH - 8.0): rails down the back
+
+# The stoprock wordmark debossed in the back, below the tunnel, mirrored so it reads from behind
+LOGO_BACK = dict(w=34.0, cy=17.0, depth=0.5)
 
 
 # ------------------------------------------------------------------ shape helpers
@@ -109,6 +115,37 @@ def pad(prism, outward, footprint, inner_face, sign):
     return moat, proud + nub
 
 
+# ------------------------------------------------------------------ the logo
+def logo_solid(width):
+    """The stoprock wordmark as a solid LOGO_BACK depth thick, centred on the origin in X and Y,
+    from z = 0 up, mirrored in X so it reads correctly from the back. Built from the logo image
+    (tools/mockups/logo.py) one row of pixels at a time, then smoothed a little."""
+    import sys
+    sys.path.insert(0, str(HERE.parents[1] / "tools" / "mockups"))
+    import logo
+    from PIL import Image
+    px = 0.08                                    # mm per pixel
+    wm = logo.wordmark(band=0.14).convert("L")
+    n = int(width / px)
+    img = wm.resize((n, round(wm.height * n / wm.width)), Image.LANCZOS)
+    w, h = img.size
+    data = img.load()
+    rects = []
+    for y in range(h):
+        x = 0
+        while x < w:
+            if data[x, y] < 128:
+                x0 = x
+                while x < w and data[x, y] < 128:
+                    x += 1
+                # mirrored: image x grows to the right, the model's x to the left as seen from behind
+                rects.append(CrossSection.square(((x - x0) * px, px * 1.02)).translate(((w - x) * px - width / 2, (h - 1 - y) * px - h * px / 2)))
+            else:
+                x += 1
+    shape = CrossSection.batch_boolean(rects, OpType.Add).offset(0.03, JoinType.Round).offset(-0.03, JoinType.Round)
+    return Manifold.extrude(shape, LOGO_BACK["depth"] + 0.01)
+
+
 # ------------------------------------------------------------------ the tub
 def tub():
     body = prism_z(CW / 2, CH / 2, CW, CH, CASE_R, 0, CT)
@@ -144,8 +181,6 @@ def tub():
     us = USB
     body -= prism_y(us["cx"], MID_Z, us["w"], us["t"], 2.0, -0.5, WALL + 0.5)
 
-    # reset pinhole, back
-    body -= Manifold.cylinder(FLOOR + 1, 0.9, circular_segments=SEG).translate((RESET[0], RESET[1], -0.5))
 
     # lanyard loop at the top-left corner (replaced by the back mount)
     if LOOP:
@@ -156,11 +191,19 @@ def tub():
     body += prism_z(CW / 2, CH / 2, CW, CH, CASE_R, -MOUNT_BACK, 0.01)
     tn = TUNNEL
     body -= Manifold.cube((CW + 2, tn["w"], tn["z1"] - tn["z0"])).translate((-1, tn["cy"] - tn["w"] / 2, tn["z0"]))
-    rl = RAILS
-    for sx in (-1, 1):
-        x = CW / 2 + sx * rl["dx"]
-        body += prism_z(x, (rl["y0"] + rl["y1"]) / 2, rl["w"], rl["y1"] - rl["y0"], rl["w"] / 2 - 0.01,
-                        -MOUNT_BACK - rl["h"], -MOUNT_BACK + 0.01)
+    if RAILS:
+        rl = RAILS
+        for sx in (-1, 1):
+            x = CW / 2 + sx * rl["dx"]
+            body += prism_z(x, (rl["y0"] + rl["y1"]) / 2, rl["w"], rl["y1"] - rl["y0"], rl["w"] / 2 - 0.01,
+                            -MOUNT_BACK - rl["h"], -MOUNT_BACK + 0.01)
+
+    # reset pinhole, through the back: skin, tunnel and floor (slide a band or cord aside to use it)
+    body -= Manifold.cylinder(FLOOR + MOUNT_BACK + 1, 0.9, circular_segments=SEG).translate((RESET[0], RESET[1], -MOUNT_BACK - 0.5))
+
+    # the wordmark, debossed
+    lg = LOGO_BACK
+    body -= logo_solid(lg["w"]).translate((CW / 2, lg["cy"], -MOUNT_BACK - 0.01 - 1)).translate((0, 0, 1))
     return body
 
 
@@ -184,7 +227,7 @@ def broom_band():
     """A silicone band through the tunnel and round the handle, its ends overlapped and bonded
     inside the tunnel (the doubled part)."""
     tn = TUNNEL
-    back = -MOUNT_BACK - RAILS["h"]
+    back = -MOUNT_BACK - (RAILS["h"] if RAILS else 0)
     hz = -MOUNT_BACK - HANDLE_R
     z_in = tn["z0"] + 0.1                      # the band's inner face, in the tunnel
     core = CrossSection.hull_points([(0, z_in), (CW, z_in), (0, back), (CW, back)]

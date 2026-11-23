@@ -8,7 +8,7 @@ will likely change once printed.
 
 | File | Part | Size (mm, as oriented in the file) | Volume | Approx. weight (TPU) |
 |---|---|---|---|---|
-| `stoprock-case-tub.stl` | Tub: back and walls, button pads, strap tunnel | 46.5 x 62.5 x 24.2 | 17.8 cm³ | 22 g |
+| `stoprock-case-tub.stl` | Tub: back and walls, button pads, strap tunnel, logo on the back | 46.5 x 62.5 x 23.0 | 17.4 cm³ | 21 g |
 | `stoprock-case-bezel.stl` | Bezel: front frame round the screen, faceted front | 43.3 x 59.3 x 5.1 | 5.1 cm³ | 6 g |
 
 Units are millimetres. Both files are already oriented for printing, each standing on its flat back
@@ -34,8 +34,10 @@ Units are millimetres. Both files are already oriented for printing, each standi
   strap round a broom handle. In the print orientation its roof is a 21 mm bridge: please support
   it if your process needs to, and leave the tunnel clear. It will be pulled on, so the back should
   be fully solid.
+- **Logo**: the wordmark is debossed 0.5 mm into the back, which is the face the tub prints on.
+  Please keep the lettering crisp (a smooth bed or textured sheet are both fine).
 - Openings: a cut-out on the right side (20 x 9 mm), USB-C opening at the bottom (12.5 x 7 mm), and a
-  1.8 mm pinhole in the back.
+  1.8 mm pinhole through the back (it crosses the strap tunnel).
 - Other overhangs are small (pads and rims, up to 1.5 mm).
 
 ## Quantities to quote
