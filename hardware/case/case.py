@@ -49,7 +49,6 @@ NUB = 0.15           # how far a pad's inner nub reaches into the 0.2 mm fit gap
 # 25 mm below the top; the visible area is 27.6 mm square)
 SCREEN = 30.0
 SCREEN_CY = DEV_TOP - 25.0
-LED = (CW - 7.0, CH - 5.0)                             # green LED (MEASURE: not on the drawing)
 
 TOP_BTN = dict(cx=DEV_X0 + 26.0, w=12.0, t=7.0)        # top button: 22.3-29.7 mm from the left
 SIDE_BTN = dict(cy=WALL + 15.0, h=10.0, t=7.0)         # right side, 15 mm above the bottom: power (MEASURE: confirm)
@@ -241,7 +240,7 @@ def bezel():
     plate += prism_z(CW / 2, CH / 2, bead_w, bead_h, r + BEAD, GROOVE_Z[0] + 0.05, GROOVE_Z[1] - 0.05)
     plate += facets(w, h)
     plate -= prism_z(CW / 2, SCREEN_CY, SCREEN, SCREEN, 1.5, DEV_Z1 - 1, CT + 5)             # screen window
-    plate -= Manifold.cylinder(CT - DEV_Z1 - 0.6, 1.5, circular_segments=SEG).translate((LED[0], LED[1], DEV_Z1 - 0.01))  # LED: 0.6 mm skin
+    # no LED window: the green LED isn't used (the stopwatch icon shows timing in progress)
     return plate
 
 

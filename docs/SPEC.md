@@ -71,7 +71,7 @@ A stone gives at most one **B2H** (back line, or tee line, to hog line) followed
 
 | State | Event | Result |
 |---|---|---|
-| **Idle** (usually asleep) | Click | Start a new stone; record the time; green LED on |
+| **Idle** (usually asleep) | Click | Start a new stone; record the time; stopwatch icon on screen |
 | **Started** | Click under 1 s later | Double press: restart timing from this click |
 | | Click 1 s to under 5.5 s later | Log **B2H** → *Waiting for H2H* |
 | | Click 5.5–20 s later | Log **H2H** on a new row (B2H blank) → *Done* |
@@ -79,12 +79,12 @@ A stone gives at most one **B2H** (back line, or tee line, to hog line) followed
 | **Waiting for H2H** | Click under 5.5 s after the B2H click | Ignore it (error buzz); keep timing from the B2H click |
 | | Click 5.5–20 s after the B2H click | Log **H2H** on the same row → *Done* |
 | | No click for 20 s after the B2H click | Keep the B2H-only row → *Idle* |
-| **Done** | — | LED off; sleep at once → *Idle* |
+| **Done** | — | Sleep at once → *Idle* |
 
 - After an H2H the stone is finished, so the next click always starts the next stone, however soon it comes (an opposing team may throw quickly).
 - The window limits (1, 5.5 and 20 s) are settings, with these values as defaults. The double-press limit is 1 s, not 1.5 s, because B2H may be timed from the tee line: tee-to-hog is about 0.5 s shorter than back-to-hog, so a peel is about 2 s and big weight can approach 1.6 s. The B2H/H2H boundary is 5.5 s, not 7 s: back-to-hog stays under about 4.8 s even for a light guard on fast ice, while a big-weight peel can cross hog to hog in about 6 s.
 - Every result is also saved to the game databank (section 6).
-- The green LED is lit from a stone's first click until it is done or abandoned, as the "timing in progress" sign.
+- The stopwatch icon on screen is the "timing in progress" sign. The green LED is not used (the case covers it).
 
 ## 5. Shots
 
@@ -168,7 +168,7 @@ The physical update takes about 0.26 s whatever the area changed, so the goal is
 
 | Event | Update |
 |---|---|
-| Start click | Beep and LED on. One update: the large row clears and a **stopwatch** appears in the Back2Hog box, where the time will appear (the last stone stays in the history). |
+| Start click | Beep. One update: the large row clears and a **stopwatch** appears in the Back2Hog box, where the time will appear (the last stone stays in the history). |
 | First result of a stone (B2H, or H2H with no B2H) | Beep. One update: the new value in the large row; after a B2H the stopwatch moves to the Hog2Hog box. |
 | H2H after a B2H | Beep. Only the large H2H cell (replacing the stopwatch, which moved there with the B2H). |
 | Rocker | Beep. That rock, the cursor and the percentage. |

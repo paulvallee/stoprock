@@ -341,7 +341,7 @@ void handleOutcome(const Outcome& o, int64_t now) {
     switch (o.event) {
     case TimingEvent::Started:
         sleptAtAnchor = sleptUs;
-        board::led(true);
+        // no LED: the case covers it, and the stopwatch icon shows timing in progress
         Serial.println("timing: start");
         syncModel();  // a stopwatch where the time will appear
         break;
