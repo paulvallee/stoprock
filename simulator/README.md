@@ -66,8 +66,8 @@ changes.
 
 | Mode | Switch on with | What to try |
 |---|---|---|
-| Competition | <kbd>S</kbd> | Times only, the badge strip at the bottom; four columns as in league (your teammates and THEM); the cursor follows the throw order by itself. <kbd>↑</kbd>/<kbd>↓</kbd> next/previous column; hold <kbd>↑</kbd> to move the newest time a column left every 0.67 s; <kbd>Enter</kbd> twice quickly changes your own position |
-| League | <kbd>↓</kbd> + <kbd>S</kbd> | Times in four columns: your three teammates and THEM (Hog2Hog white on black); the cursor follows the throw order by itself. <kbd>↑</kbd>/<kbd>↓</kbd> next/previous column; hold <kbd>↑</kbd> to move the newest time a column left every 0.67 s (let go where it belongs); hold <kbd>↓</kbd> to log your rocks (<kbd>↑</kbd> made, <kbd>↓</kbd> missed, then back to the columns); <kbd>Enter</kbd> twice quickly changes your position |
+| Competition | <kbd>S</kbd> | Times only, the badge strip at the bottom; four columns as in league (your teammates and THEM); the cursor follows the throw order by itself. <kbd>↑</kbd>/<kbd>↓</kbd> next/previous column; hold <kbd>↑</kbd> to move the newest time a column left every 0.5 s; <kbd>Enter</kbd> twice quickly changes your own position |
+| League | <kbd>↓</kbd> + <kbd>S</kbd> | Times in four columns: your three teammates and THEM (Hog2Hog white on black); the cursor follows the throw order by itself. <kbd>↑</kbd>/<kbd>↓</kbd> next/previous column; hold <kbd>↑</kbd> to move the newest time a column left every 0.5 s (let go where it belongs); hold <kbd>↓</kbd> to log your rocks (<kbd>↑</kbd> made, <kbd>↓</kbd> missed, then back to the columns); <kbd>Enter</kbd> twice quickly changes your position |
 | Coach | <kbd>↑</kbd> + <kbd>S</kbd> | 64 rocks for the whole team; <kbd>Enter</kbd> twice quickly switches between the timer page and the rocks page |
 
 The **Battery** slider sets the battery level the firmware reads (`run.py` sends it to the emulated chip's
