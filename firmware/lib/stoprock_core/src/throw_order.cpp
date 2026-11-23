@@ -67,6 +67,14 @@ int ThrowOrder::throwsToMine() const {
     return -1;
 }
 
+int64_t ThrowOrder::nextChange(int64_t t) const {
+    if (lastT_ < 0) return -1;
+    const int n = throwsSince(t);
+    if (n >= 24) return -1;
+    // 1 -> 2 at 80 s; then n -> n + 1 halfway between throws: (n + 0.5) throws
+    return n == 1 ? lastT_ + kNextThrowUs : lastT_ + (2 * n + 1) * kThrowUs / 2;
+}
+
 void ThrowOrder::place(uint8_t c, int64_t t) {
     before_ = last_;
     lastN_ = throwsSince(t);

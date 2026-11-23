@@ -126,6 +126,9 @@ uint8_t moveSteps = 0;          // columns the newest time has moved during this
 // stone before yours started (about 13 s after it's done, if it was timed), ready for your shot.
 constexpr int64_t kOwnShotFocusUs = 30 * kSec;
 int64_t rocksFocusAt = -1;      // ... then; -1 = not due
+// Competition and league: between stones the cursor follows the clock, moving on when enough time
+// has gone by for another throw nobody timed (ThrowOrder::nextChange). The next check is then.
+int64_t followAt = -1;
 int64_t lastRockerPress = -kSec; // coach: when the rocker was last pressed (short presses only count)
 
 TimingEngine timing;
@@ -201,6 +204,7 @@ void newGame() {
     order.reset(myPosition);
     manualCursor = false;
     rocksFocusAt = -1;
+    followAt = -1;
     activeCol = order.predict();
     // "Double click rocker to change position", for the first 5 s (not in coach: no positions)
     tipWaiting = mode != GameMode::Coach;
@@ -329,6 +333,9 @@ void cursorToNext(int64_t start = -1) {
     activeCol = order.predict(start);
 }
 
+// The next time the cursor may move on by itself, from now.
+void planFollow(int64_t now) { followAt = mode == GameMode::Coach ? -1 : order.nextChange(now); }
+
 // League: if your throw is next, or after one more (nobody timing the one between), the focus
 // moves to your rocks once the stone before yours should be done.
 void planRocksFocus() {
@@ -349,6 +356,7 @@ void countTimedStone(int64_t now, int64_t delay) {
     // The cursor goes on whoever throws next; league: the rocker back to the columns.
     if (mode != GameMode::Coach) {
         cursorToNext();
+        planFollow(now);
         Serial.printf("timing: next up, column %d\n", activeCol + 1);
     }
     if (mode == GameMode::League) {
@@ -380,6 +388,7 @@ void handleOutcome(const Outcome& o, int64_t now) {
         sleptAtAnchor = sleptUs;
         stoneStart = now;
         rocksFocusAt = -1;  // someone's throwing: not you
+        followAt = -1;      // the cursor stays on this stone's column until it's done
         cursorToNext(now);  // the time since the last stone says how many throws went untimed
         // no LED: the case covers it, and the stopwatch icon shows timing in progress
         Serial.println("timing: start");
@@ -570,7 +579,10 @@ void onShot(bool made) {
         const int i = shots.count() - 1;
         order.ownShot(i / 2, i % 2, esp_timer_get_time());
         manualCursor = false;
-        if (!timing.active()) cursorToNext();
+        if (!timing.active()) {
+            cursorToNext();
+            planFollow(esp_timer_get_time());
+        }
         focus = Focus::Players;
         planRocksFocus();  // your second rock, if nobody times the stone between
     }
@@ -603,6 +615,7 @@ void onRockerPress(ButtonState& s, int64_t t) {
             myPosition = (myPosition + 1) % 4;
             prefs.putUChar("mypos", myPosition);
             order.reset(myPosition);
+            followAt = -1;
             manualCursor = false;
             rocksFocusAt = -1;
             cursorToNext();
@@ -649,7 +662,10 @@ void finishMove() {
     manualCursor = false;
     if (timing.state() == TimingState::WaitingHH) activeCol = col;  // that stone is still being timed
     else cursorToNext(timing.state() == TimingState::Started ? stoneStart : -1);
-    if (!timing.active()) planRocksFocus();
+    if (!timing.active()) {
+        planRocksFocus();
+        planFollow(esp_timer_get_time());
+    }
     Serial.printf("timing: newest time moved to column %d\n", col + 1);
     syncModel();
 }
@@ -906,6 +922,17 @@ void loop() {
         tipUntil = -1;
         if (!timing.active()) syncModel();
     }
+    if (followAt >= 0 && now >= followAt) {  // another throw's worth of time: the cursor may move on
+        planFollow(now);
+        if (!timing.active() && !manualCursor) {
+            const uint8_t col = order.predict(now);
+            if (col != activeCol) {
+                activeCol = col;
+                Serial.printf("timing: next up by the clock, column %d\n", activeCol + 1);
+                syncModel();
+            }
+        }
+    }
     if (rocksFocusAt >= 0 && now >= rocksFocusAt) {  // your throw: ready to log it
         rocksFocusAt = -1;
         if (mode == GameMode::League && !timing.active() && focus == Focus::Players) {
@@ -940,6 +967,7 @@ void loop() {
         if (refreshAt >= 0 && refreshAt < wake) wake = refreshAt;
         if (tipUntil >= 0 && tipUntil < wake) wake = tipUntil;
         if (rocksFocusAt >= 0 && rocksFocusAt < wake) wake = rocksFocusAt;
+        if (followAt >= 0 && followAt < wake) wake = followAt;
         if (nextAuditAt < wake) wake = nextAuditAt;
         if (timing.active() && timing.deadline() + 1000 < wake) wake = timing.deadline() + 1000;
         const int64_t before = esp_timer_get_time();

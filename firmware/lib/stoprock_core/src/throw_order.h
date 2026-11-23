@@ -42,6 +42,9 @@ public:
     // Throws from the last one placed to your next (1: you're next), and when the last one started
     // (-1: not known). Your next rock is thrown about (throws - 1) * kThrowUs after the following throw.
     int throwsToMine() const;
+    // When the throws counted since the last start (see predict()) next go up, after t: the cursor
+    // may move on then. -1: never (nothing placed yet, or far past the end).
+    int64_t nextChange(int64_t t) const;
     int64_t lastStart() const { return lastT_; }
 
     int end() const { return last_.end; }

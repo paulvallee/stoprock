@@ -121,6 +121,22 @@ static void test_throws_to_mine() {
     TEST_ASSERT_EQUAL_INT(2, o.throwsToMine());
 }
 
+static void test_cursor_follows_the_clock() {
+    ThrowOrder o;
+    o.reset(1);  // 2nd, throwing first; the lead's second rock timed at 0
+    o.place(0, -1);
+    o.place(0, 0);
+    TEST_ASSERT_EQUAL_INT(2, o.lastThrow());
+    TEST_ASSERT_EQUAL_UINT8(ThrowOrder::kThem, o.predict(10 * S));
+    TEST_ASSERT_EQUAL_INT64(80 * S, o.nextChange(10 * S));
+    TEST_ASSERT_EQUAL_INT64(140 * S, o.nextChange(80 * S));
+    // nothing timed since: THEM, you, THEM, you, THEM, then the 3rd, about 6 throws on
+    int64_t t = 0, firstThird = -1;
+    while ((t = o.nextChange(t)) >= 0 && t < 600 * S)
+        if (firstThird < 0 && o.predict(t) == 1) firstThird = t;
+    TEST_ASSERT_EQUAL_INT64(308 * S, firstThird);
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_column_of);
@@ -131,5 +147,6 @@ int main() {
     RUN_TEST(test_moving_the_newest_stone_refiles_it);
     RUN_TEST(test_your_shot_pins_the_order);
     RUN_TEST(test_throws_to_mine);
+    RUN_TEST(test_cursor_follows_the_clock);
     return UNITY_END();
 }
