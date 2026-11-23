@@ -5,62 +5,60 @@
 <style>body{margin:0;background:#f4f4f2}canvas{display:block}</style></head>
 <body>
 <script type="module">
+// Renders hardware/case/case.py's parts in model coordinates (mm): X across, Y up, Z out of the screen.
 import * as THREE from 'three';
 import { STLLoader } from 'three/addons/loaders/STLLoader.js';
 const W = 640, H = 560;
-const params = new URLSearchParams(location.search);
-const view = params.get('view');
+const view = new URLSearchParams(location.search).get('view') || 'front';
 const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
 renderer.setPixelRatio(2);
 renderer.setSize(W, H);
 renderer.setClearColor(0xf4f4f2);
 document.body.appendChild(renderer.domElement);
 const scene = new THREE.Scene();
-scene.add(new THREE.HemisphereLight(0xffffff, 0x50565f, 0.55));
-const key = new THREE.DirectionalLight(0xffffff, 3.4); key.position.set(-110, 90, 60); scene.add(key);
-const rim = new THREE.DirectionalLight(0xffffff, 0.7); rim.position.set(-80, -40, -60); scene.add(rim);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x50565f, 0.6));
+const key = new THREE.DirectionalLight(0xffffff, 3.2); key.position.set(-110, 90, 80); scene.add(key);
+const fill = new THREE.DirectionalLight(0xffffff, 0.8); fill.position.set(90, 20, -60); scene.add(fill);
 const loader = new STLLoader();
-const load = (f) => new Promise(r => loader.load(f, g => { g.computeVertexNormals(); r(g); }));
-const [tub, bez] = await Promise.all([load('stoprock-case-tub.stl'), load('stoprock-case-bezel.stl')]);
-const tubMat = new THREE.MeshStandardMaterial({ color: 0x3b3f46, roughness: 0.75, metalness: 0.0 });
-const bezMat = new THREE.MeshStandardMaterial({ color: 0x6a717b, roughness: 0.6, flatShading: true });
-const devMat = new THREE.MeshStandardMaterial({ color: 0xe9e9e4, roughness: 0.5 });
-const scrMat = new THREE.MeshStandardMaterial({ color: 0xd9d6cf, roughness: 0.9 });
-const group = new THREE.Group(); scene.add(group);
-// STL coordinates: the tub as modelled (x, y, z with z = thickness); the bezel was exported face-down
-const tubMesh = new THREE.Mesh(tub, tubMat);
-// tub STL was shifted so its bounds start at 0: the lanyard loop pokes out at x<0, y>CH
-tub.computeBoundingBox();
-const tb = tub.boundingBox;
-// put the case's own origin back: loop centre at (-1.5, 62.5) with r 5.75 => min x = -7.25
-tubMesh.position.set(-7.25, 0, 0);
-group.add(tubMesh);
-const bezMesh = new THREE.Mesh(bez, bezMat);
-bez.computeBoundingBox();
-const explode = view === 'exploded' ? 16 : 0;
-// exported with its bounds moved to the origin: put its back (z = 18.5) and centre back in place
-const bb = bez.boundingBox;
-bezMesh.position.set(22.5 - (bb.max.x + bb.min.x) / 2, 30.5 - (bb.max.y + bb.min.y) / 2, 18.5 + explode);
-group.add(bezMesh);
-// the CoreInk, for context
-if (view !== 'tub' && view !== 'bezel') {
-  const dev = new THREE.Mesh(new THREE.BoxGeometry(40, 56, 16), devMat);
-  dev.position.set(22.5, 30.5, 2.5 + 8 + (view === 'exploded' ? 8 : 0));
-  group.add(dev);
-  const scr = new THREE.Mesh(new THREE.PlaneGeometry(28.8, 29), scrMat);
-  scr.position.set(22.5, 58.5 - 25, 18.52 + (view === 'exploded' ? 8 : 0));
-  group.add(scr);
-}
-if (view === 'tub') bezMesh.visible = false;
-if (view === 'bezel') { tubMesh.visible = false; group.children.forEach(m => { if (m !== bezMesh) m.visible = false; }); }
-group.position.set(-22.5, -30.5, -10.5);
-const cam = new THREE.PerspectiveCamera(30, W / H, 1, 1000);
-const views = {
-  front: [70, 55, 170], facets: [-60, 80, 150], bezel: [-95, 25, 95], back: [-90, 50, -150], tub: [80, 70, 150], exploded: [150, 40, 120], right: [170, 10, 40], top: [20, 170, 60]
+const load = (f) => new Promise((ok, bad) => loader.load(f, g => { g.computeVertexNormals(); ok(g); }, undefined, bad));
+const mat = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.7, ...extra });
+const add = async (file, material, offset = [0, 0, 0]) => {
+  const m = new THREE.Mesh(await load(file), material); m.position.set(...offset); group.add(m); return m;
 };
-const p = views[view] || views.front;
-cam.position.set(...p);
-cam.lookAt(0, 0, view === 'exploded' ? 8 : view === 'bezel' ? 10 : 0);
+const group = new THREE.Group(); scene.add(group);
+const exploded = view === 'exploded';
+await add('model-tub.stl', mat(0x3b3f46));
+await add('model-bezel.stl', mat(0x6a717b, { flatShading: true }), [0, 0, exploded ? 16 : 0]);
+if (view !== 'tub' && view !== 'bezel' && view !== 'mount') {
+  const dz = exploded ? 8 : 0;
+  const dev = new THREE.Mesh(new THREE.BoxGeometry(40, 56, 16), mat(0xe9e9e4, { roughness: 0.5 }));
+  dev.position.set(22.5, 30.5, 10.5 + dz); group.add(dev);
+  const tex = new THREE.TextureLoader().load('screen.png');
+  tex.colorSpace = THREE.SRGBColorSpace;
+  await new Promise(r => setTimeout(r, 300));
+  const scr = new THREE.Mesh(new THREE.PlaneGeometry(27.6, 27.6), new THREE.MeshBasicMaterial({ map: tex }));
+  scr.position.set(22.5, 58.5 - 25, 18.55 + dz); group.add(scr);
+}
+if (view === 'lanyard') await add('model-lanyard.stl', mat(0xb8322e, { roughness: 0.85 }));
+if (view.startsWith('broom')) {
+  await add('model-handle.stl', mat(0xc9a46a, { roughness: 0.55 }));
+  await add('model-strap.stl', mat(0x24262a, { roughness: 0.95 }));
+}
+if (view === 'bezel') group.children[0].visible = false;
+group.position.set(-22.5, -30.5, -10.5);
+const views = {
+  front: [[70, 55, 170], [0, 0, 0]], tub: [[80, 70, 150], [0, 0, 0]], exploded: [[150, 40, 120], [0, 0, 8]],
+  right: [[170, 10, 40], [0, 0, 0]], bezel: [[-95, 25, 95], [0, 0, 10]],
+  mount: [[-150, 55, -95], [0, 0, -6]],
+  lanyard: [[-90, 40, 210], [0, 25, 0]],
+  broom: [[150, 120, 160], [0, -10, -10]],
+  'broom-end': [[10, 230, 25], [0, 0, -12]],
+  'broom-side': [[210, 25, -20], [0, 0, -14]],
+};
+const [pos, look] = views[view] || views.front;
+const cam = new THREE.PerspectiveCamera(30, W / H, 1, 2000);
+cam.position.set(...pos);
+cam.lookAt(...look);
 renderer.render(scene, cam);
 document.title = 'done';
 </script></body></html>

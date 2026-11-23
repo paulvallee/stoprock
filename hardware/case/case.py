@@ -56,7 +56,15 @@ SIDE_BTN = dict(cy=WALL + 15.0, h=10.0, t=7.0)         # right side, 15 mm above
 ROCKER = dict(cy=DEV_TOP - 20.0, h=20.0, t=9.0)        # right side, about 10-30 mm below the top: open cut-out
 USB = dict(cx=DEV_X0 + 21.0, w=12.5, t=7.0)            # bottom, about centred (MEASURE its depth)
 RESET = (DEV_X0 + 6.0, DEV_TOP - 15.0)                  # back: 6 mm from the left edge, 15 mm below the top
-LOOP = dict(c=(-1.5, CH + 1.5), r_out=5.75, r_in=2.5, t=3.5)   # lanyard loop, top-left corner
+LOOP = None  # the old corner loop (dict(c=(-1.5, CH + 1.5), r_out=5.75, r_in=2.5, t=3.5)); replaced by the mount
+
+# Back mount, for a lanyard or a broom: the back is thicker and has one tunnel running across it,
+# open at both sides, in the upper third. Flat lanyard webbing through it hangs the case upright
+# and centred; a 20 mm hook-and-loop strap through it wraps a broom handle. Two low rails down the
+# back keep the case square on a round handle.
+MOUNT_BACK = 2.0                 # how much thicker the back is (outer back at z = -MOUNT_BACK)
+TUNNEL = dict(cy=DEV_TOP - 16.0, w=21.0, z0=-0.6, z1=1.4)   # across X; 21 x 2 mm opening
+RAILS = dict(dx=10.5, w=3.0, h=1.2, y0=8.0, y1=CH - 8.0)    # centre +- dx; h proud of the back
 
 
 # ------------------------------------------------------------------ shape helpers
@@ -140,10 +148,49 @@ def tub():
     # reset pinhole, back
     body -= Manifold.cylinder(FLOOR + 1, 0.9, circular_segments=SEG).translate((RESET[0], RESET[1], -0.5))
 
-    # lanyard loop at the top-left corner
-    lp = LOOP
-    body += ring_z(*lp["c"], lp["r_out"], lp["r_in"], MID_Z - lp["t"] / 2, MID_Z + lp["t"] / 2)
+    # lanyard loop at the top-left corner (replaced by the back mount)
+    if LOOP:
+        lp = LOOP
+        body += ring_z(*lp["c"], lp["r_out"], lp["r_in"], MID_Z - lp["t"] / 2, MID_Z + lp["t"] / 2)
+
+    # back mount: a thicker back with a tunnel across it, and two rails
+    body += prism_z(CW / 2, CH / 2, CW, CH, CASE_R, -MOUNT_BACK, 0.01)
+    tn = TUNNEL
+    body -= Manifold.cube((CW + 2, tn["w"], tn["z1"] - tn["z0"])).translate((-1, tn["cy"] - tn["w"] / 2, tn["z0"]))
+    rl = RAILS
+    for sx in (-1, 1):
+        x = CW / 2 + sx * rl["dx"]
+        body += prism_z(x, (rl["y0"] + rl["y1"]) / 2, rl["w"], rl["y1"] - rl["y0"], rl["w"] / 2 - 0.01,
+                        -MOUNT_BACK - rl["h"], -MOUNT_BACK + 0.01)
     return body
+
+
+# ------------------------------------------------------------------ for the renders only: a broom
+# handle with a strap round it, and a lanyard (not printed)
+HANDLE_R = 14.0
+
+
+def scene_parts():
+    tn = TUNNEL
+    back = -MOUNT_BACK - RAILS["h"]
+    hz = -MOUNT_BACK - HANDLE_R                  # the handle touches the back between the rails
+    handle = Manifold.cylinder(260, HANDLE_R, circular_segments=96).rotate((-90, 0, 0)).translate((CW / 2, -120, hz))
+    # the strap: through the tunnel, down the case's sides, round the handle (1.2 mm thick, 20 wide)
+    core = CrossSection.hull_points([(0, tn["z0"] + 0.2), (CW, tn["z0"] + 0.2), (0, back), (CW, back)]
+                                    + [(CW / 2 + HANDLE_R * np.cos(a), hz + HANDLE_R * np.sin(a))
+                                       for a in np.linspace(0, 2 * np.pi, 96, endpoint=False)])
+    ring = core.offset(1.2, JoinType.Round, circular_segments=64) - core
+    strap = Manifold.extrude(ring, 20).rotate((90, 0, 0)).translate((0, tn["cy"] + 10, 0))
+    # lanyard: flat 15 mm webbing through the tunnel, its ends rising up the sides towards the neck
+    wz = (tn["z0"] + tn["z1"]) / 2
+    through = Manifold.cube((CW + 3, 15, 0.9)).translate((-1.5, tn["cy"] - 7.5, wz - 0.45))
+    lanyard = through
+    for sx in (-1, 1):
+        x = -1.5 if sx < 0 else CW + 0.6
+        rise = Manifold.cube((0.9, 150, 15)).translate((0, 0, -7.5))
+        rise = rise.rotate((0, 0, -sx * 9)).translate((x, tn["cy"] - 7.5, wz))
+        lanyard += rise
+    return {"handle": handle, "strap": strap, "lanyard": lanyard}
 
 
 # ------------------------------------------------------------------ the bezel
@@ -213,6 +260,7 @@ def main():
         assert tm.is_watertight, name
         printable = tm.copy()
         # both print as modelled: the tub on its back, the bezel on its flat back (faceted front up)
+        tm.export(HERE / "render" / f"model-{name}.stl")     # in model coordinates, for the renders
         printable.apply_translation(-printable.bounds[0])
         out = HERE / f"stoprock-case-{name}.stl"
         printable.export(out)
@@ -220,6 +268,8 @@ def main():
         stats[name] = (ext, tm.volume / 1000)
         print(f"wrote {out.relative_to(HERE.parents[1])}: {ext[0]:.1f} x {ext[1]:.1f} x {ext[2]:.1f} mm, "
               f"{tm.volume / 1000:.1f} cm3, about {tm.volume / 1000 * 1.21:.0f} g of TPU")
+    for name, m in scene_parts().items():
+        to_trimesh(m).export(HERE / "render" / f"model-{name}.stl")
     return stats
 
 

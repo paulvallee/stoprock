@@ -8,7 +8,7 @@ will likely change once printed.
 
 | File | Part | Size (mm, as oriented in the file) | Volume | Approx. weight (TPU) |
 |---|---|---|---|---|
-| `stoprock-case-tub.stl` | Tub: back and walls, button pads, lanyard loop | 53.8 x 68.2 x 21.0 | 14.2 cm³ | 17 g |
+| `stoprock-case-tub.stl` | Tub: back and walls, button pads, strap tunnel | 46.5 x 62.5 x 24.2 | 17.8 cm³ | 22 g |
 | `stoprock-case-bezel.stl` | Bezel: front frame round the screen, faceted front | 43.3 x 59.3 x 5.1 | 5.1 cm³ | 6 g |
 
 Units are millimetres. Both files are already oriented for printing, each standing on its flat back
@@ -30,12 +30,13 @@ Units are millimetres. Both files are already oriented for printing, each standi
   cut-gem look). The facets are part of the design: please keep their edges crisp.
 - **Snap fit**: the bezel has a 0.35 mm bead round its edge that clicks into a 0.4 mm groove inside
   the tub's rim.
-- **Lanyard loop**: 3.5 mm thick ring with a 5 mm hole, on the tub's top corner. It will be pulled
-  on, so it should be fully solid.
+- **Strap tunnel**: a 21 x 2 mm tunnel runs across the back, open at both sides, for a lanyard or a
+  strap round a broom handle. In the print orientation its roof is a 21 mm bridge: please support
+  it if your process needs to, and leave the tunnel clear. It will be pulled on, so the back should
+  be fully solid.
 - Openings: a cut-out on the right side (20 x 9 mm), USB-C opening at the bottom (12.5 x 7 mm), and a
   1.8 mm pinhole in the back.
-- Overhangs are small (pads and rims, up to 1.5 mm); we don't expect supports, but use them if you
-  need to.
+- Other overhangs are small (pads and rims, up to 1.5 mm).
 
 ## Quantities to quote
 

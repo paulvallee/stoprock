@@ -5,9 +5,9 @@ Playwright's Chromium. From this folder:
 
 ```sh
 npm install three@0.170.0 playwright
-cp ../*.stl .
+python3 ../case.py                 # also writes model-*.stl here, in model coordinates
 python3 -m http.server 8377 &      # the page loads its modules and the STLs over http
-node shoot.js                      # -> view-front.png, view-back.png, view-tub.png, view-exploded.png, view-right.png
+node shoot.js                      # -> view-*.png (front, bezel, right, exploded, tub, mount, lanyard, broom, broom-side)
 ```
 
 `hardware/case/preview.png` is those five views side by side, with captions.
