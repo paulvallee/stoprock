@@ -50,7 +50,7 @@ first run also downloads the push-button part (`pushbutton.wasm`) from the esp-e
 | Key | Mouse | Button |
 |---|---|---|
 | <kbd>Space</kbd> or <kbd>T</kbd> | **top** | Timing click |
-| <kbd>S</kbd> | **side / power** | Timing click; hold 3 s to switch off (shows the help page; press it again to switch back on) |
+| <kbd>S</kbd> | **side / power** | Timing click; hold 3 s to switch off (shows the wake screen; press it again to switch back on) |
 | <kbd>↑</kbd> | rocker **▲** | Next column; on the rocks (league, coach: hold <kbd>↓</kbd> to get there), made. Hold to move the newest time (on the rocks: back to the times) |
 | <kbd>↓</kbd> | rocker **▼** | Previous column, or missed on the rocks; hold it for the rocks (league, coach) or to move the newest time left (competition) |
 | <kbd>Enter</kbd> | rocker **●** | Hold 1 s to undo the newest time or shot ("Keep holding / to undo" shows after 0.2 s); keep holding to undo another every 1 s. Press twice quickly: change your position (coach: switch page) |
@@ -77,10 +77,7 @@ the device off (side button held 3 s) and back on with the rocker held.
 | Basic | <kbd>S</kbd>, then choose it in the menu (the first entry) | Times only, as big as they go: a row a stone, 4 rows, B2H left, H2H right, no players; <kbd>↓</kbd>/<kbd>↑</kbd> scroll to older/newer stones (the badge says which show); hold <kbd>Enter</kbd> to undo |
 
 The **Battery** slider sets the battery level the firmware reads (`run.py` sends it to the emulated chip's
-second serial port). Below 15% the screen shows the low-battery warning (league: a bar over your %; competition: the badge strip), within about 2 s. To try the battery
-drain log and the "~N games battery left" estimate on the off screen: set a level, switch on, log a shot or a
-time, wait at least a minute, lower the slider, then hold the side button 3 s to switch off. In the simulator a
-game of 1 minute or more counts towards the estimate (on the CoreInk: 20 minutes), so a few short games are enough.
+second serial port). Below 15% the screen shows the low-battery warning (league: a bar over your %; competition: the badge strip), within about 2 s. Battery levels at the start and end of a game are recorded in the databank.
 
 ## What it doesn't show
 

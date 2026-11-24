@@ -176,69 +176,9 @@ static void drawPie(Canvas& c, int cx, int cy, int pct) {
     }
 }
 
-void drawHelp(Canvas& c, const char* lastGame, int shotPct, int battery, const char* batteryNote) {
+void drawOffPage(Canvas& c) {
     c.clear();
-    const Font& f = kFontSpleen6x12;
-    c.blit(kLogo, (W - kLogo.w) / 2, 4);
-    int y = 4 + kLogo.h + 6;
-
-    auto tag = [&](const char* labelText, const char* rest) {
-        const int w = static_cast<int>(strlen(labelText)) * 6;
-        c.fillRect(3, y, 4 + w + 2, y + 12);
-        c.text(f, 5, y + 1, labelText, false);
-        c.text(f, 5 + w + 8, y + 1, rest);
-        y += 14;
-    };
-
-    // every "=" on the page sits in one column, where SHOTS' "up/down = " puts it
-    const int eqX = 5 + 6 * 5 + 8 + 6 * 8;
-    auto eqLine = [&](const char* s) {
-        const char* eq = strchr(s, '=');
-        c.text(f, eqX - 6 * static_cast<int>(eq ? eq - s : 0), y, s);
-        y += 12;
-    };
-    tag("START", "hold side button, plus:");
-    eqLine("nothing     = mode menu");
-    eqLine("rocker down = league mode");
-    eqLine("rocker up   = coach mode");
-    y += 5;
-    tag("TIMING", "use top or side button");
-    eqLine("hold up = move last time");
-    y += 3;
-    tag("SHOTS", "up/down = made/missed");
-    y += 3;
-    tag("UNDO", "hold centre: time or shot");
-    y += 4;
-    c.line(4, y, 195, y);
-    y += 5;
-    // Bottom right: shot percentage with a pie, battery with its icon. The icons end at the
-    // same x (room for "100%" after them), and the percentages are right-aligned so the
-    // % signs line up. That leaves 26 characters for "Last game 16/16 shots made".
-    const int iconRight = W - 29, pctRight = W - 2;
-    auto percent = [&](int value) {
-        char pct[6];
-        snprintf(pct, sizeof pct, "%d%%", value < 0 ? 0 : value > 100 ? 100 : value);
-        c.text(f, pctRight - 6 * static_cast<int>(strlen(pct)), y, pct);
-    };
-    c.text(f, 4, y, lastGame);
-    if (shotPct >= 0) {
-        drawPie(c, iconRight - 5, y + 6, shotPct);
-        percent(shotPct);
-    }
-    y += 12;
-    if (batteryNote && *batteryNote) c.text(f, 4, y, batteryNote);  // games left, from past drain
-    if (battery >= 0) {
-        const int bx = iconRight - 14;
-        c.fillRect(bx, y + 3, bx + 12, y + 3);       // outline
-        c.fillRect(bx, y + 9, bx + 12, y + 9);
-        c.fillRect(bx, y + 3, bx, y + 9);
-        c.fillRect(bx + 12, y + 3, bx + 12, y + 9);
-        c.fillRect(bx + 13, y + 5, bx + 14, y + 7);  // terminal
-        const int fill = pyRound(9.0 * (battery > 100 ? 100 : battery) / 100);
-        if (fill > 0) c.fillRect(bx + 2, y + 5, bx + 2 + fill - 1, y + 7);
-        percent(battery);
-        y += 12;
-    }
+    c.blit(kOffPage, 0, 0);
 }
 
 // ------------------------------------------------------------------ start-up modes

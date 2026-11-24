@@ -35,7 +35,7 @@ Type into the serial console:
 | `audit` | Clock audit: how accurate timing is while the chip sleeps between clicks (see below) |
 | `sleeptiming on` / `off` | Sleep between the clicks of a stone (default on) |
 | `n` | Start a new game now (switching on also does) |
-| `o` | Switch off (shows the help page) |
+| `o` | Switch off (shows the wake screen) |
 | `mode competition` / `league` / `coach` | Start a new game in that mode, as if switched on with the rocker (for testing) |
 | `page` | Coach mode: switch page, as a double press of the rocker does |
 

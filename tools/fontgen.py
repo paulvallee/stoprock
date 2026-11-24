@@ -1,4 +1,4 @@
-"""Generate firmware bitmaps (fonts and logo) from assets/ so the device draws
+"""Generate firmware bitmaps from assets/ so the device draws
 exactly what tools/mockups draws.
 
     python tools/fontgen.py      -> firmware/lib/stoprock_ui/src/assets_data.cpp
@@ -117,7 +117,10 @@ def main():
     emit_font("kFontSpleen16x32", f["menu"], "".join(sorted(set(big))), out)
     hint = "".join(screen.UNDO_TIP + screen.OFF_TIP + screen.PAGE_TIP + screen.MOVE_HINT + screen.YOU_ARE_TIP[1:])
     emit_font("kFontSpleen12x24", f["hint"], "".join(sorted(set(hint))), out)
-    emit_bitmap("kLogo", logo.device_logo(), out)
+    with Image.open(screen.OFF_PAGE_PATH) as off_page:
+        if off_page.mode != "1" or off_page.size != (screen.W, screen.H):
+            raise ValueError("The off page must be a 200 x 200, 1-bit image")
+        emit_bitmap("kOffPage", off_page, out)
     emit_bitmap("kLogoStrip", logo.strip_logo(), out)  # competition's badge strip, drawn white
     # rocks (radius 5) for league and coach, drawn as tools/mockups/screen.py small_rock()
     emit_sprite("kRockSmall", lambda d, c: d.ellipse([c - 5, c - 5, c + 5, c + 5], outline=0, width=1), 15, out)

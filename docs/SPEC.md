@@ -2,7 +2,7 @@
 
 A pocket curling stopwatch with a shot-percentage tracker. Version 0.3 (design agreed; firmware in `firmware/`, first runs on a CoreInk in November 2026).
 
-Mockups: [`mockups/screens.png`](mockups/screens.png) (help page, league screen, low battery), [`mockups/modes.png`](mockups/modes.png) (the three start-up modes) and [`mockups/rocker-storyboard.png`](mockups/rocker-storyboard.png). Regenerate them with `python tools/mockups/render.py`.
+Mockups: [`mockups/screens.png`](mockups/screens.png) (off page, league screen, low battery), [`mockups/modes.png`](mockups/modes.png) (the three start-up modes) and [`mockups/rocker-storyboard.png`](mockups/rocker-storyboard.png). Regenerate them with `python tools/mockups/render.py`.
 
 ## 1. Purpose
 
@@ -54,7 +54,7 @@ Timing clicks are timestamped in the interrupt handler, so screen activity never
 
 ### Start-up modes
 
-Switching on with the side button alone shows the **mode menu**: the four modes in big bold letters (Spleen 16×32), one a line, under the logo (BASIC, COMPETITION, LEAGUE, COACH), and the one used last selected. No help text: the help page (shown while off) has the controls. Rocker up/down choose (round and round), the rocker's middle starts the one selected. To skip it, hold the rocker while switching on (middle competition, down league, up coach), as the help page says. At the menu the side button held 3 s still switches off, and 5 minutes untouched switches off too.
+Switching on with the side button alone shows the **mode menu**: the four modes in big bold letters (Spleen 16×32), one a line, under the logo (BASIC, COMPETITION, LEAGUE, COACH), and the one used last selected. Rocker up/down choose (round and round), the rocker's middle starts the one selected. To skip it, hold the rocker while switching on (middle competition, down league, up coach). At the menu the side button held 3 s still switches off, and 5 minutes untouched switches off too.
 
 | Switch on with | Mode | Screen | Rocker |
 |---|---|---|---|
@@ -113,7 +113,7 @@ A stone gives at most one **B2H** (back line, or tee line, to hog line) followed
 | Light sleep | Whenever nothing is happening: straight after each timing click once its beep and any screen update are done (including between the clicks of a stone), and 2 s after a rocker press | Any button (the waking press counts as a normal press and is timed from the moment of waking), or a timer: ghost clearing, a stone's 20 s timeout, the clock audit |
 | Off | 2 hours with no press, or side button held 3 s | Side button held |
 
-- On switching off, the screen gets one full refresh to the **help page** (section 9), which the e-ink keeps with no power.
+- On switching off, the screen gets one full refresh to the **off page** (section 9), which the e-ink keeps with no power.
 - The screen controller stays awake (not in its deep sleep) during a game so updates start immediately; it goes into deep sleep only at power-off.
 - The chip runs at 80 MHz, plenty for this app and roughly half the current of full speed.
 - **Sleeping while a stone is timed** (setting `sleeptiming`, default on). In light sleep the main crystal stops and the chip's less precise backup clock counts the time asleep, so a 15 s H2H spent asleep is only as accurate as that clock. The **clock audit** measures it during real use: every 10 minutes, and at switch-off, it pairs a tick of the real-time clock (which has its own crystal) with the chip's timer, and reports the backup clock's error and the error it implies for a 15 s H2H (serial command `audit`, last 8 switch-ons kept). If the error would show in the hundredths, turn the setting off (`sleeptiming off`): the chip then stays awake from a stone's first click until it is done.
@@ -142,7 +142,7 @@ A stone gives at most one **B2H** (back line, or tee line, to hog line) followed
 
 The cursor stays where you put it with the rocker until a stone is filed. Your position is changed with a double press of the rocker centre (that starts the order afresh).
 
-There are no rotating tips: the controls are simple enough, and the help page shows them. One tip remains, in competition and league: for 5 s after switching on (counted from when the screen is up), a box on the left, its top level with the rocker, reads "You are / SECOND" (LEAD, THIRD, SKIP) in big bold letters (Spleen 16×32) and "2x to change" (12×24), with a bold arrow from the box to the rocker at the screen's right edge (y 59): a double click of the rocker changes position. It shows again for 5 s whenever you change position. Your position is kept between games and through power-off. Starting the stopwatch clears it at once, with the same screen update that shows the stopwatch (as it does coach's "Double click / to change page"); the hold hints stay while their hold lasts. Coach has no switch-on tip. The hold hints ("Keep holding / to undo", "Keep holding / to turn off", "Moving time", and coach's "Double click / to change page") are bold Spleen 12×24.
+There are no rotating tips. One tip remains, in competition and league: for 5 s after switching on (counted from when the screen is up), a box on the left, its top level with the rocker, reads "You are / SECOND" (LEAD, THIRD, SKIP) in big bold letters (Spleen 16×32) and "2x to change" (12×24), with a bold arrow from the box to the rocker at the screen's right edge (y 59): a double click of the rocker changes position. It shows again for 5 s whenever you change position. Your position is kept between games and through power-off. Starting the stopwatch clears it at once, with the same screen update that shows the stopwatch (as it does coach's "Double click / to change page"); the hold hints stay while their hold lasts. Coach has no switch-on tip. The hold hints ("Keep holding / to undo", "Keep holding / to turn off", "Moving time", and coach's "Double click / to change page") are bold Spleen 12×24.
 
 ## 8a. Competition and coach screens
 
@@ -154,28 +154,9 @@ There are no rotating tips: the controls are simple enough, and the help page sh
 
 **Basic.** Competition's times with no players, for reading at a distance: four rows of 43 px, a stone each, newest first, in DSEG7 37 px (an H2H of 20.00 s at 33 px), B2H black on white left of x 92 and H2H white on black right of it, 1 px lines between rows. The top row is the stone being timed, with the stopwatch where its time will appear, as in the other modes. The badge strip (bottom 26 px) reads `BASIC` / `STOPWATCH ONLY`. No cursor, no throw order and no switch-on tip. The rocker **scrolls**: down a row to older stones, up to newer, through the last 32 kept for the screen (a click at the end beeps the error tone); while scrolled, the badge's second line says which stones show, counting from the newest (`5-8 of 14`), so an old time can't pass for the newest. Starting the stopwatch scrolls back to the top. Holding the middle 1 s undoes, as everywhere. The databank records the stones with no player (`null`); `tools/analyze_games.py` skips basic games.
 
-## 9. Help page (shown while off)
+## 9. Off page
 
-stoprock logo (176 px), then Spleen 6×12:
-
-```
- [START] hold side button, plus:
-     nothing     = mode menu
-     rocker down = league mode
-     rocker up   = coach mode
-
- [TIMING] use top or side button
-         hold up = move last time
-
- [SHOTS] up/down = made/missed
-
- [UNDO] hold centre: time or shot
- ─────────────────────────────
- Last game 9/12 shots made (◔) 75%
- ~11 games battery left   [▭] 84%
-```
-
-`[START]`, `[TIMING]`, `[SHOTS]` and `[UNDO]` are white-on-black labels; every `=` sits in one column. A competition game's row reads "Last game N stones timed". The last rows show the most recent game, with its shot percentage beside a small pie, and the battery charge at switch-off beside a battery icon; the two percentages are right-aligned. Once at least one game has been completed, the battery row starts with an estimate: "~N games battery left" (from the average drain of the last 10 completed games of 20 minutes or more, rounded down, less one game kept in reserve), or "Charge before next game" when only the reserve is left. The reserve is there because the charge reading is an estimate from the battery voltage, least reliable near empty: the device would rather say charge one game early than run out mid-game.
+The off page displays the [200 × 200 wake screen](../assets/screens/wake-screen-200x200-1bit.png) pixel for pixel. It shows the 176 px Stoprock wordmark, “Push here to wake me up!”, and an arrow pointing to the side button at the bottom right. The screen refreshes before power is cut, and the e-ink retains the image while the device is off.
 
 ## 10. Screen update plan (responsiveness)
 
@@ -216,7 +197,7 @@ Rules:
 | Font | Use | Licence |
 |---|---|---|
 | DSEG7 Classic Bold | Newest result, percentage | SIL Open Font License 1.1 |
-| Spleen 6×12 | Labels, help page | BSD 2-clause |
+| Spleen 6×12 | Labels | BSD 2-clause |
 | Spleen 16×32, 12×24 | Mode menu, tips | BSD 2-clause |
 | Nunito Black | Logo | SIL Open Font License 1.1 |
 | Drawn segments | Older results, end numbers | Our own code |

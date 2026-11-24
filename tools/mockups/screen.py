@@ -7,6 +7,7 @@ from PIL import BdfFontFile, Image, ImageChops, ImageDraw, ImageFont
 ROOT = Path(__file__).resolve().parents[2]
 FONTS = ROOT / "assets" / "fonts"
 DSEG = FONTS / "DSEG7Classic-Bold.ttf"
+OFF_PAGE_PATH = ROOT / "assets" / "screens" / "wake-screen-200x200-1bit.png"
 
 W = H = 200
 TIP_H = 26  # competition's badge strip
@@ -200,7 +201,6 @@ def big_percent(d, f, pct, x0, x1, y0, y1):
     d.line([(x + pw - 1, y), (x, y + dh - 1)], fill=0, width=st)
 
 
-# --------------------------------------------------------------------------- help page
 def draw_pie(d, cx, cy, pct):
     """11 px pie: a 1-px ring and, inside a 1-px gap, a wedge filled clockwise from 12 o'clock."""
     import math
@@ -217,9 +217,6 @@ def draw_pie(d, cx, cy, pct):
                     d.point((cx + dx, cy + dy), fill=0)
 
 
-HELP_EQ_X = 5 + 6 * len("SHOTS") + 8 + 6 * len("up/down ")  # x of every "=" on the help page
-
-
 # The menu at switch-on (unless the rocker is held: then that mode straight away). The mode used last
 # is selected; up/down choose, the rocker's middle starts it.
 MENU_MODES = ("BASIC", "COMPETITION", "LEAGUE", "COACH")
@@ -228,7 +225,7 @@ MENU_ROW_TOP, MENU_ROW_PITCH, MENU_ROW_H = 30, 42, 38  # the modes, big, one a l
 
 def mode_menu(selected):
     """The modes at switch-on, big (Spleen 16x32, bold), one a line; selected (0 basic, 1 competition,
-    2 league, 3 coach) white on black. Up/down choose, the middle starts it: no help text, the help page has it."""
+    2 league, 3 coach) white on black. Up/down choose, and the middle starts the selected mode."""
     f = fonts()
     img = Image.new("1", (W, H), 1)
     d = ImageDraw.Draw(img)
@@ -248,76 +245,9 @@ def mode_menu(selected):
     return img
 
 
-def help_page(device_logo, last_game, shot_pct=None, battery=None, battery_note=None):
-    img = Image.new("1", (W, H), 1)
-    d = ImageDraw.Draw(img)
-    d.fontmode = "1"
-    f = bdf("spleen-6x12")
-    img.paste(device_logo, ((W - device_logo.width) // 2, 4))
-    y = 4 + device_logo.height + 6
-
-    def line(txt, x=4):
-        nonlocal y
-        d.text((x, y), txt, font=f, fill=0)
-        y += 12
-
-    def tag(label, rest):
-        nonlocal y
-        w = len(label) * 6
-        d.rectangle([3, y, 4 + w + 2, y + 12], fill=0)
-        d.text((5, y + 1), label, font=f, fill=1)
-        d.text((5 + w + 8, y + 1), rest, font=f, fill=0)
-        y += 14
-
-    # every "=" on the page sits in one column, where SHOTS' "up/down = " puts it
-    eq_x = HELP_EQ_X
-
-    def eq_line(txt):
-        nonlocal y
-        d.text((eq_x - 6 * txt.index("="), y), txt, font=f, fill=0)
-        y += 12
-
-    tag("START", "hold side button, plus:")
-    eq_line("nothing     = mode menu")
-    eq_line("rocker down = league mode")
-    eq_line("rocker up   = coach mode")
-    y += 5
-    tag("TIMING", "use top or side button")
-    eq_line("hold up = move last time")
-    y += 3
-    tag("SHOTS", "up/down = made/missed")
-    y += 3
-    tag("UNDO", "hold centre: time or shot")
-    y += 4
-    d.line([(4, y), (195, y)], fill=0)
-    y += 5
-    # Bottom right: shot percentage with a pie, battery with its icon. The icons end at the
-    # same x (room for "100%" after them), and the percentages are right-aligned so the
-    # % signs line up. That leaves 26 characters for "Last game 16/16 shots made".
-    icon_right, pct_right = W - 29, W - 2
-
-    def percent(value):
-        pct = f"{min(100, max(0, value))}%"
-        d.text((pct_right - 6 * len(pct), y), pct, font=f, fill=0)
-
-    d.text((4, y), last_game, font=f, fill=0)
-    if shot_pct is not None:
-        draw_pie(d, icon_right - 5, y + 6, shot_pct)
-        percent(shot_pct)
-    y += 12
-    if battery_note:  # e.g. "~11 games battery left", from past games' drain
-        d.text((4, y), battery_note, font=f, fill=0)
-    if battery is not None:
-        bx = icon_right - 14
-        d.rectangle([bx, y + 3, bx + 12, y + 9], outline=0)
-        d.rectangle([bx + 13, y + 5, bx + 14, y + 7], fill=0)
-        fill = round(9 * max(0, min(100, battery)) / 100)
-        if fill > 0:
-            d.rectangle([bx + 2, y + 5, bx + 2 + fill - 1, y + 7], fill=0)
-        percent(battery)
-        y += 12
-    assert y <= H, f"help page overflows: {y}"
-    return img
+def off_page():
+    with Image.open(OFF_PAGE_PATH) as image:
+        return image.copy()
 
 
 # --------------------------------------------------------------------------- start-up modes
@@ -378,7 +308,7 @@ def newest_row(d, f, stones, waiting, mid, fonts_, y0, y1, r, cy):
 
 
 # Tips, big: the switch-on tip (competition and league) says only your position, also shown when you
-# change it (the help page has the controls); the hold hints say what holding does.
+# change it. The hold hints say what holding does.
 YOU_ARE = ("LEAD", "SECOND", "THIRD", "SKIP")
 HINT_TOP = TIMES_Y1 + 2       # the hold hints: over the times
 UNDO_TIP = ("Keep holding", "to undo")       # tip="undo": the rocker centre held, before the undo (1 s)

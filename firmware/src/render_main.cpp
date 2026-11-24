@@ -226,8 +226,8 @@ int main(int argc, char** argv) {
         writePbm(c, path);
     }
 
-    drawHelp(c, "Last game 9/12 shots made", 75, 84, "~11 games battery left");
-    snprintf(path, sizeof path, "%s/help.pbm", dir);
+    drawOffPage(c);
+    snprintf(path, sizeof path, "%s/off-page.pbm", dir);
     writePbm(c, path);
     return 0;
 }

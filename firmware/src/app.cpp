@@ -40,13 +40,10 @@ constexpr int64_t kPowerOffUs = 2 * 60 * 60 * kSec;
 constexpr int64_t kCleanAfterHhUs = 5 * kSec;
 constexpr uint8_t kStonesPerClean = 4;         // ghost-clearing full refresh after every 4th timed stone
 #ifdef STOPROCK_BOARD_EMU
-// Simulator: react to the battery slider quickly, and let 1-minute games count towards the
-// games-left estimate so it can be tried without playing 20-minute games.
+// Simulator: react to the battery slider quickly.
 constexpr int64_t kBatteryCheckUs = 2 * kSec;
-constexpr uint32_t kMinGameSecondsForBattery = 60;
 #else
 constexpr int64_t kBatteryCheckUs = 30 * kSec;
-constexpr uint32_t kMinGameSecondsForBattery = 20 * 60;
 #endif
 constexpr int kMaxStones = 32;  // kept for the screen: at least a screenful of each player (and THEM)
 
@@ -364,17 +361,13 @@ struct Model {
     uint8_t stoneCount = 0;
     ShotLog shots;          // the shots on screen (deferred while a stone is timed)
     bool warning = false;
-    bool help = false;
+    bool off = false;
     bool menu = false;      // the mode menu at switch-on
     uint8_t menuSel = 0;    // ... its selected mode: 0 competition, 1 league, 2 coach
     bool full = false;      // next update is a ghost-clearing full refresh
     Tip tip = Tip::None;    // a box over the times: the switch-on tip, or "Keep holding to undo"
     Waiting waiting = Waiting::None;  // a stone being timed: the stopwatch shows where its time will go
     Focus focus = Focus::Players;     // league: what the rocker works on
-    char lastGame[40] = "";
-    int shotPct = -1;       // help page: last game's shot percentage
-    int battery = -1;       // help page: charge at switch-off
-    char batteryNote[28] = "";  // help page: games of battery left
 };
 
 Model model;
@@ -407,8 +400,8 @@ void displayTask(void*) {
         model.full = false;
         xSemaphoreGive(modelLock);
 
-        if (m.help) {
-            drawHelp(next, m.lastGame, m.shotPct, m.battery, m.batteryNote);
+        if (m.off) {
+            drawOffPage(next);
         } else if (m.menu) {
             drawModeMenu(next, m.menuSel);
         } else if (m.mode == GameMode::Basic) {
@@ -456,7 +449,7 @@ void syncModel(bool full = false) {
         m.stoneCount = stoneCount;
         if (!timing.active()) m.shots = shots;
         m.warning = lowBattery;
-        m.help = false;
+        m.off = false;
         m.menu = false;
         m.full = m.full || sFull;
         m.tip = offHint ? Tip::PowerOff : undoHint ? Tip::Undo : moveHint ? Tip::Move :
@@ -710,37 +703,12 @@ void printAudit(const ClockAudit& a, bool current) {
 }
 
 // ------------------------------------------------------------------ power
-void showHelpAndPowerOff() {
-    static char line[40];
-    static char note[28];
-    static int shotPct, battery;
-    shotPct = -1;
-    battery = board::batteryPercent();
-    bank.endGame(battery, board::clockNow());  // log the battery at the end of this game
-    const int left = bank.gamesLeft(battery, kMinGameSecondsForBattery);
-    if (left < 0) note[0] = 0;
-    else if (left == 0) snprintf(note, sizeof note, "Charge before next game");
-    else snprintf(note, sizeof note, "~%d game%s battery left", left, left == 1 ? "" : "s");
-    static GameRecord g;  // big (128 stones): keep it off the stack
-    if (!bank.lastGame(g)) {
-        snprintf(line, sizeof line, "No games yet");
-    } else {
-        ShotLog s(ShotLog::kMaxSlots);
-        s.restore(g.shotCount, g.shotBits);
-        if (s.count() == 0) snprintf(line, sizeof line, "Last game %u stones timed", g.stoneCount);
-        else {
-            snprintf(line, sizeof line, "Last game %d/%d shots made", s.madeCount(), s.count());
-            shotPct = s.percent();
-        }
-    }
+void showOffPageAndPowerOff() {
+    bank.endGame(board::batteryPercent(), board::clockNow());  // log the battery at the end of this game
     auditSampleNow();
     Serial.println("power: off");
     publish([](Model& m) {
-        strncpy(m.lastGame, line, sizeof m.lastGame - 1);
-        m.shotPct = shotPct;
-        m.battery = battery;
-        strncpy(m.batteryNote, note, sizeof m.batteryNote - 1);
-        m.help = true;
+        m.off = true;
         m.full = true;
     });
     while (displayBusy) delay(10);
@@ -776,7 +744,7 @@ GameMode chooseMode() {
         publish([](Model& m) {
             m.menu = true;
             m.menuSel = sel;
-            m.help = false;
+            m.off = false;
             m.full = m.full || full;
         });
     };
@@ -807,12 +775,12 @@ GameMode chooseMode() {
         }
         if (board::held(board::kSide)) {
             if (sideLetGo && sideSince < 0) sideSince = now;
-            if (sideSince >= 0 && now - sideSince >= kPowerHoldUs) showHelpAndPowerOff();
+            if (sideSince >= 0 && now - sideSince >= kPowerHoldUs) showOffPageAndPowerOff();
         } else {
             sideLetGo = true;
             sideSince = -1;
         }
-        if (now - lastInput >= kMenuIdleUs) showHelpAndPowerOff();
+        if (now - lastInput >= kMenuIdleUs) showOffPageAndPowerOff();
         delay(10);
     }
 }
@@ -1152,7 +1120,7 @@ void pollButtons(int64_t now) {
             if (b == board::kSide && now - s.downSince >= kPowerHoldUs) {
                 s.holdFired = true;
                 offHint = false;
-                showHelpAndPowerOff();
+                showOffPageAndPowerOff();
             }
             // League: hold down for your rocks; hold up for the columns. Every mode: hold up on the
             // columns to move the newest time a column right every 0.7 s (let go where it belongs);
@@ -1244,7 +1212,7 @@ void runCommand(const char* buf) {
     } else if (!strcmp(buf, "page")) {  // testing: coach page switch, as a double press
         if (rules().pages) { switchPage(); syncModel(); }
     } else if (!strcmp(buf, "o")) {
-        showHelpAndPowerOff();
+        showOffPageAndPowerOff();
     } else if (!strcmp(buf, "s")) {
         Serial.printf("status: board %s, %s mode, stones %d, shots %d/%d, games %lu-%lu, battery %d%%, clock %lu%s\n",
                       board::name(), modeName(mode), stoneCount, shots.madeCount(), shots.count(),
@@ -1301,7 +1269,7 @@ void setup() {
     bank.begin();
     // The simulator's first start is "off": the off page, until the side button switches it on (a
     // restart, picking the mode as below). Never on the CoreInk.
-    if (board::startsOff()) showHelpAndPowerOff();
+    if (board::startsOff()) showOffPageAndPowerOff();
     // The mode: the rocker held while the side button switches the device on picks it (down league,
     // up coach, middle competition); otherwise the menu.
     if (board::heldAtStart(board::kDown)) mode = GameMode::League;
@@ -1401,7 +1369,7 @@ void loop() {
         if (low != lowBattery) { lowBattery = low; if (!timing.active()) syncModel(); }
     }
 
-    if (now - lastActivity >= kPowerOffUs) showHelpAndPowerOff();
+    if (now - lastActivity >= kPowerOffUs) showOffPageAndPowerOff();
 
     // clock audit: start a sample every 10 minutes, then step it each pass
     if (now >= nextAuditAt && !auditWaiting) {

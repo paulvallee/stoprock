@@ -32,11 +32,8 @@ enum class Waiting : uint8_t { None, BackToHog, HogToHog, HogToHogOnly };
 // Page: coach, after a single click of the rocker centre, "Double click rocker middle / to change pages".
 enum class Tip : uint8_t { None, SwitchOn, Undo, Move, PowerOff, Page };
 
-// lastGame: e.g. "Last game 21 Nov   9/12". shotPct: shown with a pie, -1 = none.
-// battery: charge at switch-off, -1 = unknown. batteryNote: left of the battery, e.g.
-// "~11 games battery left"; nullptr or "" = none.
-void drawHelp(Canvas& c, const char* lastGame, int shotPct = -1, int battery = -1,
-              const char* batteryNote = nullptr);
+// The full-screen wake instructions shown while the device is switched off.
+void drawOffPage(Canvas& c);
 
 // The mode menu at switch-on: the modes, big, one a line. selected: 0 basic, 1 competition, 2 league, 3 coach.
 void drawModeMenu(Canvas& c, uint8_t selected);

@@ -10,7 +10,6 @@ from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools" / "mockups"))
-import logo  # noqa: E402
 import render  # noqa: E402
 import screen  # noqa: E402
 
@@ -23,7 +22,7 @@ def main():
     refs = {
         "league": screen.league_screen(ls, shots, lme, lact),
         "league-battery": screen.league_screen(ls, shots, lme, lact, low_battery=True),
-        "help": screen.help_page(logo.device_logo(), "Last game 9/12 shots made", shot_pct=75, battery=84, battery_note="~11 games battery left"),
+        "off-page": screen.off_page(),
     }
     refs["competition-tip"] = screen.competition_screen([], 0, 0, tip=True)
     refs["league-tip"] = screen.league_screen([], [], 2, 0, tip=True)
