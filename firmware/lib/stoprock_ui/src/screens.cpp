@@ -520,37 +520,56 @@ void drawModeMenu(Canvas& c, uint8_t selected) {
 }
 
 // The bottom TIP_H px, white on black, for an umpire: the logo on the left, the mode's name and
-// "STOPWATCH ONLY" (or "Battery low") right-aligned.
-static void badgeStrip(Canvas& c, const char* name, bool lowBattery) {
+// "STOPWATCH ONLY" (or "Battery low", or a note) right-aligned.
+static void badgeStrip(Canvas& c, const char* name, bool lowBattery, const char* note = nullptr) {
     const int strip = H - TIP_H;
     c.fillRect(0, strip, W - 1, H - 1);
     c.blit(kLogoStrip, 2, strip + (TIP_H - kLogoStrip.h) / 2, false);
-    const char* const lines[2] = {name, lowBattery ? "Battery low" : "STOPWATCH ONLY"};
+    const char* const lines[2] = {name, note ? note : lowBattery ? "Battery low" : "STOPWATCH ONLY"};
     for (int i = 0; i < 2; ++i)
         c.text(kFontSpleen6x12, W - 2 - 6 * static_cast<int>(strlen(lines[i])), strip + 1 + 12 * i, lines[i], false);
 }
 
 // Zoom: competition's times with no players, as big as they go: a row a stone, newest first, 4 rows,
-// B2H black on white left of COMP_MID, H2H white on black right of it, the badge strip below. The top
-// row is the stone being timed, as the newest row of the other modes; the rows below, the ones before.
-void drawZoom(Canvas& c, const Stone* stones, uint8_t count, bool lowBattery, Tip tip, Waiting waiting) {
+// B2H black on white left of COMP_MID, H2H white on black right of it, the badge strip below. The rows
+// scroll (scroll: rows down, to older stones); scrolled, the badge says which stones show. A stone
+// being timed with no time yet has a row of its own at the top, with the stopwatch; one awaiting its
+// H2H has the stopwatch in its H2H cell.
+void drawZoom(Canvas& c, const Stone* stones, uint8_t count, bool lowBattery, Tip tip, Waiting waiting,
+              int scroll) {
     c.clear();
-    const int strip = H - TIP_H, rowH = (H - TIP_H) / 4;
+    const int strip = H - TIP_H, rowH = (H - TIP_H) / 4, kRows = 4;
     c.fillRect(COMP_MID, 0, W - 1, strip - 1);
-    newestRow(c, stones, count, waiting, COMP_MID, kFontDseg37, kFontDseg33, 0, rowH, kStopwatch, rowH / 2);
-    const bool fresh = waiting == Waiting::BackToHog || waiting == Waiting::HogToHogOnly;  // row 0: no stone yet
-    for (int i = 1, s = fresh ? 0 : 1; i < 4 && s < count; ++i, ++s) {
+    const bool fresh = waiting == Waiting::BackToHog || waiting == Waiting::HogToHogOnly;  // a row of its own
+    const int rows = count + (fresh ? 1 : 0);
+    if (scroll > rows - kRows) scroll = rows - kRows;
+    if (scroll < 0) scroll = 0;
+    int first = 0, last = 0;  // the stones shown, counting from the newest (1)
+    char buf[12];
+    for (int i = 0; i < kRows && scroll + i < rows; ++i) {
+        const int r = scroll + i, s = r - (fresh ? 1 : 0);  // s < 0: the stone under way, no time yet
         const int y0 = i * rowH;
-        c.fillRect(0, y0, COMP_MID - 1, y0);  // between rows: black on white, white on black
-        c.fillRect(COMP_MID, y0, W - 1, y0, false);
-        const int32_t vals[2] = {stones[s].bh, stones[s].hh};
+        if (i) {
+            c.fillRect(0, y0, COMP_MID - 1, y0);  // between rows: black on white, white on black
+            c.fillRect(COMP_MID, y0, W - 1, y0, false);
+        }
+        const int32_t vals[2] = {s < 0 ? -1 : stones[s].bh, s < 0 ? -1 : stones[s].hh};
+        const bool watch[2] = {s < 0 && waiting == Waiting::BackToHog,
+                               (s < 0 && waiting == Waiting::HogToHogOnly) || (s == 0 && waiting == Waiting::HogToHog)};
         for (int k = 0; k < 2; ++k) {
-            if (vals[k] < 0) continue;
-            dsegNumber(c, vals[k], k ? COMP_MID : 0, k ? W : COMP_MID, y0, y0 + rowH, 0,
-                       vals[k] >= 2000 ? kFontDseg33 : kFontDseg37, true, k == 0);
+            const int x0 = k ? COMP_MID : 0, x1 = k ? W : COMP_MID;
+            if (vals[k] >= 0)
+                dsegNumber(c, vals[k], x0, x1, y0, y0 + rowH, 0, vals[k] >= 2000 ? kFontDseg33 : kFontDseg37, true, k == 0);
+            else if (watch[k])
+                c.blit(kStopwatch.bm, (x0 + x1) / 2 - kStopwatch.cx, y0 + rowH / 2 - kStopwatch.cy, k == 0);
+        }
+        if (s >= 0) {
+            if (!first) first = s + 1;
+            last = s + 1;
         }
     }
-    badgeStrip(c, "ZOOM", lowBattery);
+    if (scroll > 0) snprintf(buf, sizeof buf, "%d-%d of %d", first, last, count);
+    badgeStrip(c, "ZOOM", lowBattery, scroll > 0 ? buf : nullptr);
     if (tip == Tip::Undo || tip == Tip::PowerOff) undoTip(c, kHintTop, strip, tip);
 }
 

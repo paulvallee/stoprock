@@ -77,6 +77,9 @@ def main():
     refs["zoom-wait-h2h"] = screen.zoom_screen(lhalf, waiting="h2h")
     refs["zoom-20"] = screen.zoom_screen(slow, low_battery=True, tip="undo")
     refs["zoom-few"] = screen.zoom_screen(ls[:2], tip="off")
+    refs["zoom-scroll4"] = screen.zoom_screen(ls, scroll=4)
+    refs["zoom-scroll-end"] = screen.zoom_screen(ls, low_battery=True, scroll=99)
+    refs["zoom-scroll-timing"] = screen.zoom_screen(ls, waiting="b2h", scroll=2)
     rows, worst = [], 0
     for name, ref in refs.items():
         fw = Image.open(src / f"{name}.pbm").convert("1")

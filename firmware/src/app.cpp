@@ -146,6 +146,7 @@ uint8_t columns() { return columnCount(seat()); }
 // The cursor is on the player about to throw: the throw order (ThrowOrder) puts it on whoever
 // throws next, and the rocker moves it too (or moves a time afterwards).
 uint8_t activeCol = 0;          // the column with the cursor
+int zoomScroll = 0;             // zoom: rows scrolled down, to older stones (the rocker; a new stone resets it)
 // League: what rocker up/down work on, the focus (bold border): the players' columns (up = next,
 // down = previous) or your rocks (made/missed). Hold down 0.5 s for your rocks; logging a shot (or
 // holding up 0.5 s) goes back to the columns. On the columns, holding up moves the newest time.
@@ -332,6 +333,7 @@ void newGame() {
     tipWaiting = rules().positions;
     tipUntil = -1;
     stoneCount = 0;
+    zoomScroll = 0;
     Serial.printf("game: new, %s mode\n", modeName(mode));
 }
 
@@ -357,6 +359,7 @@ struct Model {
     uint8_t page = 0;       // coach: which page
     uint8_t me = 0;         // competition: your position
     uint8_t activeCol = 0;  // competition and league: the column with the cursor
+    int scroll = 0;         // zoom: rows scrolled down
     Stone stones[kMaxStones];
     uint8_t stoneCount = 0;
     ShotLog shots;          // the shots on screen (deferred while a stone is timed)
@@ -409,7 +412,7 @@ void displayTask(void*) {
         } else if (m.menu) {
             drawModeMenu(next, m.menuSel);
         } else if (m.mode == GameMode::Zoom) {
-            drawZoom(next, m.stones, m.stoneCount, m.warning, m.tip, m.waiting);
+            drawZoom(next, m.stones, m.stoneCount, m.warning, m.tip, m.waiting, m.scroll);
         } else if (m.mode == GameMode::Competition) {
             drawCompetition(next, m.stones, m.stoneCount, m.me, m.activeCol, m.warning, m.tip, m.waiting);
         } else if (m.mode == GameMode::Coach) {
@@ -439,11 +442,16 @@ void displayTask(void*) {
 void syncModel(bool full = false) {
     static bool sFull;
     sFull = full;
+    {  // zoom: never scrolled past the end (an undo can take a row away)
+        const int most = stoneCount + (timing.state() == TimingState::Started ? 1 : 0) - 4;
+        if (zoomScroll > (most > 0 ? most : 0)) zoomScroll = most > 0 ? most : 0;
+    }
     publish([](Model& m) {
         m.mode = mode;
         m.page = coachPage;
         m.me = myPosition;
         m.activeCol = activeCol;
+        m.scroll = zoomScroll;
         memcpy(m.stones, stones, sizeof stones);
         m.stoneCount = stoneCount;
         if (!timing.active()) m.shots = shots;
@@ -566,6 +574,7 @@ void handleOutcome(const Outcome& o, int64_t now) {
             focusTo(Focus::Players);
             Serial.println("focus: players (timing)");
         }
+        zoomScroll = 0;  // zoom: back to the top, where the stone under way shows
         // tips go: timing has the screen (the hold hints stay while their hold lasts)
         tipWaiting = false;
         tipUntil = -1;
@@ -961,6 +970,18 @@ void onRockerPress(ButtonState& s, int64_t t) {
     lastRockerPress = t;
 }
 
+// Zoom: the rows a row down (+1, older stones) or up (-1), as far as there are rows (4 show).
+void scrollZoom(int dir) {
+    const bool fresh = timing.state() == TimingState::Started;  // a stone under way, no time yet: a row of its own
+    const int most = stoneCount + (fresh ? 1 : 0) - 4;
+    const int to = zoomScroll + dir;
+    if (to < 0 || to > (most > 0 ? most : 0)) { sound.play(kError); return; }
+    zoomScroll = to;
+    sound.play(kClick);
+    Serial.printf("zoom: scrolled %d\n", zoomScroll);
+    syncModel();
+}
+
 // The player cursor one column left (-1) or right (+1), round and round.
 void movePlayer(int dir) {
     activeCol = (activeCol + (dir < 0 ? columns() - 1 : 1)) % columns();
@@ -1045,6 +1066,7 @@ void releaseAction(uint8_t b) {
     if (buttons[b].holdFired) return;
     if (rules().shotsPerEnd && (!rules().focus || focus == Focus::Rocks)) onShot(b == board::kUp);
     else if (rules().columns) movePlayer(b == board::kUp ? 1 : -1);  // up = next player, down = previous
+    else scrollZoom(b == board::kDown ? 1 : -1);  // zoom: down = older stones, up = newer
 }
 
 void onPress(uint8_t b, int64_t t) {

@@ -442,45 +442,66 @@ def tooltip(d, f, lines, top, bottom, size="hint"):
         y += lh
 
 
-def badge_strip(img, d, f, name, low_battery):
+def badge_strip(img, d, f, name, low_battery, note=None):
     """The bottom TIP_H px, white on black, for an umpire: the logo on the left, the mode's name and
-    "STOPWATCH ONLY" (or "Battery low") right-aligned."""
+    "STOPWATCH ONLY" (or "Battery low", or a note) right-aligned."""
     strip = H - TIP_H
     d.rectangle([0, strip, W - 1, H - 1], fill=0)
     from logo import strip_logo  # here, not at the top: logo.py is a sibling module
     lg = strip_logo()
     img.paste(1, (2, strip + (TIP_H - lg.height) // 2), ImageChops.invert(lg.convert("L")).convert("1"))
-    sub = "Battery low" if low_battery else "STOPWATCH ONLY"
+    sub = note or ("Battery low" if low_battery else "STOPWATCH ONLY")
     for t, y in ((name, strip + 1), (sub, strip + 13)):
         d.text((W - 2 - 6 * len(t), y), t, font=f["label"], fill=1)
 
 
 # Zoom: competition's times with no players, as big as they go: a row a stone, newest first, 4 rows,
-# B2H black on white left of COMP_MID, H2H white on black right of it, the badge strip below.
+# B2H black on white left of COMP_MID, H2H white on black right of it, the badge strip below. The
+# rocker scrolls (down: older, up: newer), a row a press; scrolled, the badge says which stones show.
 ZOOM_ROW_H = (H - TIP_H) // 4  # 43
+ZOOM_ROWS = 4
 
 
-def zoom_screen(stones, low_battery=False, tip=False, waiting=None):
-    """stones: (b2h, h2h, ...) newest first. The top row is the stone being timed, as the newest row
-    of the other modes (a stopwatch where its time will appear); the rows below, the ones before."""
+def zoom_rows(stones, waiting):
+    """The rows to scroll through, newest first: (b2h, h2h, stopwatch in the B2H cell, in the H2H cell,
+    stone number counting from the newest, 1; None for a stone being timed with no time yet)."""
+    rows = []
+    if waiting in ("b2h", "h2h-only"):  # a stone under way, no time yet: a row of its own
+        rows.append((None, None, waiting == "b2h", waiting == "h2h-only", None))
+    for i, st in enumerate(stones):
+        rows.append((st[0], st[1], False, i == 0 and waiting == "h2h", i + 1))
+    return rows
+
+
+def zoom_screen(stones, low_battery=False, tip=False, waiting=None, scroll=0):
+    """stones: (b2h, h2h, ...) newest first; scroll: rows scrolled down (to older stones). The top row
+    unscrolled is the stone being timed, as the newest row of the other modes."""
     f = fonts()
     img = Image.new("1", (W, H), 1)
     d = ImageDraw.Draw(img)
     d.fontmode = "1"
     strip = H - TIP_H
     d.rectangle([COMP_MID, 0, W - 1, strip - 1], fill=0)
-    newest_row(d, f, stones, waiting, COMP_MID, (f["big"], f["big_long"]), 0, ZOOM_ROW_H, STOPWATCH_BIG,
-               ZOOM_ROW_H // 2)
-    before = stones if waiting in ("b2h", "h2h-only") else stones[1:]
-    for i, st in enumerate(before[:3], 1):
+    rows = zoom_rows(stones, waiting)
+    scroll = max(0, min(scroll, len(rows) - ZOOM_ROWS))
+    shown = rows[scroll:scroll + ZOOM_ROWS]
+    for i, (bh, hh, watch_bh, watch_hh, _) in enumerate(shown):
         y0 = i * ZOOM_ROW_H
-        d.line([(0, y0), (COMP_MID - 1, y0)], fill=0)  # between rows: black on white, white on black
-        d.line([(COMP_MID, y0), (W - 1, y0)], fill=1)
+        if i:
+            d.line([(0, y0), (COMP_MID - 1, y0)], fill=0)  # between rows: black on white, white on black
+            d.line([(COMP_MID, y0), (W - 1, y0)], fill=1)
         for k, (x0, x1) in enumerate(((0, COMP_MID), (COMP_MID, W))):
-            if st[k] is not None:
-                font = f["big_long"] if st[k] >= 20 else f["big"]
-                dseg_number(d, st[k], font, x0, x1, y0, y0 + ZOOM_ROW_H, margin=0, align="center", fill=k)
-    badge_strip(img, d, f, "ZOOM", low_battery)
+            v, watch = (bh, watch_bh) if k == 0 else (hh, watch_hh)
+            if v is not None:
+                font = f["big_long"] if v >= 20 else f["big"]
+                dseg_number(d, v, font, x0, x1, y0, y0 + ZOOM_ROW_H, margin=0, align="center", fill=k)
+            elif watch:
+                stopwatch(d, (x0 + x1) // 2, y0 + ZOOM_ROW_H // 2, STOPWATCH_BIG, k)
+    note = None
+    if scroll > 0:  # which stones show, counting from the newest
+        nums = [n for *_, n in shown if n is not None]
+        note = f"{nums[0]}-{nums[-1]} of {len(stones)}"
+    badge_strip(img, d, f, "ZOOM", low_battery, note)
     if tip in ("undo", "off"):
         tooltip(d, f, UNDO_TIP if tip == "undo" else OFF_TIP, HINT_TOP, strip)
     return img

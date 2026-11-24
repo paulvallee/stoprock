@@ -212,6 +212,15 @@ int main(int argc, char** argv) {
         drawZoom(c, half, nl, true, Tip::Undo);
         snprintf(path, sizeof path, "%s/zoom-20.pbm", dir);
         writePbm(c, path);
+        drawZoom(c, league, nl, false, Tip::None, Waiting::None, 4);
+        snprintf(path, sizeof path, "%s/zoom-scroll4.pbm", dir);
+        writePbm(c, path);
+        drawZoom(c, league, nl, true, Tip::None, Waiting::None, 99);  // past the end: the oldest four
+        snprintf(path, sizeof path, "%s/zoom-scroll-end.pbm", dir);
+        writePbm(c, path);
+        drawZoom(c, league, nl, false, Tip::None, Waiting::BackToHog, 2);
+        snprintf(path, sizeof path, "%s/zoom-scroll-timing.pbm", dir);
+        writePbm(c, path);
         drawZoom(c, league, 2, false, Tip::PowerOff);
         snprintf(path, sizeof path, "%s/zoom-few.pbm", dir);
         writePbm(c, path);
