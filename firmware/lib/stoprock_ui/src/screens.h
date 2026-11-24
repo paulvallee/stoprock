@@ -23,6 +23,10 @@ struct Stone {
 // was at the near hog line): the row is still the new stone's, the stopwatch in the H2H box.
 enum class Waiting : uint8_t { None, BackToHog, HogToHog, HogToHogOnly };
 
+// A box over the times: the switch-on tip (your position and the holds), or while the rocker centre
+// is held, "Keep holding to undo" (every screen, coach page 2 too).
+enum class Tip : uint8_t { None, SwitchOn, Undo };
+
 // lastGame: e.g. "Last game 21 Nov   9/12". shotPct: shown with a pie, -1 = none.
 // battery: charge at switch-off, -1 = unknown. batteryNote: left of the battery, e.g.
 // "~11 games battery left"; nullptr or "" = none.
@@ -36,7 +40,7 @@ constexpr uint8_t kCompetitionRows = 8;
 constexpr uint8_t kGridRows = 8;  // stones kept per player (addStone)
 // tip: the switch-on tip (your position, double click to change it, hold up to move) over the times.
 void drawCompetition(Canvas& c, const Stone* stones, uint8_t count, uint8_t me, uint8_t activeCol,
-                     bool lowBattery, bool tip = false, Waiting waiting = Waiting::None);
+                     bool lowBattery, Tip tip = Tip::None, Waiting waiting = Waiting::None);
 
 // League (side button + rocker down): the newest stone large, then four columns: your three
 // teammates in throwing order and the other team (THEM), each listing its stones newest first, a
@@ -50,7 +54,7 @@ constexpr uint8_t kCoachRows = 6;  // coach page 1: five columns (kCoachColumns)
 // down = previous) or your rocks (made/missed).
 enum class Focus : uint8_t { Rocks, Players };
 void drawLeague(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& shots, uint8_t me, uint8_t activeCol,
-                bool lowBattery, bool tip = false, Waiting waiting = Waiting::None, Focus focus = Focus::Players);
+                bool lowBattery, Tip tip = Tip::None, Waiting waiting = Waiting::None, Focus focus = Focus::Players);
 
 // Put a stone at the front of a newest-first list. When the list is full, the stone dropped is
 // the oldest of a player (or THEM) with more than kGridRows, so a player who has thrown less
@@ -62,10 +66,10 @@ void addStone(Stone* list, uint8_t& count, uint8_t capacity, const Stone& s);
 // digits; activeCol 0-4 highlighted), % per position, the previous and current end. tip: the
 // switch-on tip (double click to switch page, hold up to move the last time).
 void drawCoachTimer(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& shots,
-                    Waiting waiting = Waiting::None, uint8_t activeCol = 0, bool tip = false);
+                    Waiting waiting = Waiting::None, uint8_t activeCol = 0, Tip tip = Tip::None);
 // Page 2, rock priority: the newest times only, all 64 rocks, a pie and % per position.
 void drawCoachRocks(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& shots,
-                    Waiting waiting = Waiting::None);
+                    Waiting waiting = Waiting::None, Tip tip = Tip::None);
 
 // Hundredths of a second from microseconds, rounded.
 inline int32_t toHundredths(int64_t us) { return static_cast<int32_t>((us + 5000) / 10000); }

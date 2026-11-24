@@ -409,6 +409,24 @@ static void test_version_5_times_and_guesses() {
     TEST_ASSERT_EQUAL_UINT16(NONE, g.shotTimes[0]);
 }
 
+static void test_remove_last_stone() {
+    MemStore st;
+    Databank db(st);
+    db.begin();
+    db.startGame(0, true, 80, GameMode::Competition);
+    db.addStone(347, 1392, 1, 1, 1, 30);
+    db.addStone(329, NONE, 2, StoneTimes::kThem, StoneTimes::kThem, 90);
+    db.removeLastStone(3);
+    GameRecord g;
+    TEST_ASSERT_TRUE(db.load(1, g));
+    TEST_ASSERT_EQUAL_UINT16(1, g.stoneCount);
+    TEST_ASSERT_EQUAL_UINT16(347, g.stones[0].backToHog);
+    db.removeLastStone(4);
+    db.removeLastStone(5);  // nothing left: no harm
+    TEST_ASSERT_TRUE(db.load(1, g));
+    TEST_ASSERT_EQUAL_UINT16(0, g.stoneCount);
+}
+
 // Flash full: the oldest games make room for the one being played.
 class SmallStore : public MemStore {
 public:
@@ -455,5 +473,6 @@ int main() {
     RUN_TEST(test_json_line);
     RUN_TEST(test_version_5_times_and_guesses);
     RUN_TEST(test_full_flash_drops_the_oldest);
+    RUN_TEST(test_remove_last_stone);
     return UNITY_END();
 }

@@ -41,10 +41,10 @@ Graphics library: **M5GFX / M5Unified** (has a driver for this screen, `Panel_GD
 | Side button, held | Power on (from off), in the mode the rocker picks (below). Power off when held 3 s while on (to confirm against the hardware's own power-button behaviour). |
 | Rocker up | Log a **made** shot at the cursor |
 | Rocker down | Log a **missed** shot at the cursor |
-| Rocker press, held 0.5 s | **Undo**: cursor steps back one slot and clears it (like backspace). Keep holding to undo another rock every 0.5 s; stops after one error buzz when nothing is left. |
+| Rocker press, held 1 s | **Undo** the newest entry, a time or a shot, whichever came last (like backspace), in every mode; a stone being timed is cancelled first (with its B2H, if it has one). The throw order steps back with it. From 0.2 s into the hold a box reads "Keep holding to undo"; it goes with the undo, or when you let go. Keep holding to undo another entry every 1 s; stops after one error buzz when nothing is left. |
 | Rocker press, short | Nothing on its own. Two presses within 0.4 s: in coach mode, switch page; in league and competition, change your own position (lead → 2nd → 3rd → skip → lead, remembered). |
 
-In competition mode, rocker up moves the player cursor to the next column and down to the previous one (wrapping round), and **holding rocker up moves the newest time**, as in league (below). There is no undo and there are no rocks. As in league, up/down act when let go.
+In competition mode, rocker up moves the player cursor to the next column and down to the previous one (wrapping round), and **holding rocker up moves the newest time**, as in league (below). There are no rocks; holding the rocker centre undoes the newest time. As in league, up/down act when let go.
 
 In league mode the rocker works on one half of the screen at a time, the **focus**, shown by a bold border: the **columns** of times (up = next column, down = previous, wrapping round; the default at switch-on) or your **rocks** (up/down = made/missed). **Hold rocker down 0.5 s** to log your rocks; logging one (or holding rocker up 0.5 s) goes back to the columns, and so does starting the stopwatch: while a stone is timed, the rocker works on the times. When the stone is done, the focus goes back to your rocks if the throw order says you've thrown since your last logged shot (exactly one shot owed: if you aren't logging shots, it leaves the focus alone). When your own throw is due, the focus moves to your rocks by itself (section 8). On the columns, **holding rocker up moves the newest time**: after 0.6 s it jumps one column right (the way a press of rocker up moves the cursor), and again every 0.6 s (wrapping round from THEM to the first column), and it stays in the column it's in when you let go. So that a hold can be told from a press, league acts on a short up/down press when it's let go.
 
@@ -164,13 +164,14 @@ stoprock logo (176 px), then Spleen 6×12:
          hold up = move last time
 
  [SHOTS] up/down = made/missed
-            hold = undo last shot
+
+ [UNDO] hold centre: time or shot
  ─────────────────────────────
  Last game 9/12 shots made (◔) 75%
  ~11 games battery left   [▭] 84%
 ```
 
-`[START]`, `[TIMING]` and `[SHOTS]` are white-on-black labels; every `=` sits in one column. A competition game's row reads "Last game N stones timed". The last rows show the most recent game, with its shot percentage beside a small pie, and the battery charge at switch-off beside a battery icon; the two percentages are right-aligned. Once at least one game has been completed, the battery row starts with an estimate: "~N games battery left" (from the average drain of the last 10 completed games of 20 minutes or more, rounded down, less one game kept in reserve), or "Charge before next game" when only the reserve is left. The reserve is there because the charge reading is an estimate from the battery voltage, least reliable near empty: the device would rather say charge one game early than run out mid-game.
+`[START]`, `[TIMING]`, `[SHOTS]` and `[UNDO]` are white-on-black labels; every `=` sits in one column. A competition game's row reads "Last game N stones timed". The last rows show the most recent game, with its shot percentage beside a small pie, and the battery charge at switch-off beside a battery icon; the two percentages are right-aligned. Once at least one game has been completed, the battery row starts with an estimate: "~N games battery left" (from the average drain of the last 10 completed games of 20 minutes or more, rounded down, less one game kept in reserve), or "Charge before next game" when only the reserve is left. The reserve is there because the charge reading is an estimate from the battery voltage, least reliable near empty: the device would rather say charge one game early than run out mid-game.
 
 ## 10. Screen update plan (responsiveness)
 

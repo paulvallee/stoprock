@@ -43,6 +43,10 @@ public:
     void place(uint8_t c, int64_t t);
     // The newest stone was moved to column c: filed again from where the game was before it.
     void move(uint8_t c);
+    // Undo the last place() or teamShot() (a time or a shot deleted): the game goes back to where it
+    // was before it. The last kHistory steps can be undone; false when there's none left.
+    bool undo();
+    static constexpr int kHistory = 32;
     // You logged your shot: your rock r (0, 1) of end e (0-7), at t.
     void ownShot(int e, int r, int64_t t) { teamShot(e, 2 * me_ + (r ? 1 : 0), t); }
     // A rock of your team's was logged (coach: every one): its stone k (0-7: lead, lead, 2nd, ...)
@@ -72,11 +76,21 @@ private:
     int throwsSince(int64_t t) const;
     Pos best(const Pos& from, int n, int want) const;  // want: a column, or -1 = any of the others'
 
+    struct State {
+        Pos last;
+        int64_t lastT;
+        int lastN;
+        bool movable;
+    };
+    void push();  // before a step: what undo() goes back to
+
     uint8_t me_ = 0;
-    Pos last_, before_;
+    Pos last_;
     int64_t lastT_ = -1;
     int lastN_ = 1;
     bool movable_ = false;  // the newest stone was the last thing placed
+    State history_[kHistory];
+    int historyCount_ = 0;
 };
 
 }  // namespace stoprock

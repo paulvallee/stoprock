@@ -176,6 +176,31 @@ static void test_coach_times_every_stone() {
     TEST_ASSERT_LESS_OR_EQUAL_INT(1, wrong);  // at most the very first stone (who throws first)
 }
 
+static void test_undo_steps_back() {
+    ThrowOrder o;
+    o.reset(0);  // lead, throwing first
+    TEST_ASSERT_FALSE(o.undo());              // nothing to undo
+    o.ownShot(0, 0, 45 * S);
+    o.place(ThrowOrder::kThem, 70 * S);
+    o.place(0, 120 * S);                       // a mistake: filed as the 2nd's
+    TEST_ASSERT_EQUAL_INT(4, o.lastThrow());
+    TEST_ASSERT_TRUE(o.undo());               // that time deleted
+    TEST_ASSERT_EQUAL_INT(1, o.lastThrow());
+    TEST_ASSERT_EQUAL_INT64(70 * S, o.lastStart());
+    TEST_ASSERT_EQUAL_UINT8(ThrowOrder::kThem, o.predict());  // after your 2nd rock: THEM
+    TEST_ASSERT_TRUE(o.undo());               // THEM's deleted too
+    TEST_ASSERT_TRUE(o.undo());               // and your shot
+    TEST_ASSERT_EQUAL_INT(-1, o.lastThrow());
+    TEST_ASSERT_FALSE(o.undo());
+    // after an undo, moving the newest stone still refiles it from before it
+    o.place(ThrowOrder::kThem, 0);
+    o.place(0, 50 * S);
+    o.undo();
+    o.place(0, 60 * S);
+    o.move(ThrowOrder::kThem);
+    TEST_ASSERT_EQUAL_INT(2, o.lastThrow());
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_column_of);
@@ -189,5 +214,6 @@ int main() {
     RUN_TEST(test_cursor_follows_the_clock);
     RUN_TEST(test_mine_so_far);
     RUN_TEST(test_coach_times_every_stone);
+    RUN_TEST(test_undo_steps_back);
     return UNITY_END();
 }

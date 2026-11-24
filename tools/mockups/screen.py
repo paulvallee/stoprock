@@ -241,7 +241,8 @@ def help_page(device_logo, last_game, shot_pct=None, battery=None, battery_note=
     eq_line("hold up = move last time")
     y += 3
     tag("SHOTS", "up/down = made/missed")
-    eq_line("hold = undo last shot")
+    y += 3
+    tag("UNDO", "hold centre: time or shot")
     y += 4
     d.line([(4, y), (195, y)], fill=0)
     y += 5
@@ -328,6 +329,7 @@ def newest_row(d, f, stones, waiting, mid, font, y0, y1, margin, r, cy):
 YOU_ARE = ("LEAD", "SECOND", "THIRD", "SKIP")
 POSITION_TIP = ("Double click rocker to", "change your position")
 MOVE_TIP = "Hold rocker up: move last time"
+UNDO_TIP = ("Keep holding to undo",)  # tip="undo": while the rocker centre is held, before the undo (1 s)
 LEAGUE_TIP = ("Hold rocker down: your rocks", MOVE_TIP)
 
 
@@ -364,7 +366,9 @@ def competition_screen(stones, me=0, active=0, low_battery=False, tip=False, wai
     sub = "Battery low" if low_battery else "STOPWATCH ONLY"
     for t, y in (("COMPETITION", strip + 1), (sub, strip + 13)):
         d.text((W - 2 - 6 * len(t), y), t, font=f["label"], fill=1)
-    if tip:
+    if tip == "undo":
+        tooltip(d, f, UNDO_TIP, 49, strip)
+    elif tip:
         tooltip(d, f, (f"You are {YOU_ARE[me]}", "") + POSITION_TIP + ("", MOVE_TIP), 49, strip)
     return img
 
@@ -473,7 +477,9 @@ def league_screen(stones, shots, me=0, active=0, low_battery=False, tip=False, w
         y0 += 13
     if shots:
         big_percent(d, f["pct"], percent_of(sum(shots), len(shots)), x0, W, y0, H)
-    if tip:
+    if tip == "undo":
+        tooltip(d, f, UNDO_TIP, 49, top)
+    elif tip:
         tooltip(d, f, (f"You are {YOU_ARE[me]}", "") + POSITION_TIP + ("",) + LEAGUE_TIP, 49, top)
     return img
 
@@ -544,12 +550,14 @@ def coach_timer_screen(stones, shots, waiting=None, active=0, tip=False):
         for p in range(4):
             for r in range(2):
                 coach_rock(d, end * 8 + p * 2 + r, shots, gx[p] + 15 + r * 17, cy)
-    if tip:
+    if tip == "undo":
+        tooltip(d, f, UNDO_TIP, 49, bottom)
+    elif tip:
         tooltip(d, f, COACH_TIP, 49, bottom)
     return img
 
 
-def coach_rocks_screen(stones, shots, waiting=None):
+def coach_rocks_screen(stones, shots, waiting=None, tip=False):
     """Coach page 2, rock priority: newest times only, all 64 rocks, % per position."""
     f = fonts()
     img = Image.new("1", (W, H), 1)
@@ -586,6 +594,8 @@ def coach_rocks_screen(stones, shots, waiting=None):
             x = (gx[p] + gx[p + 1] - w) // 2
             draw_pie(d, x + 5, 193, v)
             d.text((x + 13, 187), txt, font=f["label"], fill=0)
+    if tip == "undo":
+        tooltip(d, f, UNDO_TIP, 47, 185)  # over the rocks
     return img
 
 

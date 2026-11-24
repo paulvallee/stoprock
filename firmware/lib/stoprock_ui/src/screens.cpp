@@ -192,7 +192,8 @@ void drawHelp(Canvas& c, const char* lastGame, int shotPct, int battery, const c
     eqLine("hold up = move last time");
     y += 3;
     tag("SHOTS", "up/down = made/missed");
-    eqLine("hold = undo last shot");
+    y += 3;
+    tag("UNDO", "hold centre: time or shot");
     y += 4;
     c.line(4, y, 195, y);
     y += 5;
@@ -313,6 +314,12 @@ static void tooltip(Canvas& c, const char* const* lines, int n, int top, int bot
 // Switch-on tips: your position, how to change it, and what holding the rocker does (competition
 // has no rocks, so only moving the last time). Also shown when you change position.
 static const char* const kYouAre[4] = {"You are LEAD", "You are SECOND", "You are THIRD", "You are SKIP"};
+// While the rocker centre is held, before the undo (1 s): the hold does something.
+static void undoTip(Canvas& c, int top, int bottom) {
+    const char* const lines[1] = {"Keep holding to undo"};
+    tooltip(c, lines, 1, top, bottom);
+}
+
 static void switchOnTip(Canvas& c, uint8_t me, bool league, int top, int bottom) {
     const char* lines[7] = {kYouAre[me % 4], "", "Double click rocker to", "change your position", "",
                             "Hold rocker down: your rocks", "Hold rocker up: move last time"};
@@ -380,7 +387,7 @@ static void fourColumns(Canvas& c, const Stone* stones, int count, uint8_t me, u
 }
 
 void drawCompetition(Canvas& c, const Stone* stones, uint8_t count, uint8_t me, uint8_t activeCol,
-                     bool lowBattery, bool tip, Waiting waiting) {
+                     bool lowBattery, Tip tip, Waiting waiting) {
     c.clear();
     const Font& label = kFontSpleen6x12;
     const int strip = H - TIP_H;
@@ -391,11 +398,12 @@ void drawCompetition(Canvas& c, const Stone* stones, uint8_t count, uint8_t me, 
     const char* const lines[2] = {"COMPETITION", lowBattery ? "Battery low" : "STOPWATCH ONLY"};
     for (int i = 0; i < 2; ++i)
         c.text(label, W - 2 - 6 * static_cast<int>(strlen(lines[i])), strip + 1 + 12 * i, lines[i], false);
-    if (tip) switchOnTip(c, me, false, 49, strip);
+    if (tip == Tip::SwitchOn) switchOnTip(c, me, false, 49, strip);
+    if (tip == Tip::Undo) undoTip(c, 49, strip);
 }
 
 void drawLeague(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& shots, uint8_t me, uint8_t activeCol,
-                bool lowBattery, bool tip, Waiting waiting, Focus focus) {
+                bool lowBattery, Tip tip, Waiting waiting, Focus focus) {
     c.clear();
     const int top = 159;    // 2 px line under the times
     const int split = 134;  // 2 px divider left of the percentage
@@ -432,11 +440,12 @@ void drawLeague(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& sh
         y0 += 13;
     }
     if (shots.count() > 0) bigPercent(c, shots.percent(), x0, W, y0, H);
-    if (tip) switchOnTip(c, me, true, 49, top);
+    if (tip == Tip::SwitchOn) switchOnTip(c, me, true, 49, top);
+    if (tip == Tip::Undo) undoTip(c, 49, top);
 }
 
 void drawCoachTimer(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& shots, Waiting waiting,
-                    uint8_t activeCol, bool tip) {
+                    uint8_t activeCol, Tip tip) {
     c.clear();
     const Font& label = kFontSpleen6x12;
     pageMarks(c, 0);
@@ -460,13 +469,15 @@ void drawCoachTimer(Canvas& c, const Stone* stones, uint8_t count, const ShotLog
     if (first > 6) first = 6;
     if (first < 0) first = 0;
     for (int row = 0; row < 2; ++row) endRow(c, shots, first + row, bottom + 24 + row * 15);
-    if (tip) {
+    if (tip == Tip::Undo) undoTip(c, 49, bottom);
+    if (tip == Tip::SwitchOn) {
         const char* const lines[4] = {"Double click rocker to", "switch page", "", "Hold rocker up: move last time"};
         tooltip(c, lines, 4, 49, bottom);
     }
 }
 
-void drawCoachRocks(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& shots, Waiting waiting) {
+void drawCoachRocks(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& shots, Waiting waiting,
+                    Tip tip) {
     c.clear();
     const Font& label = kFontSpleen6x12;
     textInBox(c, label, "Back2Hog", 0, WIDE_MID, 0, LABEL_H, kCentre, 4);
@@ -494,6 +505,7 @@ void drawCoachRocks(Canvas& c, const Stone* stones, uint8_t count, const ShotLog
         drawPie(c, x + 5, 193, v);
         c.text(label, x + 13, 187, text);
     }
+    if (tip == Tip::Undo) undoTip(c, 47, 185);  // over the rocks
 }
 
 void addStone(Stone* list, uint8_t& count, uint8_t capacity, const Stone& s) {

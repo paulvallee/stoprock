@@ -21,7 +21,8 @@ constexpr int64_t kSec = 1000000;
 constexpr int64_t kConfirmUs = 15000;          // a timing press must still be held 15 ms after its edge
 constexpr int64_t kEdgeGapUs = 30000;          // ignore further edges of the same button within 30 ms
 constexpr int64_t kStableUs = 20000;           // rocker debounce
-constexpr int64_t kUndoHoldUs = kSec / 2;   // 0.5 s
+constexpr int64_t kUndoHoldUs = kSec;       // hold the rocker centre 1 s to undo (and 1 s for each more)
+constexpr int64_t kUndoHintUs = kSec / 5;   // ... "Keep holding to undo" shows 0.2 s into each
 constexpr int64_t kPowerHoldUs = 3 * kSec;
 constexpr int64_t kDoublePressUs = 400000;     // two rocker presses within 0.4 s: a double press
 constexpr int64_t kFocusHoldUs = kSec / 2;     // league: hold rocker down (up from your rocks) to move the focus
@@ -162,12 +163,27 @@ ShotLog shots;
 Stone stones[kMaxStones];
 uint8_t stoneCount = 0;
 
+// Every entry of this game in the order it was made, so undo takes back whichever came last.
+enum class Entry : uint8_t { Shot, Stone };
+constexpr int kMaxEntries = 64 + GameRecord::kMaxStones;  // a coach's 64 rocks, 128 stones
+Entry entries[kMaxEntries];
+int entryCount = 0;
+void addEntry(Entry e) {
+    if (entryCount == kMaxEntries) {  // can't happen in a game; keep the newest if it does
+        memmove(&entries[0], &entries[1], sizeof(Entry) * (kMaxEntries - 1));
+        --entryCount;
+    }
+    entries[entryCount++] = e;
+}
+
+
 int64_t lastActivity = 0;
 int64_t sleepAt = 0;
 int64_t refreshAt = -1;          // after every 4th stone: a ghost-clearing full refresh
 constexpr int64_t kTipUs = 5 * kSec;
 int64_t tipUntil = -1;           // the switch-on tip shows until then
 bool tipWaiting = false;         // ... its 5 s start once the screen showing it is up
+bool undoHint = false;           // "Keep holding to undo": the rocker centre is held, the undo not yet due
 uint8_t stonesSinceClean = 0;
 
 // Sleeping while a stone is timed (setting "sleeptiming", default on). Light sleep stops the
@@ -231,6 +247,7 @@ void newGame() {
     focus = Focus::Players;
     stoneStart = -1;
     gameStartUs = esp_timer_get_time();
+    entryCount = 0;
     restartOrder();
     // the switch-on tip for 5 s: your position and the holds (coach: page switch and moving times)
     tipWaiting = true;
@@ -267,7 +284,7 @@ struct Model {
     bool warning = false;
     bool help = false;
     bool full = false;      // next update is a ghost-clearing full refresh
-    bool tip = false;       // the switch-on position tip
+    Tip tip = Tip::None;    // a box over the times: the switch-on tip, or "Keep holding to undo"
     Waiting waiting = Waiting::None;  // a stone being timed: the stopwatch shows where its time will go
     Focus focus = Focus::Players;     // league: what the rocker works on
     char lastGame[40] = "";
@@ -306,7 +323,7 @@ void displayTask(void*) {
             drawCompetition(next, m.stones, m.stoneCount, m.me, m.activeCol, m.warning, m.tip, m.waiting);
         } else if (m.mode == GameMode::Coach) {
             if (m.page == 0) drawCoachTimer(next, m.stones, m.stoneCount, m.shots, m.waiting, m.activeCol, m.tip);
-            else drawCoachRocks(next, m.stones, m.stoneCount, m.shots, m.waiting);
+            else drawCoachRocks(next, m.stones, m.stoneCount, m.shots, m.waiting, m.tip);
         } else {
             drawLeague(next, m.stones, m.stoneCount, m.shots, m.me, m.activeCol, m.warning, m.tip, m.waiting, m.focus);
         }
@@ -339,7 +356,7 @@ void syncModel(bool full = false) {
         m.warning = lowBattery;
         m.help = false;
         m.full = m.full || sFull;
-        m.tip = tipWaiting || tipUntil >= 0;
+        m.tip = undoHint ? Tip::Undo : tipWaiting || tipUntil >= 0 ? Tip::SwitchOn : Tip::None;
         m.focus = focus;
         m.waiting = timing.state() == TimingState::Started     ? (h2hOnly() ? Waiting::HogToHogOnly : Waiting::BackToHog)
                     : timing.state() == TimingState::WaitingHH ? Waiting::HogToHog
@@ -356,6 +373,7 @@ void pushStone(Stone s) {
     s.player = columnPlayer(seat(), activeCol);
     stoneGuess = columnPlayer(seat(), order.predict(stoneStart));
     addStone(stones, stoneCount, kMaxStones, s);
+    addEntry(Entry::Stone);
     order.place(activeCol, stoneStart);
     manualCursor = false;
 }
@@ -632,6 +650,7 @@ void onTimingPress(int64_t t) {
 
 void onShot(bool made) {
     if (!shots.add(made)) { sound.play(kError); return; }
+    addEntry(Entry::Shot);
     if (made) sound.play(kMade); else sound.play(kMissed);
     Serial.printf("shots: %s, %d/%d\n", made ? "made" : "missed", shots.madeCount(), shots.count());
     // Each logged rock pins the throw order: which of the team's eight stones of which end it was
@@ -650,13 +669,51 @@ void onShot(bool made) {
     if (!timing.active()) syncModel();
 }
 
-// Returns false when there was nothing to undo.
+// Hold the rocker centre: undo the newest entry, a time or a shot, whichever came last (again every
+// 0.5 s while held). A stone being timed is cancelled first: if it has its B2H, that time goes too.
+// The throw order steps back with it. Returns false when there was nothing to undo.
 bool onUndo() {
-    if (!shots.undo()) { sound.play(kError); return false; }
+    const int64_t now = esp_timer_get_time();
+    undoHint = false;  // the screen update below clears it
+    if (timing.active()) {
+        // its B2H is an entry already: undone below, if nothing (a coach's shot) was logged since
+        const bool newestIsIt = timing.state() == TimingState::WaitingHH && entryCount > 0 &&
+                                entries[entryCount - 1] == Entry::Stone;
+        timing.reset();
+        h2hSwitchAt = -1;
+        closeStone(now);
+        Serial.println("timing: cancelled");
+        if (!newestIsIt) {
+            sound.play(kUndo);
+            reaim(now);
+            syncModel();
+            return true;
+        }
+    }
+    if (entryCount == 0) {
+        sound.play(kError);
+        syncModel();  // clears "Keep holding to undo"
+        return false;
+    }
+    const Entry e = entries[--entryCount];
+    if (e == Entry::Shot) {
+        shots.undo();
+        saveShots();
+        Serial.printf("undo: shot, %d/%d\n", shots.madeCount(), shots.count());
+    } else {
+        if (stoneCount > 0) {  // the newest stone is at the front
+            memmove(&stones[0], &stones[1], sizeof(Stone) * (stoneCount - 1));
+            --stoneCount;
+        }
+        bank.removeLastStone(board::clockNow());
+        Serial.println("undo: time");
+    }
+    order.undo();
+    manualCursor = false;
+    reaim(now);
+    if (rules().focus) planRocksFocus();
     sound.play(kUndo);
-    Serial.printf("shots: undo, %d/%d\n", shots.madeCount(), shots.count());
-    saveShots();
-    if (!timing.active()) syncModel();
+    syncModel();
     return true;
 }
 
@@ -738,6 +795,10 @@ void setFocus(Focus f) {
 // A short press of rocker up/down, acted on when it's let go (a long press moves the focus or the
 // newest time instead): made/missed (coach, league on your rocks), or next/previous player.
 void onRelease(uint8_t b) {
+    if (b == board::kPress && undoHint) {  // let go before the undo: nothing undone
+        undoHint = false;
+        syncModel();
+    }
     if (b != board::kUp && b != board::kDown) return;
     if (b == board::kUp && moveSteps > 0) { finishMove(); return; }
     if (buttons[b].holdFired) return;
@@ -756,12 +817,6 @@ void onPress(uint8_t b, int64_t t) {
     // Rocker up/down act when let go (next/previous player, or made/missed), or move the focus or
     // the newest time when held (pollButtons).
     if (b == board::kUp || b == board::kDown) return;
-    // Competition: a double press of the centre changes your position. No undo.
-    if (mode == GameMode::Competition && b == board::kPress) {
-        s.holdFired = true;
-        onRockerPress(s, t);
-        return;
-    }
     switch (b) {
     case board::kTop:
     case board::kSide: onTimingPress(t); break;
@@ -799,8 +854,14 @@ void pollButtons(int64_t now) {
 
         // holds
         if (s.down && !s.holdFired) {
-            // Rocker press: undo after 0.5 s, then again every 0.5 s while held. Stops after
-            // one error buzz once there's nothing left to undo.
+            // Rocker press: undo the newest entry after 1 s, then again every 1 s while held, with
+            // "Keep holding to undo" from 0.2 s into each. Stops after one error buzz once there's
+            // nothing left to undo.
+            if (b == board::kPress && !undoHint && now < s.nextRepeat &&
+                now >= s.nextRepeat - kUndoHoldUs + kUndoHintUs) {
+                undoHint = true;
+                syncModel();
+            }
             if (b == board::kPress && now >= s.nextRepeat) {
                 s.nextRepeat += kUndoHoldUs;
                 lastRockerPress = -kSec;  // a hold isn't half of a double press

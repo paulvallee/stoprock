@@ -42,7 +42,7 @@ int main(int argc, char** argv) {
     for (int n = 0; n <= 16; ++n) {  // the cursor at every position; each position as yours, each column active
         ShotLog s;
         for (int i = 0; i < n; ++i) s.add(i % 3 != 2);
-        drawLeague(c, league, nl, s, n % 4, n % 4, false, false, Waiting::None, n % 2 ? Focus::Rocks : Focus::Players);
+        drawLeague(c, league, nl, s, n % 4, n % 4, false, Tip::None, Waiting::None, n % 2 ? Focus::Rocks : Focus::Players);
         snprintf(path, sizeof path, "%s/league%02d.pbm", dir, n);
         writePbm(c, path);
     }
@@ -70,34 +70,51 @@ int main(int argc, char** argv) {
     }
 
     // switch-on: no stones yet, the position tip over the times
-    drawCompetition(c, league, 0, 0, 0, false, true);
+    drawCompetition(c, league, 0, 0, 0, false, Tip::SwitchOn);
     snprintf(path, sizeof path, "%s/competition-tip.pbm", dir);
     writePbm(c, path);
-    drawLeague(c, league, 0, ShotLog(), 2, 0, false, true);
+    drawLeague(c, league, 0, ShotLog(), 2, 0, false, Tip::SwitchOn);
     snprintf(path, sizeof path, "%s/league-tip.pbm", dir);
     writePbm(c, path);
-    drawCoachTimer(c, many, 0, ShotLog(ShotLog::kCoachSlots), Waiting::None, 0, true);
+    drawCoachTimer(c, many, 0, ShotLog(ShotLog::kCoachSlots), Waiting::None, 0, Tip::SwitchOn);
     snprintf(path, sizeof path, "%s/coach1-tip.pbm", dir);
     writePbm(c, path);
+    // the rocker centre held: "Keep holding to undo"
+    drawCompetition(c, league, nl, 1, 1, false, Tip::Undo);
+    snprintf(path, sizeof path, "%s/competition-undo.pbm", dir);
+    writePbm(c, path);
+    drawLeague(c, league, nl, shots, 1, 1, false, Tip::Undo);
+    snprintf(path, sizeof path, "%s/league-undo.pbm", dir);
+    writePbm(c, path);
+    {
+        ShotLog s35(ShotLog::kCoachSlots);
+        for (int i = 0; i < 35; ++i) s35.add(i % 5 != 3 && i % 7 != 5);
+        drawCoachTimer(c, many, 12, s35, Waiting::None, 0, Tip::Undo);
+        snprintf(path, sizeof path, "%s/coach1-undo.pbm", dir);
+        writePbm(c, path);
+        drawCoachRocks(c, many, 12, s35, Waiting::None, Tip::Undo);
+        snprintf(path, sizeof path, "%s/coach2-undo.pbm", dir);
+        writePbm(c, path);
+    }
 
     // a stone being timed: the stopwatch where the awaited time will appear
-    drawCompetition(c, league, nl, 1, 1, false, false, Waiting::BackToHog);
+    drawCompetition(c, league, nl, 1, 1, false, Tip::None, Waiting::BackToHog);
     snprintf(path, sizeof path, "%s/competition-wait-b2h.pbm", dir);
     writePbm(c, path);
-    drawLeague(c, league, nl, shots, 1, 1, false, false, Waiting::BackToHog, Focus::Rocks);
+    drawLeague(c, league, nl, shots, 1, 1, false, Tip::None, Waiting::BackToHog, Focus::Rocks);
     snprintf(path, sizeof path, "%s/league-rocks.pbm", dir);
     writePbm(c, path);
     // 5.5 s with no second click: an H2H under way, the stopwatch in the H2H box
-    drawLeague(c, league, nl, shots, 1, 3, false, false, Waiting::HogToHogOnly);
+    drawLeague(c, league, nl, shots, 1, 3, false, Tip::None, Waiting::HogToHogOnly);
     snprintf(path, sizeof path, "%s/league-wait-h2h-only.pbm", dir);
     writePbm(c, path);
-    drawCompetition(c, league, nl, 1, 3, false, false, Waiting::HogToHogOnly);
+    drawCompetition(c, league, nl, 1, 3, false, Tip::None, Waiting::HogToHogOnly);
     snprintf(path, sizeof path, "%s/competition-wait-h2h-only.pbm", dir);
     writePbm(c, path);
     Stone lhalf[sizeof league / sizeof league[0]];
     for (int i = 0; i < nl; ++i) lhalf[i] = league[i];
     lhalf[0].hh = -1;
-    drawLeague(c, lhalf, nl, shots, 1, 3, false, false, Waiting::HogToHog);
+    drawLeague(c, lhalf, nl, shots, 1, 3, false, Tip::None, Waiting::HogToHog);
     snprintf(path, sizeof path, "%s/league-wait-h2h.pbm", dir);
     writePbm(c, path);
     {

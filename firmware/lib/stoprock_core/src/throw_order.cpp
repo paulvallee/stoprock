@@ -4,10 +4,29 @@ namespace stoprock {
 
 void ThrowOrder::reset(uint8_t me) {
     me_ = me > 3 ? kCoach : me;
-    last_ = before_ = Pos{};
+    last_ = Pos{};
     lastT_ = -1;
     lastN_ = 1;
     movable_ = false;
+    historyCount_ = 0;
+}
+
+void ThrowOrder::push() {
+    if (historyCount_ == kHistory) {  // full: the oldest step can no longer be undone
+        for (int i = 1; i < kHistory; ++i) history_[i - 1] = history_[i];
+        --historyCount_;
+    }
+    history_[historyCount_++] = State{last_, lastT_, lastN_, movable_};
+}
+
+bool ThrowOrder::undo() {
+    if (historyCount_ == 0) return false;
+    const State& h = history_[--historyCount_];
+    last_ = h.last;
+    lastT_ = h.lastT;
+    lastN_ = h.lastN;
+    movable_ = h.movable;
+    return true;
 }
 
 uint8_t ThrowOrder::columnOf(int s, bool ourFirst) const {
@@ -82,7 +101,7 @@ int64_t ThrowOrder::nextChange(int64_t t) const {
 }
 
 void ThrowOrder::place(uint8_t c, int64_t t) {
-    before_ = last_;
+    push();
     lastN_ = throwsSince(t);
     last_ = best(last_, lastN_, c);
     lastT_ = t;
@@ -90,10 +109,11 @@ void ThrowOrder::place(uint8_t c, int64_t t) {
 }
 
 void ThrowOrder::move(uint8_t c) {
-    if (movable_) last_ = best(before_, lastN_, c);
+    if (movable_ && historyCount_ > 0) last_ = best(history_[historyCount_ - 1].last, lastN_, c);
 }
 
 void ThrowOrder::teamShot(int e, int k, int64_t t) {
+    push();
     const int64_t at = t - kShotLagUs;
     const int n = throwsSince(at);
     Pos pick = last_;

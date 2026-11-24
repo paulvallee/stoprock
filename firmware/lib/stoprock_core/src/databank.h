@@ -87,8 +87,10 @@ public:
     // see StoneTimes.
     void addStone(uint16_t backToHog, uint16_t hogToHog, uint32_t now, uint8_t player = StoneTimes::kNoPlayer,
                   uint8_t guess = StoneTimes::kNoPlayer, uint16_t start = StoneTimes::kNoTime);
-    // The newest stone was filed under the wrong player (league: moved with the rocker).
+    // The newest stone was filed under the wrong player (moved with the rocker).
     void setLastPlayer(uint8_t player, uint32_t now);
+    // The newest stone was deleted (undo).
+    void removeLastStone(uint32_t now);
     // The H2H that completes the last stone's B2H.
     void setLastHogToHog(uint16_t hogToHog, uint32_t now);
     // The game ends (switch-off): note the battery. Kept only if the game is stored.

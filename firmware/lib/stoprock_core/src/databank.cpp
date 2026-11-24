@@ -248,6 +248,13 @@ void Databank::setLastHogToHog(uint16_t hogToHog, uint32_t now) {
     save();
 }
 
+void Databank::removeLastStone(uint32_t now) {
+    if (current_.stoneCount == 0) return;
+    --current_.stoneCount;
+    current_.updated = now;
+    save();
+}
+
 void Databank::setLastPlayer(uint8_t player, uint32_t now) {
     if (current_.stoneCount == 0) return;
     current_.stones[current_.stoneCount - 1].player = player;
