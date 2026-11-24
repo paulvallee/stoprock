@@ -41,7 +41,6 @@ void drawHelp(Canvas& c, const char* lastGame, int shotPct = -1, int battery = -
 // Competition (switched on with the side button alone): times only, and a badge strip an umpire
 // can read. lowBattery replaces the strip's second line. The history is as in league (below): four
 // columns, your teammates and THEM, 8 lines; activeCol (0-3) has its header highlighted.
-constexpr uint8_t kCompetitionRows = 8;
 constexpr uint8_t kGridRows = 8;  // stones kept per player (addStone)
 // tip: the switch-on tip (your position, double click to change it, hold up to move) over the times.
 void drawCompetition(Canvas& c, const Stone* stones, uint8_t count, uint8_t me, uint8_t activeCol,
@@ -53,8 +52,7 @@ void drawCompetition(Canvas& c, const Stone* stones, uint8_t count, uint8_t me, 
 // scoreboard (ends across, rock 1 over rock 2) and your percentage. activeCol (0-3) has its header
 // highlighted. lowBattery puts a "Low bat" bar over the percentage.
 // Columns and who's in them: seats.h (kLeagueColumns, columnPlayer, playerColumn).
-constexpr uint8_t kLeagueRows = 7;
-constexpr uint8_t kCoachRows = 6;  // coach page 1: five columns (kCoachColumns), seat kCoachSeat
+// The cursor's column is zoomed: bigger digits, 4 lines, as wide as they need; the others share the rest.
 // focus: the half the rocker works on, shown by a bold border: the players' columns (up = next,
 // down = previous) or your rocks (made/missed).
 enum class Focus : uint8_t { Rocks, Players };

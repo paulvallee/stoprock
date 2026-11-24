@@ -29,7 +29,7 @@ struct Sprite {
     uint8_t cx, cy;
 };
 
-extern const Font kFontDseg25;      // newest result
+extern const Font kFontDseg33;      // newest result, at the top
 extern const Font kFontDseg16;      // percentage
 extern const Font kFontSpleen6x12;  // labels, tips, help page
 extern const Bitmap kLogo;          // 176 px wordmark
