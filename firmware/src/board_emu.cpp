@@ -113,9 +113,8 @@ bool heldAtStart(Button b) { return held(b) || holdAtStart == b; }
 int pin(Button b) { return kPins[b]; }
 
 void show(const stoprock::Canvas& c, stoprock::Rect r, Refresh refresh) {
-    const bool full = refresh != Refresh::Partial;
-    int64_t duration = full ? kFullUs : kPartialUs;
-    if (refresh == Refresh::ModeEntry) duration += 2 * kPartialUs;  // prepare the fast refresh path
+    const bool full = refresh == Refresh::Full;
+    const int64_t duration = full ? kFullUs : kPartialUs;
     const int64_t t0 = esp_timer_get_time();
     if (full) Serial.printf("@FLASH %d\n", static_cast<int>(duration / 1000));
     const int64_t wait = duration - (esp_timer_get_time() - t0);

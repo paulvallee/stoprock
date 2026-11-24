@@ -426,7 +426,7 @@ void displayTask(void*) {
         const int64_t t0 = esp_timer_get_time();
         const Rect update = m.refresh == board::Refresh::Partial ? next.diff(shown) : Rect{0, 0, Canvas::W, Canvas::H};
         if (!update.empty()) board::show(next, update, m.refresh);
-        const char* refreshName = m.refresh == board::Refresh::ModeEntry ? "mode entry" :
+        const char* refreshName = m.refresh == board::Refresh::FastScreen ? "fast screen" :
                                   m.refresh == board::Refresh::Full ? "full" : "partial";
         Serial.printf("display: %s %lld ms\n", refreshName, (esp_timer_get_time() - t0) / 1000);
         shown = next;
@@ -458,8 +458,7 @@ void syncModel(board::Refresh refresh = board::Refresh::Partial) {
         m.off = false;
         m.menu = false;
         // Timing may update the queued frame before the display task takes it.
-        if (requestedRefresh != board::Refresh::Partial && m.refresh != board::Refresh::ModeEntry)
-            m.refresh = requestedRefresh;
+        if (requestedRefresh != board::Refresh::Partial) m.refresh = requestedRefresh;
         const Tip switchOn = mode == GameMode::Basic ? Tip::BasicIntro : Tip::SwitchOn;
         m.tip = offHint ? Tip::PowerOff : undoHint ? Tip::Undo : moveHint ? Tip::Move :
                 pageTipUntil >= 0 ? Tip::Page : tipWaiting || tipUntil >= 0 ? switchOn : Tip::None;
@@ -761,7 +760,7 @@ GameMode chooseMode() {
             m.menu = true;
             m.menuSelection = selection;
             m.off = false;
-            if (full) m.refresh = board::Refresh::Full;
+            if (full) m.refresh = board::Refresh::FastScreen;
         });
     };
     show(true);
@@ -1237,7 +1236,7 @@ void runCommand(const char* buf) {
         else { Serial.println("modes: basic | competition | league | coach"); return; }
         coachPage = 0;
         newGame();
-        syncModel(board::Refresh::ModeEntry);
+        syncModel(board::Refresh::FastScreen);
     } else if (!strcmp(buf, "page")) {  // testing: coach page switch, as a double press
         if (rules().pages) { switchPage(); syncModel(); }
     } else if (!strcmp(buf, "o")) {
@@ -1320,7 +1319,7 @@ void setup() {
 
     const int64_t now = esp_timer_get_time();
     activity(now);
-    syncModel(board::Refresh::ModeEntry);
+    syncModel(board::Refresh::FastScreen);
     auditStart(esp_timer_get_time());  // first clock audit sample
     nextAuditAt = esp_timer_get_time() + kAuditEveryUs;
     Serial.printf("stoprock ready (%s, %s mode)\n", board::name(), modeName(mode));

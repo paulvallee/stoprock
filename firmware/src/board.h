@@ -19,8 +19,8 @@ bool heldAtStart(Button b);
 // GPIO number of a button, for interrupts and wake-up.
 int pin(Button b);
 
-// A mode entry clears the panel and prepares it for fast timing updates.
-enum class Refresh : uint8_t { Partial, Full, ModeEntry };
+// FastScreen transfers all pixels with the same fast waveform as Partial. Full clears ghosting.
+enum class Refresh : uint8_t { Partial, FastScreen, Full };
 
 // Push the region r of c to the screen and wait for its refresh to finish.
 void show(const stoprock::Canvas& c, stoprock::Rect r, Refresh refresh);

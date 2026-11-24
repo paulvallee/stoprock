@@ -164,7 +164,7 @@ The physical update takes about 0.26 s whatever the area changed, so the goal is
 
 | Event | Update |
 |---|---|
-| Mode entry | Full refresh, followed by the panel's first fast refresh on the same image. Timing clicks are captured while the display finishes. |
+| Startup menu and mode entry | Update all pixels with the fast waveform. Keeping the same waveform across these screens avoids a refresh-mode switch at mode entry or on the first timing click. Timing clicks are captured while a screen update finishes. |
 | Start click | Beep. One update: the large row clears and a **stopwatch** appears in the Back2Hog box, where the time will appear (the last stone stays in the history). |
 | First result of a stone (B2H, or H2H with no B2H) | Beep. One update: the new value in the large row; after a B2H the stopwatch moves to the Hog2Hog box. |
 | H2H after a B2H | Beep. Only the large H2H cell (replacing the stopwatch, which moved there with the B2H). |
@@ -213,7 +213,7 @@ Rules:
 
 1. Pin map for the current CoreInk revision: buzzer and LED (and its polarity) still to check.
 2. Side power button: hardware behaviour when held, to settle the 3 s power-off. On USB, holding it 3 s draws the off page, and dropping the latch leaves the board powered. Letting go before 3 s leaves it on. A side press then restarts it (seen in the serial log). Switching off and on again on battery was reported to work but has no log (no port then).
-3. Measured click-to-visible time, at room temperature and on the ice. So far, on USB at room temperature, the screen update alone took 257-282 ms for a partial and about 1.85 s for a full refresh at start-up, but the first fast update after a full refresh took about 520 ms because the driver uses two passes. Mode entry now runs that transition before regular timing updates. The result still needs a hardware check.
+3. Measured click-to-visible time, at room temperature and on the ice. So far, on USB at room temperature, the screen update alone took 257-282 ms for a partial and about 1.85 s for a full refresh at start-up, but the first fast update after a full refresh took about 520 ms because the driver uses two passes. Startup and mode entry now both use fast updates. The first update when the panel wakes can still need two passes. The result still needs a hardware check.
 4. Battery life in real use.
 5. Clock audit after a real game: is sleeping while timing accurate enough (section 7)?
 6. Trademark check for "stoprock".

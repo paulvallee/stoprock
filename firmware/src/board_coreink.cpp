@@ -65,20 +65,12 @@ void show(const stoprock::Canvas& c, stoprock::Rect r, Refresh refresh) {
         memcpy(&region[y * bytesPerRow], c.data() + (r.y + y) * stoprock::Canvas::STRIDE + r.x / 8, bytesPerRow);
 
     M5.Display.waitDisplay();
-    M5.Display.setEpdMode(refresh == Refresh::Partial ? epd_mode_t::epd_fastest : epd_mode_t::epd_quality);
+    M5.Display.setEpdMode(refresh == Refresh::Full ? epd_mode_t::epd_quality : epd_mode_t::epd_fastest);
     M5.Display.startWrite();
     M5.Display.drawBitmap(r.x, r.y, region, r.w, r.h, TFT_BLACK, TFT_WHITE);
     M5.Display.endWrite();
     M5.Display.display(r.x, r.y, r.w, r.h);
     M5.Display.waitDisplay();
-
-    if (refresh == Refresh::ModeEntry) {
-        // The D67 driver runs an inverted and a normal pass on its first fast refresh.
-        // Finish that transition on the mode-entry frame, before a timing press needs the screen.
-        M5.Display.setEpdMode(epd_mode_t::epd_fastest);
-        M5.Display.display(0, 0, stoprock::Canvas::W, stoprock::Canvas::H);
-        M5.Display.waitDisplay();
-    }
 }
 
 void tone(uint16_t hz) {
