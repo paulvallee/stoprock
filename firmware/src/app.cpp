@@ -389,6 +389,13 @@ void cursorToNext(int64_t start = -1) {
     activeCol = order.predict(start);
 }
 
+// Coach page 2 shows the rocks, not the columns: there the rocker always works on the rocks.
+bool rocksPage() { return !rules().positions && coachPage == 1; }  // pages: a coach (no position)
+
+// The focus the device moves to by itself (timing, a stone done, a shot logged): never off the
+// rocks on the rocks page.
+void focusTo(Focus f) { focus = rocksPage() ? Focus::Rocks : f; }
+
 // The next time the cursor may move on by itself, from now.
 void planFollow(int64_t now) { followAt = order.nextChange(now); }
 
@@ -434,7 +441,7 @@ void countTimedStone(int64_t now, int64_t delay) {
     if (rules().focus) {
         const Focus f = order.toLogSoFar() - shots.count() == 1 ? Focus::Rocks : Focus::Players;
         if (f != focus) Serial.printf("focus: %s (after a timed stone)\n", f == Focus::Rocks ? "rocks, a shot to log" : "players");
-        focus = f;
+        focusTo(f);
         planRocksFocus();
     }
     // every kStonesPerClean-th stone: a ghost-clearing full refresh once it's safe
@@ -464,8 +471,8 @@ void handleOutcome(const Outcome& o, int64_t now) {
         rocksFocusAt = -1;  // someone's throwing: not you
         followAt = -1;      // the cursor stays on this stone's column until it's done
         cursorToNext(now);  // the time since the last stone says how many throws went untimed
-        if (rules().focus && focus == Focus::Rocks) {  // timing: the rocker back on the times
-            focus = Focus::Players;
+        if (rules().focus && focus == Focus::Rocks && !rocksPage()) {  // timing: the rocker back on the times
+            focusTo(Focus::Players);
             Serial.println("focus: players (timing)");
         }
         // no LED: the case covers it, and the stopwatch icon shows timing in progress
@@ -670,8 +677,8 @@ void onShot(bool made) {
     order.teamShot(i / perEnd, k, now);
     manualCursor = false;
     reaim(now);
-    if (rules().focus) {  // league: back to the columns, and your next rock planned
-        focus = Focus::Players;
+    if (rules().focus) {  // back to the columns (not on the rocks page), and your next rock planned
+        focusTo(Focus::Players);
         planRocksFocus();
     }
     saveShots(secondsIn(now));
@@ -762,6 +769,14 @@ void takeBackSideClick() {
     Serial.println("timing: side click taken back (it was the start of a power-off hold)");
 }
 
+// Coach: the other page. Page 2 is the rocks page (the rocker on the rocks), page 1 opens on the times.
+void switchPage() {
+    coachPage ^= 1;
+    focus = coachPage == 1 ? Focus::Rocks : Focus::Players;
+    rocksFocusAt = -1;
+    Serial.printf("coach: page %d\n", coachPage + 1);
+}
+
 // A second short rocker press within 0.4 s (not an undo): changes your position (lead, 2nd, 3rd,
 // skip, round again), or a coach's page. The first press does nothing by itself, so a double
 // click never costs an entry.
@@ -771,8 +786,7 @@ void onRockerPress(ButtonState& s, int64_t t) {
         lastRockerPress = -kSec; // a third press starts over
         sound.play(kClick);
         if (!rules().positions) {
-            coachPage ^= 1;
-            Serial.printf("coach: page %d\n", coachPage + 1);
+            switchPage();
         } else {
             myPosition = (myPosition + 1) % 4;
             prefs.putUChar("mypos", myPosition);
@@ -833,8 +847,10 @@ void finishMove() {
     syncModel();
 }
 
-// League: rocker down held 0.5 s moves the focus to your rocks, rocker up held 0.5 s back to the columns.
+// League and coach: rocker down held 0.5 s moves the focus to the rocks, rocker up held 0.5 s back to
+// the columns. On coach page 2 (the rocks page, no columns) up goes back to page 1's times.
 void setFocus(Focus f) {
+    if (f == Focus::Players && rocksPage()) coachPage = 0;
     focus = f;
     rocksFocusAt = -1;
     sound.play(kClick);
@@ -1029,7 +1045,7 @@ void runCommand(const char* buf) {
         newGame();
         syncModel(true);
     } else if (!strcmp(buf, "page")) {  // testing: coach page switch, as a double press
-        if (!rules().positions) { coachPage ^= 1; syncModel(); }
+        if (!rules().positions) { switchPage(); syncModel(); }
     } else if (!strcmp(buf, "o")) {
         showHelpAndPowerOff();
     } else if (!strcmp(buf, "s")) {
