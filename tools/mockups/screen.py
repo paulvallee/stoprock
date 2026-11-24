@@ -328,6 +328,7 @@ def newest_row(d, f, stones, waiting, mid, font, y0, y1, margin, r, cy):
 # competition, which has no holds) what holding the rocker does. Also shown when you change position.
 YOU_ARE = ("LEAD", "SECOND", "THIRD", "SKIP")
 POSITION_TIP = ("Double click rocker to", "change your position")
+TIP_TOP = 61  # switch-on tips start below the column headers, so a new position shows in them
 MOVE_TIP = "Hold rocker up: move last time"
 UNDO_LINE = "Hold rocker middle: undo"  # the switch-on tips' last line
 UNDO_TIP = ("Keep holding to undo",)
@@ -336,19 +337,16 @@ MOVE_HINT = ("Keep holding to move time",)  # tip="move": rocker held to move th
 LEAGUE_TIP = ("Hold rocker down: your rocks", MOVE_TIP, UNDO_LINE)
 
 
-def tooltip(d, f, lines, top, bottom, headers=True):
-    """A bordered box centred in top..bottom (the times area, or the bottom of the screen with
-    headers=False), lines centred; an empty line is a half-line gap."""
-    w = 6 * max(len(t) for t in lines) + 16
-    h = sum(12 if t else 6 for t in lines) + 14
+def tooltip(d, f, lines, top, bottom):
+    """A bordered box (2 px) centred in top..bottom, lines centred; an empty line is a half-line
+    gap. Snug, so the tallest tip (league's) fits below the column headers and the widest clears
+    the focus border at the sides."""
+    w = min(6 * max(len(t) for t in lines) + 16, W - 12)  # tighter only where a line needs it
+    h = sum(12 if t else 6 for t in lines) + 10
     x0, y0 = (W - w) // 2, top + (bottom - top - h) // 2
-    if headers and y0 < top + 12:  # it would cut through the column headers: cover them instead
-        y0 = top
     y1 = y0 + h - 1
     d.rectangle([x0, y0, x0 + w - 1, y1], fill=1, outline=0, width=2)
-    if headers and y0 == top:  # against the 2 px lines above and beside it: a bottom as bold
-        d.rectangle([x0, y1 + 1, x0 + w - 1, y1 + 2], fill=0)
-    y = y0 + 7
+    y = y0 + 5
     for t in lines:
         if t:
             d.text(((W - 6 * len(t)) // 2, y), t, font=f["label"], fill=0)
@@ -376,9 +374,9 @@ def competition_screen(stones, me=0, active=0, low_battery=False, tip=False, wai
     if tip in ("undo", "off"):
         tooltip(d, f, UNDO_TIP if tip == "undo" else OFF_TIP, 49, strip)
     elif tip == "move":  # over the badge strip, clear of the columns
-        tooltip(d, f, MOVE_HINT, strip, H, headers=False)
+        tooltip(d, f, MOVE_HINT, strip, H)
     elif tip:
-        tooltip(d, f, (f"You are {YOU_ARE[me]}", "") + POSITION_TIP + ("", MOVE_TIP, UNDO_LINE), 49, strip)
+        tooltip(d, f, (f"You are {YOU_ARE[me]}", "") + POSITION_TIP + ("", MOVE_TIP, UNDO_LINE), TIP_TOP, strip)
     return img
 
 
@@ -489,9 +487,9 @@ def league_screen(stones, shots, me=0, active=0, low_battery=False, tip=False, w
     if tip in ("undo", "off"):
         tooltip(d, f, UNDO_TIP if tip == "undo" else OFF_TIP, 49, top)
     elif tip == "move":  # over your rocks, clear of the columns
-        tooltip(d, f, MOVE_HINT, top, H, headers=False)
+        tooltip(d, f, MOVE_HINT, top, H)
     elif tip:
-        tooltip(d, f, (f"You are {YOU_ARE[me]}", "") + POSITION_TIP + ("",) + LEAGUE_TIP, 49, top)
+        tooltip(d, f, (f"You are {YOU_ARE[me]}", "") + POSITION_TIP + ("",) + LEAGUE_TIP, TIP_TOP, top)
     return img
 
 
@@ -569,9 +567,9 @@ def coach_timer_screen(stones, shots, waiting=None, active=0, tip=False, focus="
     if tip in ("undo", "off"):
         tooltip(d, f, UNDO_TIP if tip == "undo" else OFF_TIP, 49, bottom)
     elif tip == "move":  # over the rocks, clear of the columns
-        tooltip(d, f, MOVE_HINT, bottom, H, headers=False)
+        tooltip(d, f, MOVE_HINT, bottom, H)
     elif tip:
-        tooltip(d, f, COACH_TIP, 49, bottom)
+        tooltip(d, f, COACH_TIP, TIP_TOP, bottom)
     return img
 
 
@@ -619,7 +617,7 @@ def coach_rocks_screen(stones, shots, waiting=None, tip=False, focus="players"):
     if tip in ("undo", "off"):
         tooltip(d, f, UNDO_TIP if tip == "undo" else OFF_TIP, 47, 185)  # over the rocks
     elif tip == "move":
-        tooltip(d, f, MOVE_HINT, 150, H, headers=False)
+        tooltip(d, f, MOVE_HINT, 150, H)
     return img
 
 
