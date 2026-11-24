@@ -312,6 +312,7 @@ static void tooltip(Canvas& c, const char* const* lines, int n, int top, int bot
     c.fillRect(x0, y0, x0 + w - 1, y1, false);
     rectOutline(c, x0, y0, x0 + w - 1, y1);
     rectOutline(c, x0 + 1, y0 + 1, x0 + w - 2, y1 - 1);
+    if (headers && y0 == top) c.fillRect(x0, y1 + 1, x0 + w - 1, y1 + 2);  // against the 2 px lines above and beside it: a bottom as bold
     int y = y0 + 7;
     for (int i = 0; i < n; ++i) {
         const int len = static_cast<int>(strlen(lines[i]));

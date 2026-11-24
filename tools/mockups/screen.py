@@ -346,6 +346,8 @@ def tooltip(d, f, lines, top, bottom, headers=True):
         y0 = top
     y1 = y0 + h - 1
     d.rectangle([x0, y0, x0 + w - 1, y1], fill=1, outline=0, width=2)
+    if headers and y0 == top:  # against the 2 px lines above and beside it: a bottom as bold
+        d.rectangle([x0, y1 + 1, x0 + w - 1, y1 + 2], fill=0)
     y = y0 + 7
     for t in lines:
         if t:
