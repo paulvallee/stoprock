@@ -14,7 +14,7 @@ uint8_t ThrowOrder::columnOf(int s, bool ourFirst) const {
     if ((s % 2 == 0) != ourFirst) return themColumn();
     const int p = s / 4;  // our stones 0-7 (s / 2): two each, lead first
     if (p == me_) return kMine;
-    return static_cast<uint8_t>(p < me_ ? p : p - 1);  // a coach (me_ 4): every position
+    return static_cast<uint8_t>(playerColumn(me_, static_cast<uint8_t>(p)));
 }
 
 int ThrowOrder::throwsSince(int64_t t) const {

@@ -40,12 +40,21 @@ static void test_player_with_few_stones_keeps_them() {
 }
 
 static void test_teammates() {
-    TEST_ASSERT_EQUAL_UINT8(1, teammate(0, 0));  // lead times 2nd, 3rd, Skip
-    TEST_ASSERT_EQUAL_UINT8(3, teammate(0, 2));
-    TEST_ASSERT_EQUAL_UINT8(0, teammate(2, 0));  // third times Lead, 2nd, Skip
-    TEST_ASSERT_EQUAL_UINT8(1, teammate(2, 1));
-    TEST_ASSERT_EQUAL_UINT8(3, teammate(2, 2));
-    TEST_ASSERT_EQUAL_UINT8(2, teammate(3, 2));  // skip times Lead, 2nd, 3rd
+    TEST_ASSERT_EQUAL_UINT8(1, columnPlayer(0, 0));  // lead times 2nd, 3rd, Skip, THEM
+    TEST_ASSERT_EQUAL_UINT8(3, columnPlayer(0, 2));
+    TEST_ASSERT_EQUAL_UINT8(kThem, columnPlayer(0, 3));
+    TEST_ASSERT_EQUAL_UINT8(0, columnPlayer(2, 0));  // third times Lead, 2nd, Skip, THEM
+    TEST_ASSERT_EQUAL_UINT8(1, columnPlayer(2, 1));
+    TEST_ASSERT_EQUAL_UINT8(3, columnPlayer(2, 2));
+    TEST_ASSERT_EQUAL_UINT8(2, columnPlayer(3, 2));  // skip times Lead, 2nd, 3rd, THEM
+    TEST_ASSERT_EQUAL_UINT8(2, columnPlayer(kCoachSeat, 2));  // a coach times everyone
+    TEST_ASSERT_EQUAL_UINT8(kThem, columnPlayer(kCoachSeat, 4));
+    // and back: every column's player is in that column; your own stones have none
+    for (uint8_t seat = 0; seat <= kCoachSeat; ++seat)
+        for (uint8_t col = 0; col < columnCount(seat); ++col)
+            TEST_ASSERT_EQUAL_INT(col, playerColumn(seat, columnPlayer(seat, col)));
+    TEST_ASSERT_EQUAL_INT(-1, playerColumn(1, 1));
+    TEST_ASSERT_EQUAL_INT(-1, playerColumn(1, kNoPlayer));
 }
 
 static void test_every_player_keeps_a_screenful() {

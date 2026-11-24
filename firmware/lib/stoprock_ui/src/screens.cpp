@@ -332,13 +332,14 @@ static void playerColumns(Canvas& c, const Stone* stones, int count, uint8_t me,
         if (k) vline(c, x0, GRID_LABEL_Y0, bottom - 1);
         const bool on = k == active;
         if (on) c.fillRect(x0 + (k ? 1 : 0), GRID_LABEL_Y0, x1 - 1, GRID_LABEL_Y1);
-        const char* name = k == n - 1 ? "THEM" : kPositions[me > 3 ? k : teammate(me, k)];
+        const uint8_t player = columnPlayer(me, k);
+        const char* name = player == kThem ? "THEM" : kPositions[player];
         c.text(kFontSpleen6x12, (x0 + x1 - 6 * static_cast<int>(strlen(name))) / 2, GRID_LABEL_Y0, name, !on);
     }
     char buf[12];
     int lines[kCoachColumns] = {};
     for (int i = 0; i < count; ++i) {
-        const int k = leagueColumn(me, stones[i].player);
+        const int k = playerColumn(me, stones[i].player);
         if (k < 0 || k >= n) continue;
         const int x0 = xs[k] + 1, x1 = xs[k + 1] - 1;
         const int32_t vals[2] = {stones[i].bh, stones[i].hh};
@@ -441,7 +442,7 @@ void drawCoachTimer(Canvas& c, const Stone* stones, uint8_t count, const ShotLog
     hline(c, 0, W - 1, 47, 2);
     vline(c, WIDE_MID, 0, 46);
     static const int xs[kCoachColumns + 1] = {0, 40, 80, 120, 160, 200};
-    playerColumns(c, stones, count, kCoach, xs, kCoachColumns, activeCol, bottom, kCoachRows, kNarrowFont);
+    playerColumns(c, stones, count, kCoachSeat, xs, kCoachColumns, activeCol, bottom, kCoachRows, kNarrowFont);
     hline(c, 0, W - 1, bottom, 2);
     for (int p = 0; p < 4; ++p) {
         if (p) vline(c, COACH_GX[p], bottom, H - 1);

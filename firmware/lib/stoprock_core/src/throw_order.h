@@ -17,13 +17,15 @@
 #pragma once
 #include <stdint.h>
 
+#include "seats.h"
+
 namespace stoprock {
 
 class ThrowOrder {
 public:
-    static constexpr uint8_t kColumns = 4;   // your three teammates in throwing order, then THEM
-    static constexpr uint8_t kThem = 3;      // the other team's column (as a player: themColumn())
-    static constexpr uint8_t kCoach = 4;     // reset(kCoach): a coach, with a column per position, then THEM
+    // Columns are numbered as in seats.h: teammates in throwing order, then THEM.
+    static constexpr uint8_t kThem = kLeagueColumns - 1;  // the other team's column for a player
+    static constexpr uint8_t kCoach = kCoachSeat;          // reset(kCoach): a coach, every position a column
     static constexpr uint8_t kMine = 0xFE;   // a throw of yours: no column
     static constexpr int64_t kNextThrowUs = 80LL * 1000000;  // under this since the last start: the next throw
     static constexpr int64_t kThrowUs = 56LL * 1000000;      // a throw, typically
@@ -32,7 +34,7 @@ public:
     // me: your position (0 lead .. 3 skip), or kCoach.
     void reset(uint8_t me);
     // The other team's column: 3 for a player (after your three teammates), 4 for a coach.
-    uint8_t themColumn() const { return me_ > 3 ? 4 : kThem; }
+    uint8_t themColumn() const { return stoprock::themColumn(me_); }
     // The column of throw s (0-15) of an end in which we throw first if ourFirst; kMine for yours.
     uint8_t columnOf(int s, bool ourFirst) const;
     // The column of the next stone, starting at t (microseconds; -1 = not started: the next throw).

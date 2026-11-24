@@ -5,6 +5,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "seats.h"
+
 namespace stoprock {
 
 // Minimal key-value storage. On the device: an NVS partition of its own. In tests: memory.
@@ -22,9 +24,9 @@ struct StoneTimes {
     static constexpr uint16_t kNoTime = 0xFFFF;
     uint16_t backToHog = kNoTime;
     uint16_t hogToHog = kNoTime;
-    static constexpr uint8_t kNoPlayer = 0xFF;
-    static constexpr uint8_t kThem = 4;  // a stone of the other team's
-    uint8_t player = kNoPlayer;  // competition and league: who threw it, 0 lead .. 3 skip, kThem; kNoPlayer in coach
+    static constexpr uint8_t kNoPlayer = stoprock::kNoPlayer;  // player codes: seats.h
+    static constexpr uint8_t kThem = stoprock::kThem;
+    uint8_t player = kNoPlayer;  // who threw it: 0 lead .. 3 skip, kThem; kNoPlayer if not known
     // Version 5, for checking the throw order against real games:
     uint8_t guess = kNoPlayer;   // who the device guessed when the stone started (player above: where it ended up)
     uint16_t start = kNoTime;    // when the stone started, seconds since switch-on (the first click)

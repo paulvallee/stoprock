@@ -3,6 +3,7 @@
 #include <stdint.h>
 
 #include "canvas.h"
+#include "seats.h"
 #include "shots.h"
 
 namespace stoprock {
@@ -11,9 +12,9 @@ namespace stoprock {
 struct Stone {
     int32_t bh = -1;
     int32_t hh = -1;
-    uint8_t player = kNoPlayer;  // competition and league: who threw it, 0 lead .. 3 skip, or kThem
-    static constexpr uint8_t kNoPlayer = 0xFF;
-    static constexpr uint8_t kThem = 4;  // league: the other team
+    uint8_t player = kNoPlayer;  // who threw it: 0 lead .. 3 skip, or kThem (player codes: seats.h)
+    static constexpr uint8_t kNoPlayer = stoprock::kNoPlayer;
+    static constexpr uint8_t kThem = stoprock::kThem;
 };
 
 // While a stone is being timed: which time is awaited. The screens show a stopwatch where it will
@@ -36,24 +37,15 @@ constexpr uint8_t kGridRows = 8;  // stones kept per player (addStone)
 // tip: the switch-on tip (your position, double click to change it, hold up to move) over the times.
 void drawCompetition(Canvas& c, const Stone* stones, uint8_t count, uint8_t me, uint8_t activeCol,
                      bool lowBattery, bool tip = false, Waiting waiting = Waiting::None);
-// The teammate in column k (0-2) for a player at position me.
-inline uint8_t teammate(uint8_t me, uint8_t k) { return k < me ? k : k + 1; }
 
 // League (side button + rocker down): the newest stone large, then four columns: your three
 // teammates in throwing order and the other team (THEM), each listing its stones newest first, a
 // time a line (7 lines): B2H black on white, H2H white on black. Below, your own 16 rocks like a
 // scoreboard (ends across, rock 1 over rock 2) and your percentage. activeCol (0-3) has its header
 // highlighted. lowBattery puts a "Batt low" bar over the percentage.
-constexpr uint8_t kLeagueColumns = 4, kLeagueRows = 7;
-// Coach: five columns, every position and THEM (me = kCoach where a position is asked for).
-constexpr uint8_t kCoach = 4, kCoachColumns = 5, kCoachRows = 6;
-// The column of a stone thrown by player for you at position me (league and competition, 0-3), or
-// for a coach (me kCoach, 0-4); -1: none (yours, or no player).
-inline int leagueColumn(uint8_t me, uint8_t player) {
-    if (player == Stone::kThem) return me > 3 ? kCoachColumns - 1 : kLeagueColumns - 1;
-    if (player > 3 || player == me) return -1;
-    return player < me ? player : player - 1;
-}
+// Columns and who's in them: seats.h (kLeagueColumns, columnPlayer, playerColumn).
+constexpr uint8_t kLeagueRows = 7;
+constexpr uint8_t kCoachRows = 6;  // coach page 1: five columns (kCoachColumns), seat kCoachSeat
 // focus: the half the rocker works on, shown by a bold border: the players' columns (up = next,
 // down = previous) or your rocks (made/missed).
 enum class Focus : uint8_t { Rocks, Players };
