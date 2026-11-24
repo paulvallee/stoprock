@@ -120,13 +120,16 @@ uint8_t myPosition = 0;         // 0 lead .. 3 skip (double press of the rocker 
 struct ModeRules {
     uint8_t shotsPerEnd;  // rocks logged an end: 0 competition, 2 league (yours), 8 coach (the team's)
     bool focus;           // league, coach: the rocker works on the times or on the rocks (hold down / up)
+    bool autoFocus;       // league: the focus goes to your rocks when you owe a shot, back after you log
+                          // it; a coach (who may log many rocks at once) keeps it where they put it.
+                          // Either way, starting the stopwatch brings it to the times.
     bool positions;       // you have a position (double click changes it); a coach has none (double click: page)
 };
 const ModeRules& rules() {
     static const ModeRules kRules[3] = {  // indexed by GameMode: League, Competition, Coach
-        {2, true, true},
-        {0, false, true},
-        {8, true, false},
+        {2, true, true, true},
+        {0, false, false, true},
+        {8, true, false, false},
     };
     return kRules[static_cast<uint8_t>(mode)];
 }
@@ -426,7 +429,7 @@ void restartOrder() {
 // moves to your rocks once the stone before yours should be done.
 void planRocksFocus() {
     rocksFocusAt = -1;
-    if (!rules().focus || order.lastStart() < 0) return;
+    if (!rules().autoFocus || order.lastStart() < 0) return;
     const int k = order.throwsToMine();
     if (k == 1 || k == 2) rocksFocusAt = order.expectedStart(k - 1) + kOwnShotFocusUs;
 }
@@ -445,7 +448,7 @@ void countTimedStone(int64_t now, int64_t delay) {
     Serial.printf("timing: next up, column %d\n", activeCol + 1);
     // League: the rocker goes to the times, or to your rocks if you threw since your last logged shot
     // (one owed: more means you aren't logging them, so don't pull the focus down every stone).
-    if (rules().focus) {
+    if (rules().autoFocus) {
         const Focus f = order.toLogSoFar() - shots.count() == 1 ? Focus::Rocks : Focus::Players;
         if (f != focus) Serial.printf("focus: %s (after a timed stone)\n", f == Focus::Rocks ? "rocks, a shot to log" : "players");
         focusTo(f);
@@ -684,7 +687,7 @@ void onShot(bool made) {
     order.teamShot(i / perEnd, k, now);
     manualCursor = false;
     reaim(now);
-    if (rules().focus) {  // back to the columns (not on the rocks page), and your next rock planned
+    if (rules().autoFocus) {  // back to the columns, and your next rock planned
         focusTo(Focus::Players);
         planRocksFocus();
     }
