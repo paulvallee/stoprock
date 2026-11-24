@@ -34,7 +34,14 @@ void begin() {
     M5.Display.setAutoDisplay(false);
     M5.Display.setRotation(0);
 
-    for (int p : kPins) pinMode(p, INPUT);  // the board has its own pull-ups
+    // GPIO 34-39 (the rocker) can't pull up and the board has resistors for them; the top and
+    // side buttons (GPIO 5, 27) need the chip's own pull-ups, as M5Stack's library sets them:
+    // without, they float low, read as held from the start, and never register.
+    for (int p : kPins) pinMode(p, p >= 34 ? INPUT : INPUT_PULLUP);
+    delay(2);  // let the pull-ups settle before anything reads the buttons
+    Serial.printf("buttons at start (1 = up, 0 = pressed): top %d, side %d, up %d, press %d, down %d\n",
+                  digitalRead(kPins[kTop]), digitalRead(kPins[kSide]), digitalRead(kPins[kUp]),
+                  digitalRead(kPins[kPress]), digitalRead(kPins[kDown]));
     pinMode(kLedPin, OUTPUT);
     digitalWrite(kLedPin, HIGH);
     ledcSetup(kBuzzerChannel, 2000, 8);
