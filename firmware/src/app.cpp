@@ -2,6 +2,8 @@
 // Behaviour follows docs/SPEC.md; the hardware is behind board.h.
 #include <Arduino.h>
 #include <Preferences.h>
+#include <esp_core_dump.h>
+#include <esp_system.h>
 #include <esp_timer.h>
 #include <nvs_flash.h>
 #include <time.h>
@@ -227,6 +229,67 @@ bool lowBattery = false;
 // settings (your position, sleep while timing, clock audits) in the default NVS partition
 Preferences prefs;
 
+// ------------------------------------------------------------------ crashes
+// What a crash left behind, so the next export says why. On battery a crash looks like switching off
+// (the restart lets go of the power latch, and the next start is a plain power-on), so the reset
+// reason rarely tells: the core dump the panic handler writes to flash (the "coredump" partition)
+// does, read here at the next start. Brownouts and watchdog resets that do restart (on USB) are
+// counted too. Printed by the `crash` command and with every games listing ("@CRASH").
+char crashNote[360] = "";  // the last crash: when, the task, where, and the backtrace (decode with the build's ELF)
+
+const char* resetName(esp_reset_reason_t r) {
+    switch (r) {
+        case ESP_RST_POWERON: return "power-on";
+        case ESP_RST_SW: return "restart";
+        case ESP_RST_PANIC: return "crash (panic)";
+        case ESP_RST_INT_WDT: return "crash (interrupt watchdog)";
+        case ESP_RST_TASK_WDT: return "crash (task watchdog)";
+        case ESP_RST_WDT: return "crash (watchdog)";
+        case ESP_RST_BROWNOUT: return "brownout (supply too low)";
+        case ESP_RST_DEEPSLEEP: return "deep sleep";
+        case ESP_RST_EXT: return "reset pin";
+        default: return "unknown";
+    }
+}
+
+void noteCrashes() {
+    const esp_reset_reason_t r = esp_reset_reason();
+    Serial.printf("start: %s\n", resetName(r));
+    if (r != ESP_RST_POWERON && r != ESP_RST_SW && r != ESP_RST_DEEPSLEEP && r != ESP_RST_EXT) {
+        prefs.putUShort("resets", prefs.getUShort("resets", 0) + 1);
+        prefs.putUChar("lastreset", static_cast<uint8_t>(r));
+    }
+#if CONFIG_ESP_COREDUMP_ENABLE_TO_FLASH && CONFIG_ESP_COREDUMP_DATA_FORMAT_ELF
+    size_t addr = 0, size = 0;
+    if (esp_core_dump_image_get(&addr, &size) == ESP_OK) {
+        static esp_core_dump_summary_t s;
+        if (esp_core_dump_get_summary(&s) == ESP_OK) {
+            int n = snprintf(crashNote, sizeof crashNote, "seen at clock %lu, task %s, pc 0x%08lx, cause %lu, addr 0x%08lx, elf %.8s, bt",
+                             static_cast<unsigned long>(board::clockNow()), s.exc_task,
+                             static_cast<unsigned long>(s.exc_pc), static_cast<unsigned long>(s.ex_info.exc_cause),
+                             static_cast<unsigned long>(s.ex_info.exc_vaddr), reinterpret_cast<const char*>(s.app_elf_sha256));
+            for (uint32_t i = 0; i < s.exc_bt_info.depth && i < 16 && n < static_cast<int>(sizeof crashNote) - 12; ++i)
+                n += snprintf(crashNote + n, sizeof crashNote - n, " 0x%08lx", static_cast<unsigned long>(s.exc_bt_info.bt[i]));
+            if (s.exc_bt_info.corrupted && n < static_cast<int>(sizeof crashNote) - 12)
+                snprintf(crashNote + n, sizeof crashNote - n, " (corrupted)");
+            prefs.putString("crash", crashNote);
+            prefs.putUShort("crashes", prefs.getUShort("crashes", 0) + 1);
+            Serial.printf("start: the last run crashed: %s\n", crashNote);
+        }
+        esp_core_dump_image_erase();  // read once: the next crash writes a new one
+    }
+#endif
+    if (!crashNote[0]) prefs.getString("crash", crashNote, sizeof crashNote);
+}
+
+void printCrashes() {
+    const uint16_t resets = prefs.getUShort("resets", 0);
+    Serial.printf("@CRASH {\"crashes\":%u,\"resets\":%u,\"last_reset\":\"%s\",\"last\":\"%s\"}\n",
+                  prefs.getUShort("crashes", 0), resets,
+                  resets ? resetName(static_cast<esp_reset_reason_t>(prefs.getUChar("lastreset", 0))) : "",
+                  crashNote);
+}
+
 // The game databank, in its own NVS partition ("games", see partitions.csv).
 class NvsStore : public KeyValueStore {
 public:
@@ -311,11 +374,16 @@ struct Model {
 Model model;
 SemaphoreHandle_t modelLock;
 TaskHandle_t displayTaskHandle;
+// True from a model change until the screen shows it: the app doesn't sleep (or switch off) till then.
+// Set and cleared under modelLock, with modelSeq telling the display task whether it has shown the
+// latest (a change made while it was drawing the one before means another pass).
 volatile bool displayBusy = false;
+uint32_t modelSeq = 0;
 
 void publish(void (*edit)(Model&)) {
     xSemaphoreTake(modelLock, portMAX_DELAY);
     edit(model);
+    ++modelSeq;
     displayBusy = true;
     xSemaphoreGive(modelLock);
     xTaskNotifyGive(displayTaskHandle);
@@ -329,6 +397,7 @@ void displayTask(void*) {
         Model m;
         xSemaphoreTake(modelLock, portMAX_DELAY);
         m = model;
+        const uint32_t seq = modelSeq;
         model.full = false;
         xSemaphoreGive(modelLock);
 
@@ -354,8 +423,10 @@ void displayTask(void*) {
         }
         Serial.printf("display: %s %lld ms\n", m.full ? "full" : "partial", (esp_timer_get_time() - t0) / 1000);
         shown = next;
-        if (ulTaskNotifyTake(pdTRUE, 0) > 0) xTaskNotifyGive(displayTaskHandle);  // more work queued
-        else displayBusy = false;
+        xSemaphoreTake(modelLock, portMAX_DELAY);
+        const bool more = modelSeq != seq;  // changed while drawing: another pass (publish() notified)
+        if (!more) displayBusy = false;
+        xSemaphoreGive(modelLock);
     }
 }
 
@@ -1070,6 +1141,7 @@ void pollButtons(int64_t now) {
 
 // Databank export, framed so an app can parse it: "@GAMES n", n JSON lines, "@END".
 void printGames(uint32_t fromId) {
+    printCrashes();  // first: kept with the games by an export
     static GameRecord g;
     static char json[6400];  // a full coach game: 64 shots and their times, 128 stones
     uint32_t n = 0;
@@ -1139,10 +1211,21 @@ void runCommand(const char* buf) {
                       static_cast<unsigned long>(bank.firstId()), static_cast<unsigned long>(bank.lastId()),
                       board::batteryPercent(), static_cast<unsigned long>(board::clockNow()),
                       board::clockValid() ? "" : " (not set)");
+    } else if (!strcmp(buf, "crash")) {
+        printCrashes();
+        Serial.printf("stack left: loop %u, display %u bytes\n", uxTaskGetStackHighWaterMark(nullptr),
+                      uxTaskGetStackHighWaterMark(displayTaskHandle));
+    } else if (!strcmp(buf, "crash clear")) {
+        prefs.remove("crash");
+        prefs.remove("crashes");
+        prefs.remove("resets");
+        prefs.remove("lastreset");
+        crashNote[0] = 0;
+        printCrashes();
     } else if (buf[0]) {
         Serial.println("commands: t <unix seconds> | s | games | games new | game <id> | ack <id> | bank | "
-                       "erase-all yes | audit | sleeptiming on|off | n (new game) | o (power off) | "
-                       "mode competition|league|coach | page");
+                       "erase-all yes | audit | crash | crash clear | sleeptiming on|off | n (new game) | "
+                       "o (power off) | mode competition|league|coach | page");
     }
 }
 
@@ -1171,6 +1254,7 @@ void setup() {
     xTaskCreatePinnedToCore(displayTask, "display", 8192, nullptr, 1, &displayTaskHandle, 0);
 
     prefs.begin("stoprock", false);
+    noteCrashes();
     sleepWhileTiming = prefs.getBool("sleeptim", true);
     myPosition = prefs.getUChar("mypos", 0) % 4;
     if (!bankStore.begin()) Serial.println("databank: no \"games\" partition, games won't be kept");

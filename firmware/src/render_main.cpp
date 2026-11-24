@@ -173,6 +173,25 @@ int main(int argc, char** argv) {
         writePbm(c, path);
     }
 
+    {  // an H2H of 20.00 s: the narrower fonts, at the top and in the zoom (THEM's column, at the edge)
+        Stone slow[sizeof league / sizeof league[0]];
+        for (int i = 0; i < nl; ++i) slow[i] = league[i];
+        slow[0] = Stone{352, 2000, 4};
+        drawLeague(c, slow, nl, shots, 1, 3, false);
+        snprintf(path, sizeof path, "%s/league-20.pbm", dir);
+        writePbm(c, path);
+        drawCompetition(c, slow, nl, 1, 3, false);
+        snprintf(path, sizeof path, "%s/competition-20.pbm", dir);
+        writePbm(c, path);
+        Stone coach[12];
+        for (int i = 0; i < 12; ++i) coach[i] = many[i];
+        coach[0] = Stone{352, 2000, 4};
+        ShotLog s(ShotLog::kCoachSlots);
+        drawCoachTimer(c, coach, 12, s, Waiting::None, 4);
+        snprintf(path, sizeof path, "%s/coach1-20.pbm", dir);
+        writePbm(c, path);
+    }
+
     drawHelp(c, "Last game 9/12 shots made", 75, 84, "~11 games battery left");
     snprintf(path, sizeof path, "%s/help.pbm", dir);
     writePbm(c, path);

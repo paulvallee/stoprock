@@ -1,8 +1,10 @@
 # stoprock flash layout (fits the CoreInk's 4 MB; the simulator's S3 uses the same).
 # "games" is the game databank: an NVS partition of its own, so settings and games
-# never compete for space. 256 KB holds the 500-game cap with room to spare.
+# never compete for space. 256 KB holds the 500-game cap with room to spare. "coredump": where a
+# crash leaves its core dump, read (and erased) at the next start (app.cpp noteCrashes()).
 # Name,    Type, SubType, Offset,   Size
 nvs,       data, nvs,     0x9000,   0x5000
 otadata,   data, ota,     0xe000,   0x2000
-app0,      app,  ota_0,   0x10000,  0x300000
+app0,      app,  ota_0,   0x10000,  0x2E0000
+coredump,  data, coredump, 0x2F0000, 0x20000
 games,     data, nvs,     0x310000, 0x40000

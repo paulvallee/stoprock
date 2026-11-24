@@ -9,7 +9,7 @@ namespace stoprock {
 namespace {
 
 constexpr int W = 200, H = 200;
-constexpr int LABEL_H = 12, TIP_H = 26;  // TIP_H: competition's badge strip
+constexpr int TIP_H = 26;  // competition's badge strip
 
 // Python's round(): halves go to the even neighbour.
 int pyRound(double v) {
@@ -67,13 +67,15 @@ struct SegFont {
 constexpr SegFont kRowFont{12, 7, 2, 2, 2, false};  // older results
 constexpr SegFont kEndFont{9, 5, 1, 1, 1, false};   // end numbers: equal-width cells, a "1" sits on the right
 constexpr SegFont kNarrowFont{12, 6, 2, 1, 2, true};  // coach's five columns: a narrow "1"
-// The cursor's column, zoomed: the biggest digits 4 lines fit in each mode's space (a white-on-black
-// cell keeping 1 px of black above and below), a narrow solid "1"; with the pitch of a line.
-struct Zoom { SegFont font; int pitch; };
-constexpr Zoom kZoomComp{{22, 13, 3, 2, 3, true, true}, 25};
-constexpr Zoom kZoomLeague{{18, 11, 3, 2, 3, true, true}, 21};
-constexpr Zoom kZoomCoach{{16, 9, 2, 2, 2, true, true}, 19};
-constexpr int kZoomLines = 4;
+// The cursor's column, zoomed (playerColumns()): the biggest digits 4 lines fit in each mode's column
+// height and 1.3 columns' width (a white-on-black cell keeping 1 px of black round them), a narrow
+// solid "1"; longFont: narrower, for 20.00, the one time with no "1" to spare.
+struct Zoom { SegFont font, longFont; };
+constexpr Zoom kZoomLeague{{22, 13, 3, 2, 3, true, true}, {22, 11, 3, 2, 3, true, true}};
+constexpr Zoom kZoomComp{{24, 14, 3, 2, 3, true, true}, {24, 11, 3, 2, 3, true, true}};
+constexpr Zoom kZoomCoach{{18, 11, 2, 2, 2, true, true}, {18, 8, 2, 2, 2, true, true}};
+constexpr int kZoomLines = 4;      // filling the column's height
+constexpr double kZoomSpread = 1.3;  // its width, in columns: over 15% of each neighbour (30% of one at an edge)
 
 enum Align { kLeft, kCentre, kRight };
 
@@ -100,7 +102,7 @@ void formatTime(int32_t hundredths, char* out, size_t n) {
 
 // DSEG7 number with a small square decimal point, right-aligned (or centred) in the box.
 void dsegNumber(Canvas& c, int32_t hundredths, double x0, double x1, double y0, double y1, double margin,
-                const Font& f, bool center = false) {
+                const Font& f, bool center = false, bool black = true) {
     char ip[12], fp[4];
     snprintf(ip, sizeof ip, "%ld", static_cast<long>(hundredths / 100));
     snprintf(fp, sizeof fp, "%02ld", static_cast<long>(hundredths % 100));
@@ -111,11 +113,11 @@ void dsegNumber(Canvas& c, int32_t hundredths, double x0, double x1, double y0, 
     const double total = (bi.r - bi.l) + gap + dot + gap + (bf.r - bf.l);
     const double x = center ? (x0 + x1 - total) / 2 : x1 - margin - total;
     const double y = (y0 + y1 - (b - t)) / 2.0 - t;
-    c.text(f, pyRound(x - bi.l), pyRound(y), ip);
+    c.text(f, pyRound(x - bi.l), pyRound(y), ip, black);
     const double xd = x + (bi.r - bi.l) + gap;
     const double yb = y + b;
-    c.fillRect(pyRound(xd), pyRound(yb - dot), pyRound(xd + dot - 1), pyRound(yb - 1));
-    c.text(f, pyRound(xd + dot + gap - bf.l), pyRound(y), fp);
+    c.fillRect(pyRound(xd), pyRound(yb - dot), pyRound(xd + dot - 1), pyRound(yb - 1), black);
+    c.text(f, pyRound(xd + dot + gap - bf.l), pyRound(y), fp, black);
 }
 
 // DSEG7 16 px digits packed by their ink and a % sign drawn to match, centred in the box.
@@ -247,11 +249,11 @@ constexpr int COACH_GX[5] = {12, 59, 106, 153, 200};  // coach position columns
 const char* const kPositions[4] = {"Lead", "2nd", "3rd", "Skip"};
 const char* const kPositionShort[4] = {"L", "2", "3", "S"};
 
-void rectOutline(Canvas& c, int x0, int y0, int x1, int y1) {
-    c.fillRect(x0, y0, x1, y0);
-    c.fillRect(x0, y1, x1, y1);
-    c.fillRect(x0, y0, x0, y1);
-    c.fillRect(x1, y0, x1, y1);
+void rectOutline(Canvas& c, int x0, int y0, int x1, int y1, bool black = true) {
+    c.fillRect(x0, y0, x1, y0, black);
+    c.fillRect(x0, y1, x1, y1, black);
+    c.fillRect(x0, y0, x0, y1, black);
+    c.fillRect(x1, y0, x1, y1, black);
 }
 
 // The focus: a 2 px border round the half the rocker works on.
@@ -263,32 +265,37 @@ void focusBox(Canvas& c, int x0, int y0, int x1, int y1) {
 // Competition and league history: four columns, your teammates and THEM (leagueTimes). H2H times
 // are a digit wider, so the H2H half of the large row is wider (x 92).
 constexpr int COMP_MID = 92;
-constexpr int kTimesY1 = 57;  // the newest stone large in y 13-57 (2 px line under it)
-constexpr int GRID_LABEL_Y0 = 59, GRID_LABEL_Y1 = 70;
+// No labels: B2H is black on white, H2H white on black, as in the columns.
+constexpr int kTimesY1 = 44;  // the newest stone large in y 0-44 (2 px line under it)
+constexpr int GRID_LABEL_Y0 = 46, GRID_LABEL_Y1 = 57;
 constexpr int GRID_PITCH = 14;  // a line of the other columns' times
-constexpr int kLinesTop = 72;   // the columns' first line
+constexpr int kLinesTop = 59;   // the columns' first line
+constexpr int kCoachTimesY0 = 4;  // coach: the newest stone's digits start under the page marks (y 1-4)
 
-// The current stone across both halves; a stopwatch where an awaited time will appear.
-// Awaiting the B2H, or the H2H of a stone with no B2H, the row is still empty (no time yet).
-void newestRow(Canvas& c, const Stone* stones, int count, Waiting waiting, int mid, const Font& font, int y0,
-               int y1, int margin, const Sprite& watch, int cy, bool center = false) {
+// The current stone across both halves, centred: B2H black on white, H2H white on its black half
+// (filled by the caller); longFont for an H2H of 20.00 s, too wide for font. A stopwatch where an
+// awaited time will appear. Awaiting the B2H, or the H2H of a stone with no B2H, the row is still
+// empty (no time yet).
+void newestRow(Canvas& c, const Stone* stones, int count, Waiting waiting, int mid, const Font& font,
+               const Font& longFont, int y0, int y1, const Sprite& watch, int cy) {
     const bool fresh = waiting == Waiting::BackToHog || waiting == Waiting::HogToHogOnly;  // no time yet
     const Stone* cur = fresh || count == 0 ? nullptr : &stones[0];
     const int32_t vals[2] = {cur ? cur->bh : -1, cur ? cur->hh : -1};
     const Waiting want[2] = {Waiting::BackToHog, waiting == Waiting::HogToHogOnly ? waiting : Waiting::HogToHog};
     for (int k = 0; k < 2; ++k) {
         const int x0 = k == 0 ? 0 : mid, x1 = k == 0 ? mid : W;
-        if (vals[k] >= 0) dsegNumber(c, vals[k], x0, x1, y0, y1, margin, font, center);
-        else if (waiting == want[k]) c.sprite(watch, (x0 + x1) / 2, cy);
+        const bool black = k == 0;
+        if (vals[k] >= 0) dsegNumber(c, vals[k], x0, x1, y0, y1, 0, vals[k] >= 2000 ? longFont : font, true, black);
+        else if (waiting == want[k]) c.blit(watch.bm, (x0 + x1) / 2 - watch.cx, cy - watch.cy, black);
     }
 }
 
-// Two small squares top right: filled = the page showing.
+// Two small squares at the top right, white on the H2H half's black: filled = the page showing.
 void pageMarks(Canvas& c, int page) {
     for (int k = 0; k < 2; ++k) {
-        const int x = W - 16 + k * 8;
-        if (k == page) c.fillRect(x, 3, x + 5, 8);
-        else rectOutline(c, x, 3, x + 5, 8);
+        const int x = W - 12 + k * 6;
+        if (k == page) c.fillRect(x, 1, x + 3, 4, false);
+        else rectOutline(c, x, 1, x + 3, 4, false);
     }
 }
 
@@ -369,71 +376,83 @@ static void switchOnTip(Canvas& c, uint8_t me, bool league, int top, int bottom)
     tooltip(c, lines, league ? 8 : 7, top, bottom);
 }
 
-// The columns' edges between x0 and x1 (n columns for a seat, me): the cursor's (active) as wide as
-// its zoomed times need (2 px of black beside the digits in a white-on-black cell), never narrower
-// than an even share; the others sharing what's left equally. Nothing covered, nothing wasted.
-static void columnEdges(const Stone* stones, int count, uint8_t me, int x0, int x1, int n, uint8_t active,
-                        const SegFont& zoom, int* xs) {
-    const uint8_t player = columnPlayer(me, active);
-    int zw = (x1 - x0) / n, shown = 0;
-    char buf[12];
-    for (int i = 0; i < count && shown < kZoomLines; ++i) {
-        if (stones[i].player != player) continue;
-        const int32_t vals[2] = {stones[i].bh, stones[i].hh};
-        for (int half = 0; half < 2 && shown < kZoomLines; ++half) {
-            if (vals[half] < 0) continue;
-            ++shown;
-            formatTime(vals[half], buf, sizeof buf);
-            if (zoom.width(buf) + 7 > zw) zw = zoom.width(buf) + 7;
-        }
-    }
-    const double other = static_cast<double>(x1 - x0 - zw) / (n - 1);
-    double x = x0;
-    xs[0] = x0;
-    for (int k = 0; k < n; ++k) {
-        x += k == active ? zw : other;
-        xs[k + 1] = pyRound(x);
-    }
-    xs[n] = x1;
+// The zoomed column's edges (za, zb): kZoomSpread columns wide, centred on the cursor's column, kept
+// inside x0..x1 (at an edge it takes all the extra from its one neighbour).
+static void zoomSpan(int x0, int x1, int n, int active, int& za, int& zb) {
+    const int zw = pyRound(kZoomSpread * (x1 - x0) / n);
+    za = pyRound(x0 + static_cast<double>((x1 - x0) * (2 * active + 1)) / (2 * n) - zw / 2.0);
+    if (za > x1 - zw) za = x1 - zw;
+    if (za < x0) za = x0;
+    zb = za + zw;
 }
 
 // A column per player between x0 and x1 (n columns: your teammates or, for a coach (me kCoachSeat),
-// every position, then THEM), headed with the position or THEM; the cursor's (active) header
-// highlighted and its times zoomed: bigger digits, 4 lines, the column as wide as they need. Each
-// lists its stones newest first, a time a line, B2H black on white, H2H white on black.
+// every position, then THEM), equal widths, headed with the position or THEM. The cursor's (active)
+// is zoomed, drawn over its neighbours (zoomSpan): its header highlighted, its newest 4 times in the
+// biggest digits that fit, filling the column's height. The others list theirs newest first, a time
+// a line, in the part the zoom leaves them (narrower digits when it leaves too little). B2H black on
+// white, H2H white on black.
 static void playerColumns(Canvas& c, const Stone* stones, int count, uint8_t me, int x0, int x1, int n,
                           uint8_t active, int bottom, const SegFont& font, const Zoom& zoom) {
     int xs[kCoachColumns + 1];
-    columnEdges(stones, count, me, x0, x1, n, active, zoom.font, xs);
-    for (int k = 0; k < n; ++k) {
-        const int a = xs[k], b = xs[k + 1];
-        if (k) vline(c, a, GRID_LABEL_Y0, bottom - 1);
-        const bool on = k == active;
-        if (on) c.fillRect(a + (k ? 1 : 0), GRID_LABEL_Y0, b - 1, GRID_LABEL_Y1);
-        const uint8_t player = columnPlayer(me, k);
-        const char* name = player == kThem ? "THEM" : kPositions[player];
-        c.text(kFontSpleen6x12, (a + b - 6 * static_cast<int>(strlen(name))) / 2, GRID_LABEL_Y0, name, !on);
-    }
+    for (int k = 0; k <= n; ++k) xs[k] = pyRound(x0 + static_cast<double>((x1 - x0) * k) / n);
+    int za, zb;
+    zoomSpan(x0, x1, n, active, za, zb);
+    auto nameOf = [&](int k) {
+        const uint8_t player = columnPlayer(me, static_cast<uint8_t>(k));
+        return player == kThem ? "THEM" : kPositions[player];
+    };
+    // column k's times, newest first, up to most: each a value and whether it's an H2H
     char buf[12];
-    int lines[kCoachColumns] = {};
-    for (int i = 0; i < count; ++i) {
-        const int k = playerColumn(me, stones[i].player);
-        if (k < 0 || k >= n) continue;
-        const bool zoomed = k == active;
-        const SegFont& cf = zoomed ? zoom.font : font;
-        const int pitch = zoomed ? zoom.pitch : GRID_PITCH;
-        const int most = zoomed ? kZoomLines : (bottom - kLinesTop) / GRID_PITCH;
-        const int a = xs[k] + 1, b = xs[k + 1] - 1;
-        const int32_t vals[2] = {stones[i].bh, stones[i].hh};
-        for (int half = 0; half < 2; ++half) {
-            if (vals[half] < 0 || lines[k] >= most) continue;
-            const int y = kLinesTop + lines[k]++ * pitch;
-            const bool inverted = half == 1;
-            if (inverted) c.fillRect(a + 1, y, b - 1, y + pitch - 2);
-            formatTime(vals[half], buf, sizeof buf);
-            segInBox(c, cf, buf, a, b, y, y + pitch - 1, kCentre, 0, !inverted);
+    auto times = [&](int k, int most, int32_t* vals, bool* hh) {
+        int shown = 0;
+        for (int i = 0; i < count && shown < most; ++i) {
+            if (playerColumn(me, stones[i].player) != k) continue;
+            const int32_t v[2] = {stones[i].bh, stones[i].hh};
+            for (int half = 0; half < 2 && shown < most; ++half) {
+                if (v[half] < 0) continue;
+                vals[shown] = v[half];
+                hh[shown++] = half == 1;
+            }
         }
+        return shown;
+    };
+    auto cell = [&](const SegFont& cf, int32_t val, bool inverted, int a, int b, int y, int pitch) {
+        if (inverted) c.fillRect(a + 1, y, b - 1, y + pitch - 2);
+        formatTime(val, buf, sizeof buf);
+        segInBox(c, cf, buf, a, b, y, y + pitch - 1, kCentre, 0, !inverted);
+    };
+    constexpr int kMostLines = 16;
+    int32_t vals[kMostLines];
+    bool hh[kMostLines];
+    int most = (bottom - kLinesTop) / GRID_PITCH;
+    if (most > kMostLines) most = kMostLines;
+    for (int k = 0; k < n; ++k) {
+        if (k == active) continue;
+        const int a = k > active && zb > xs[k] ? zb : xs[k];  // the part the zoom leaves
+        const int b = k < active && za < xs[k + 1] ? za : xs[k + 1];
+        if (k) vline(c, a, GRID_LABEL_Y0, bottom - 1);
+        const char* name = nameOf(k);
+        c.text(kFontSpleen6x12, (a + b - 6 * static_cast<int>(strlen(name))) / 2, GRID_LABEL_Y0, name);
+        const int shown = times(k, most, vals, hh);
+        int widest = 0;
+        for (int i = 0; i < shown; ++i) {
+            formatTime(vals[i], buf, sizeof buf);
+            if (font.width(buf) > widest) widest = font.width(buf);
+        }
+        const SegFont& cf = widest + 4 <= b - a - 2 ? font : kNarrowFont;
+        for (int i = 0; i < shown; ++i) cell(cf, vals[i], hh[i], a + 1, b - 1, kLinesTop + i * GRID_PITCH, GRID_PITCH);
     }
+    // the zoom: lines at its edges (none at the outer ones), the header highlighted
+    if (za > x0) vline(c, za, GRID_LABEL_Y0, bottom - 1);
+    if (zb < x1) vline(c, zb, GRID_LABEL_Y0, bottom - 1);
+    c.fillRect(za + (za > x0 ? 1 : 0), GRID_LABEL_Y0, zb - 1, GRID_LABEL_Y1);
+    const char* name = nameOf(active);
+    c.text(kFontSpleen6x12, (za + zb - 6 * static_cast<int>(strlen(name))) / 2, GRID_LABEL_Y0, name, false);
+    const int pitch = (bottom - kLinesTop) / kZoomLines;
+    const int shown = times(active, kZoomLines, vals, hh);
+    for (int i = 0; i < shown; ++i)
+        cell(vals[i] >= 2000 ? zoom.longFont : zoom.font, vals[i], hh[i], za + 1, zb - 1, kLinesTop + i * pitch, pitch);
 }
 
 static void leagueTimes(Canvas& c, const Stone* stones, int count, uint8_t me, uint8_t active, int bottom,
@@ -441,22 +460,19 @@ static void leagueTimes(Canvas& c, const Stone* stones, int count, uint8_t me, u
     playerColumns(c, stones, count, me, 2, 198, kLeagueColumns, active, bottom, kRowFont, zoom);
 }
 
-// The top of the times, every mode: Back2Hog | Hog2Hog labels (split at mid; the H2H label ends at
-// labelRight), the newest stone large, a stopwatch where an awaited time will appear.
-static void timesTop(Canvas& c, const Stone* stones, int count, Waiting waiting, int mid, int labelRight) {
-    const Font& label = kFontSpleen6x12;
-    textInBox(c, label, "Back2Hog", 0, mid, 0, LABEL_H, kCentre, 4);
-    textInBox(c, label, "Hog2Hog", mid, labelRight, 0, LABEL_H, kCentre, 4);
-    hline(c, 0, W - 1, LABEL_H);
-    newestRow(c, stones, count, waiting, mid, kFontDseg33, 13, kTimesY1, 3, kStopwatch, (13 + kTimesY1) / 2, true);
+// The top of the times, every mode: the newest stone large, B2H on white left of mid, H2H on black
+// right of it (no labels: as in the columns), a stopwatch where an awaited time will appear.
+// y0: the digits' box starts lower (coach: under the page marks).
+static void timesTop(Canvas& c, const Stone* stones, int count, Waiting waiting, int mid, int y0 = 0) {
+    c.fillRect(mid, 0, W - 1, kTimesY1 - 1);
+    newestRow(c, stones, count, waiting, mid, kFontDseg37, kFontDseg33, y0, kTimesY1, kStopwatch, (y0 + kTimesY1) / 2);
     hline(c, 0, W - 1, kTimesY1, 2);
-    vline(c, mid, 0, kTimesY1 - 1);
 }
 
 // The newest stone large, then the four columns down to bottom.
 static void fourColumns(Canvas& c, const Stone* stones, int count, uint8_t me, uint8_t active, int bottom,
                         Waiting waiting, const Zoom& zoom) {
-    timesTop(c, stones, count, waiting, COMP_MID, W);
+    timesTop(c, stones, count, waiting, COMP_MID);
     leagueTimes(c, stones, count, me, active, bottom, zoom);
 }
 
@@ -475,9 +491,9 @@ void drawModeMenu(Canvas& c, uint8_t selected) {
         c.text(f, 8, y0 + 13, kModes[i][1], !on);
     }
     hline(c, 0, W - 1, 113);
-    static const char* const kTips[] = {"up/down: choose  middle: start", "", "Next time, skip this: hold the",
-                                        "rocker as you switch on:", "  middle = competition", "  down   = league",
-                                        "  up     = coach"};
+    static const char* const kTips[] = {"up/down: choose  middle: start", "", "Big times: B2H left, H2H right", "",
+                                        "Skip menu: hold rocker at start", "  middle = competition",
+                                        "  down   = league", "  up     = coach"};
     int y = 117;
     for (const char* t : kTips) {
         if (*t) c.text(f, 6, y, t);
@@ -544,9 +560,9 @@ void drawCoachTimer(Canvas& c, const Stone* stones, uint8_t count, const ShotLog
                     uint8_t activeCol, Tip tip, Focus focus) {
     c.clear();
     const Font& label = kFontSpleen6x12;
-    pageMarks(c, 0);
     const int bottom = 150;
-    timesTop(c, stones, count, waiting, WIDE_MID, W - 18);  // left of the page marks
+    timesTop(c, stones, count, waiting, WIDE_MID, kCoachTimesY0);  // the digits under the page marks
+    pageMarks(c, 0);
     playerColumns(c, stones, count, kCoachSeat, 0, W, kCoachColumns, activeCol, bottom, kNarrowFont, kZoomCoach);
     hline(c, 0, W - 1, bottom, 2);
     for (int p = 0; p < 4; ++p) {
@@ -580,12 +596,10 @@ void drawCoachRocks(Canvas& c, const Stone* stones, uint8_t count, const ShotLog
                     Tip tip, Focus focus) {
     c.clear();
     const Font& label = kFontSpleen6x12;
-    textInBox(c, label, "Back2Hog", 0, WIDE_MID, 0, LABEL_H, kCentre, 4);
-    textInBox(c, label, "Hog2Hog", WIDE_MID, W - 18, 0, LABEL_H, kCentre, 4);
-    hline(c, 0, W - 1, LABEL_H);
+    c.fillRect(WIDE_MID, 0, W - 1, 32);  // H2H white on black, as on page 1
+    newestRow(c, stones, count, waiting, WIDE_MID, kFontDseg24, kFontDseg24, kCoachTimesY0, 33, kStopwatchSmall,
+              (kCoachTimesY0 + 33) / 2);
     pageMarks(c, 1);
-    newestRow(c, stones, count, waiting, WIDE_MID, kFontDseg16, 13, 33, 20, kStopwatchSmall, 25);
-    vline(c, WIDE_MID, 0, 33);
     hline(c, 0, W - 1, 33, 2);
     for (int p = 0; p < 4; ++p) {
         textInBox(c, label, kPositions[p], COACH_GX[p], COACH_GX[p + 1], 35, 47, kCentre, 4);
@@ -605,7 +619,7 @@ void drawCoachRocks(Canvas& c, const Stone* stones, uint8_t count, const ShotLog
         drawPie(c, x + 5, 193, v);
         c.text(label, x + 13, 187, text);
     }
-    if (focus == Focus::Players) focusBox(c, 0, 12, W - 1, 34);
+    if (focus == Focus::Players) focusBox(c, 0, 0, W - 1, 34);
     else focusBox(c, 0, 33, W - 1, 186);
     if (tip == Tip::Undo || tip == Tip::PowerOff) undoTip(c, 47, 185, tip);  // over the rocks
     if (tip == Tip::Page) pageTip(c, 47, 185);

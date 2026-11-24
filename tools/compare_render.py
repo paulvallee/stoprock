@@ -67,6 +67,10 @@ def main():
         st = render.COACH_STONES if n else []
         refs[f"coach1-{n:02d}"] = screen.coach_timer_screen(st, coach, active=n % 5)
         refs[f"coach2-{n:02d}"] = screen.coach_rocks_screen(st, coach)
+    slow = [(3.52, 20.00, 4)] + list(ls[1:])  # an H2H of 20.00 s: the narrower fonts
+    refs["league-20"] = screen.league_screen(slow, shots, lme, 3)
+    refs["competition-20"] = screen.competition_screen(slow, lme, 3)
+    refs["coach1-20"] = screen.coach_timer_screen([(3.52, 20.00, 4)] + list(render.COACH_STONES[1:]), [], active=4)
     rows, worst = [], 0
     for name, ref in refs.items():
         fw = Image.open(src / f"{name}.pbm").convert("1")

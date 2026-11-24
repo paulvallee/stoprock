@@ -103,11 +103,15 @@ and replies. One command per line.
 | `game <id>` | Games from that id on |
 | `ack <id>` | Marks every game up to `id` as collected: `@ACK <id>` |
 | `erase-all yes` | Deletes every stored game (ids keep counting): `@ERASED` |
+| `crash` | What crashes left behind (below), and how much stack the two tasks have spare |
+| `crash clear` | Forgets them |
 | `t <unix seconds>` | Sets the clock (until the app does it) |
 
-Game listings are framed so they can be parsed from a stream that also carries log lines:
+Game listings are framed so they can be parsed from a stream that also carries log lines. Each starts
+with a `@CRASH` line (see Crashes below), then the games:
 
 ```text
+@CRASH {"crashes":0,"resets":0,"last_reset":"","last":""}
 @GAMES 2
 {"id":41,"v":5,"mode":"league","started":1795290802,"updated":1795297990,"clock":true,"shots":"MX","made":1,"thrown":2,"pct":50,"stones":[[3.47,13.92,"lead",12,"lead"],[3.29,null,"them",66,"them"],[null,14.02,"third",290,"them"]],"shot_times":[148,262],"battery_start":88,"battery_end":85}
 {"id":42,"v":5,"mode":"coach","started":1795377202,"updated":1795377300,"clock":true,"shots":"M","made":1,"thrown":1,"pct":100,"stones":[],"shot_times":[41],"battery_start":85,"battery_end":null}
@@ -116,6 +120,20 @@ Game listings are framed so they can be parsed from a stream that also carries l
 
 `current` in `@BANK` is the id of the game in progress, or 0 if it hasn't been stored yet. Its record keeps
 changing until the device is switched off.
+
+## Crashes
+
+On battery a crash looks like the device switching itself off: the restart lets go of the power latch, so
+the next start is a plain power-on. The panic handler first writes a core dump to the `coredump` partition
+(128 KB, see `partitions.csv`); the next start reads its summary, keeps it with the settings and erases
+the dump. `@CRASH` reports:
+
+- `crashes`: core dumps found since the last `crash clear`; `last`: the newest one's summary: the clock when
+  it was found, the task, the program counter, the exception cause and address, the first 8 characters of
+  the build's ELF hash, and the backtrace. Decode the addresses with the matching build's ELF:
+  `xtensa-esp32-elf-addr2line -pfiaC -e firmware/.pio/build/coreink/firmware.elf <addresses>`.
+- `resets`: starts after a crash, watchdog or brownout that did restart (on USB power); `last_reset`: the
+  newest one's kind.
 
 ## How an app should sync
 

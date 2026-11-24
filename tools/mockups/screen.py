@@ -53,7 +53,7 @@ def text_in_box(d, s, font, x0, x1, y0, y1, align="right", margin=4, fill=0):
     d.text((round(x), round(y)), s, font=font, fill=fill)
 
 
-def dseg_number(d, val, font, x0, x1, y0, y1, margin=3, align="right"):
+def dseg_number(d, val, font, x0, x1, y0, y1, margin=3, align="right", fill=0):
     """DSEG7 number with a small square decimal point, right-aligned (or centred) in the box."""
     ip, fp = f"{val:.2f}".split(".")
     li, ti, ri, bi = ink(ip, font)
@@ -63,18 +63,18 @@ def dseg_number(d, val, font, x0, x1, y0, y1, margin=3, align="right"):
     total = (ri - li) + gap + dot + gap + (rf - lf)
     x = x1 - margin - total if align == "right" else (x0 + x1 - total) / 2
     y = (y0 + y1 - (b - t)) / 2 - t
-    glyphs(d, ip, font, round(x - li), round(y))
+    glyphs(d, ip, font, round(x - li), round(y), fill)
     xd = x + (ri - li) + gap
     yb = y + b
-    d.rectangle([round(xd), round(yb - dot), round(xd + dot - 1), round(yb - 1)], fill=0)
-    glyphs(d, fp, font, round(xd + dot + gap - lf), round(y))
+    d.rectangle([round(xd), round(yb - dot), round(xd + dot - 1), round(yb - 1)], fill=fill)
+    glyphs(d, fp, font, round(xd + dot + gap - lf), round(y), fill)
 
 
-def glyphs(d, s, font, x, y):
+def glyphs(d, s, font, x, y, fill=0):
     """Draw s one glyph at a time, each at a whole-pixel advance: as the firmware does.
     (Pillow lays a string out at fractional advances, which can shift a glyph by a pixel.)"""
     for ch in s:
-        d.text((x, y), ch, font=font, fill=0)
+        d.text((x, y), ch, font=font, fill=fill)
         x += round(font.getlength(ch))
 
 
@@ -153,15 +153,21 @@ def fonts():
 def _make_fonts():
     return dict(
         label=bdf("spleen-6x12"),
-        big=ImageFont.truetype(str(DSEG), 33),  # the newest stone, at the top
+        big=ImageFont.truetype(str(DSEG), 37),  # the newest stone, at the top
+        big_long=ImageFont.truetype(str(DSEG), 33),  # ... an H2H of 20.00 s, too wide at 37
+        top_small=ImageFont.truetype(str(DSEG), 24),  # coach page 2's newest stone
         row=SegFont(h=12, w=7, t=2, gap=2, dot=2),
         tiny=SegFont(h=9, w=5, t=1, gap=1),  # equal-width cells: a "1" sits on the right
         narrow=SegFont(h=12, w=6, t=2, gap=1, dot=2, prop=True),  # coach's five columns: a narrow "1"
-        # the cursor's column, zoomed: the biggest digits 4 lines fit in each mode's space (a white-on-
-        # black cell keeping 1 px of black above and below), a narrow solid "1"
-        zoom_comp=SegFont(h=22, w=13, t=3, gap=2, dot=3, prop=True, solid_one=True),
-        zoom_league=SegFont(h=18, w=11, t=3, gap=2, dot=3, prop=True, solid_one=True),
-        zoom_coach=SegFont(h=16, w=9, t=2, gap=2, dot=2, prop=True, solid_one=True),
+        # the cursor's column, zoomed (zoom_columns()): the biggest digits 4 lines fit in each mode's
+        # column height and 1.3 columns' width (a white-on-black cell keeping 1 px of black round
+        # them), a narrow solid "1"; "_long": narrower, for 20.00, the one time with no "1" to spare.
+        zoom_league=SegFont(h=22, w=13, t=3, gap=2, dot=3, prop=True, solid_one=True),
+        zoom_league_long=SegFont(h=22, w=11, t=3, gap=2, dot=3, prop=True, solid_one=True),
+        zoom_comp=SegFont(h=24, w=14, t=3, gap=2, dot=3, prop=True, solid_one=True),
+        zoom_comp_long=SegFont(h=24, w=11, t=3, gap=2, dot=3, prop=True, solid_one=True),
+        zoom_coach=SegFont(h=18, w=11, t=2, gap=2, dot=2, prop=True, solid_one=True),
+        zoom_coach_long=SegFont(h=18, w=8, t=2, gap=2, dot=2, prop=True, solid_one=True),
         pct=ImageFont.truetype(str(DSEG), 16),
     )
 
@@ -217,8 +223,8 @@ HELP_EQ_X = 5 + 6 * len("SHOTS") + 8 + 6 * len("up/down ")  # x of every "=" on 
 MENU_MODES = (("COMPETITION", "Times only, for tournaments"),
               ("LEAGUE", "Times, plus your own shots"),
               ("COACH", "Times and the team's 64 shots"))
-MENU_TIPS = ("up/down: choose  middle: start", "", "Next time, skip this: hold the", "rocker as you switch on:",
-             "  middle = competition", "  down   = league", "  up     = coach")
+MENU_TIPS = ("up/down: choose  middle: start", "", "Big times: B2H left, H2H right", "",
+             "Skip menu: hold rocker at start", "  middle = competition", "  down   = league", "  up     = coach")
 
 
 def mode_menu(selected):
@@ -332,12 +338,13 @@ COACH_GX = [12 + k * 47 for k in range(5)]  # coach position columns
 # cursor, the highlighted header, is on whoever throws next; it follows the throw order by itself,
 # and the rocker moves it.
 # H2H times are a digit wider than B2H, so the H2H half of the large row is wider: split at x 92.
+# No labels: B2H is black on white, H2H white on black, as in the columns.
 COMP_MID = 92
-TIMES_Y1 = 57                # the newest stone large in y 13-57 (2 px line under it)
-GRID_LABEL = (59, 70)        # player headers
+TIMES_Y1 = 44                # the newest stone large in y 0-44 (2 px line under it)
+GRID_LABEL = (46, 57)        # player headers
 GRID_PITCH = 14              # a line of the other columns' times
-ZOOM_PITCH = {"zoom_comp": 25, "zoom_league": 21, "zoom_coach": 19}  # a line of the zoomed column's
-ZOOM_LINES = 4
+ZOOM_LINES = 4               # the zoomed column's lines, filling the column's height
+ZOOM_SPREAD = 1.3            # ... and its width, in columns: over 15% of each neighbour (30% of one at an edge)
 POSITION_NAMES = ("Lead", "2nd", "3rd", "Skip")
 
 
@@ -346,28 +353,32 @@ def teammates(me):
     return [p for p in range(4) if p != me]
 
 
-def stopwatch(d, cx, cy, r):
+def stopwatch(d, cx, cy, r, fill=0):
     """A stopwatch: a 2 px ring of radius r, the crown on top, one hand at about 1 o'clock."""
-    d.ellipse([cx - r, cy - r, cx + r, cy + r], outline=0, width=2)
-    d.rectangle([cx - 1, cy - r - 2, cx + 1, cy - r - 1], fill=0)   # stem
-    d.rectangle([cx - 3, cy - r - 4, cx + 3, cy - r - 3], fill=0)   # button
-    d.line([(cx, cy), (cx + r // 2, cy - r // 2 - 1)], fill=0, width=2)
-    d.rectangle([cx - 1, cy - 1, cx + 1, cy + 1], fill=0)           # centre
+    d.ellipse([cx - r, cy - r, cx + r, cy + r], outline=fill, width=2)
+    d.rectangle([cx - 1, cy - r - 2, cx + 1, cy - r - 1], fill=fill)   # stem
+    d.rectangle([cx - 3, cy - r - 4, cx + 3, cy - r - 3], fill=fill)   # button
+    d.line([(cx, cy), (cx + r // 2, cy - r // 2 - 1)], fill=fill, width=2)
+    d.rectangle([cx - 1, cy - 1, cx + 1, cy + 1], fill=fill)           # centre
 
 
 STOPWATCH_BIG, STOPWATCH_SMALL = 10, 6  # ring radius: in the large row, and coach page 2's
 
 
-def newest_row(d, f, stones, waiting, mid, font, y0, y1, margin, r, cy, center=False):
-    """The current stone across both halves. waiting: "b2h", "h2h" or "h2h-only" while it's being
-    timed (a stopwatch where that time will appear; for "b2h" and "h2h-only", a stone whose first
-    click was 7 s ago with no second, so it can only be an H2H, the row is still empty)."""
+def newest_row(d, f, stones, waiting, mid, fonts_, y0, y1, r, cy):
+    """The current stone across both halves, centred: B2H black on white, H2H white on its black
+    half (filled by the caller). fonts_: (font, font for an H2H of 20.00 s, too wide for the first).
+    waiting: "b2h", "h2h" or "h2h-only" while it's being timed (a stopwatch where that time will
+    appear; for "b2h" and "h2h-only", a stone whose first click was 7 s ago with no second, so it
+    can only be an H2H, the row is still empty)."""
     cur = None if waiting in ("b2h", "h2h-only") or not stones else stones[0]
     for k, (x0, x1) in enumerate(((0, mid), (mid, W))):
+        fill = 1 if k else 0
         if cur is not None and cur[k] is not None:
-            dseg_number(d, cur[k], font, x0, x1, y0, y1, margin=margin, align="center" if center else "right")
+            font = fonts_[1] if cur[k] >= 20 else fonts_[0]
+            dseg_number(d, cur[k], font, x0, x1, y0, y1, margin=0, align="center", fill=fill)
         elif waiting == ("b2h", "h2h")[k] or (k == 1 and waiting == "h2h-only"):
-            stopwatch(d, (x0 + x1) // 2, cy, r)
+            stopwatch(d, (x0 + x1) // 2, cy, r, fill)
 
 
 # Switch-on tips ("" = a half-line gap): your position, how to change it, and in league (not
@@ -441,7 +452,7 @@ LEAGUE_ROWS_BOTTOM = 159     # 2 px line under the times
 LEAGUE_PCT_X = 149           # 2 px divider left of the percentage: in line with the THEM column's
 LEAGUE_SLOTS = 16
 LEAGUE_X = (2, 198)          # the four columns' outer edges (inside the focus border)
-LEAGUE_TOP = 72              # first line
+LEAGUE_TOP = 59              # first line
 THEM = 4                     # a stone's player: the other team
 
 
@@ -454,65 +465,74 @@ def league_times(d, f, stones, me, active, bottom, zoom):
     player_columns(d, f, stones, *LEAGUE_X, league_columns(me), active, bottom, f["row"], zoom)
 
 
-def column_edges(f, stones, x0, x1, players, active, zoom):
-    """The columns' edges: the cursor's (active) as wide as its zoomed times need (2 px of black
-    beside the digits in a white-on-black cell), never narrower than an even share; the others
-    sharing what's left equally. Nothing covered, nothing wasted."""
-    n, zf = len(players), f[zoom]
-    shown = [v for st in stones if len(st) >= 3 and st[2] == players[active] for v in st[:2] if v is not None]
-    zw = max([zf.width(f"{v:.2f}") + 7 for v in shown[:ZOOM_LINES]] + [(x1 - x0) // n])
-    other = (x1 - x0 - zw) / (n - 1)
-    xs, x = [x0], x0
-    for k in range(n):
-        x += zw if k == active else other
-        xs.append(round(x))
-    xs[-1] = x1
-    return xs
+def zoom_span(x0, x1, n, active):
+    """The zoomed column's edges: ZOOM_SPREAD columns wide, centred on the cursor's column, kept
+    inside x0..x1 (at an edge it takes all the extra from its one neighbour)."""
+    zw = round(ZOOM_SPREAD * (x1 - x0) / n)
+    za = round(x0 + (x1 - x0) * (active + 0.5) / n - zw / 2)
+    za = max(x0, min(x1 - zw, za))
+    return za, za + zw
 
 
 def player_columns(d, f, stones, x0, x1, players, active, bottom, font, zoom):
-    """A column per player between x0 and x1, headed with the position or THEM; the cursor's
-    (active) header highlighted and its times zoomed: bigger digits (f[zoom]), 4 lines, the column
-    as wide as they need. Each lists its stones newest first, a time a line, H2H white on black."""
-    xs = column_edges(f, stones, x0, x1, players, active, zoom)
-    for k, p in enumerate(players):
-        a, b = xs[k], xs[k + 1]
+    """A column per player between x0 and x1, equal widths, headed with the position or THEM. The
+    cursor's (active) is zoomed, drawn over its neighbours (zoom_span): its header highlighted, its
+    newest 4 times in the biggest digits that fit, filling the column's height. The others list
+    theirs newest first, a time a line, in the part the zoom leaves them (narrower digits when it
+    leaves too little). B2H black on white, H2H white on black."""
+    n = len(players)
+    xs = [round(x0 + (x1 - x0) * k / n) for k in range(n + 1)]
+    za, zb = zoom_span(x0, x1, n, active)
+
+    def name_of(p):
+        return "THEM" if p == THEM else POSITION_NAMES[p]
+
+    def times(k):
+        """Column k's times, newest first: (value, H2H?)."""
+        return [(v, h) for st in stones if len(st) >= 3 and st[2] == players[k]
+                for v, h in ((st[0], False), (st[1], True)) if v is not None]
+
+    def cell(cf, val, inverted, a, b, y, pitch):
+        if inverted:
+            d.rectangle([a + 1, y, b - 1, y + pitch - 2], fill=0)
+        cf.draw_in_box(d, f"{val:.2f}", a, b, y, y + pitch - 1, align="center", fill=1 if inverted else 0)
+
+    most = (bottom - LEAGUE_TOP) // GRID_PITCH
+    for k in range(n):
+        if k == active:
+            continue
+        a = max(xs[k], zb) if k > active else xs[k]      # the part the zoom leaves
+        b = min(xs[k + 1], za) if k < active else xs[k + 1]
         if k:
             d.line([(a, GRID_LABEL[0]), (a, bottom - 1)], fill=0)
-        on = k == active
-        if on:
-            d.rectangle([a + (1 if k else 0), GRID_LABEL[0], b - 1, GRID_LABEL[1]], fill=0)
-        name = "THEM" if p == THEM else POSITION_NAMES[p]
-        d.text(((a + b - 6 * len(name)) // 2, GRID_LABEL[0]), name, font=f["label"], fill=1 if on else 0)
-    lines = [0] * len(players)
-    for stone in stones:
-        if len(stone) < 3 or stone[2] not in players:
-            continue
-        k = players.index(stone[2])
-        zoomed = k == active
-        cf, pitch = (f[zoom], ZOOM_PITCH[zoom]) if zoomed else (font, GRID_PITCH)
-        most = ZOOM_LINES if zoomed else (bottom - LEAGUE_TOP) // GRID_PITCH
-        a, b = xs[k] + 1, xs[k + 1] - 1
-        for val, inverted in ((stone[0], False), (stone[1], True)):
-            if val is None or lines[k] >= most:
-                continue
-            y = LEAGUE_TOP + lines[k] * pitch
-            lines[k] += 1
-            if inverted:
-                d.rectangle([a + 1, y, b - 1, y + pitch - 2], fill=0)
-            cf.draw_in_box(d, f"{val:.2f}", a, b, y, y + pitch - 1, align="center", fill=1 if inverted else 0)
+        name = name_of(players[k])
+        d.text(((a + b - 6 * len(name)) // 2, GRID_LABEL[0]), name, font=f["label"], fill=0)
+        shown = times(k)[:most]
+        widest = max((font.width(f"{v:.2f}") for v, _ in shown), default=0)
+        cf = font if widest + 4 <= b - a - 2 else f["narrow"]
+        for i, (val, inverted) in enumerate(shown):
+            cell(cf, val, inverted, a + 1, b - 1, LEAGUE_TOP + i * GRID_PITCH, GRID_PITCH)
+    # the zoom: lines at its edges (none at the outer ones), the header highlighted
+    if za > x0:
+        d.line([(za, GRID_LABEL[0]), (za, bottom - 1)], fill=0)
+    if zb < x1:
+        d.line([(zb, GRID_LABEL[0]), (zb, bottom - 1)], fill=0)
+    d.rectangle([za + (1 if za > x0 else 0), GRID_LABEL[0], zb - 1, GRID_LABEL[1]], fill=0)
+    name = name_of(players[active])
+    d.text(((za + zb - 6 * len(name)) // 2, GRID_LABEL[0]), name, font=f["label"], fill=1)
+    pitch = (bottom - LEAGUE_TOP) // ZOOM_LINES
+    for i, (val, inverted) in enumerate(times(active)[:ZOOM_LINES]):
+        cell(f[zoom + "_long"] if val >= 20 else f[zoom], val, inverted, za + 1, zb - 1, LEAGUE_TOP + i * pitch, pitch)
 
 
-def times_top(d, f, stones, waiting, mid, label_right=W):
-    """The top of the times, every mode: Back2Hog | Hog2Hog labels (split at mid; the H2H label ends
-    at label_right), the newest stone large, a stopwatch where an awaited time will appear."""
-    text_in_box(d, "Back2Hog", f["label"], 0, mid, 0, 12, align="center")
-    text_in_box(d, "Hog2Hog", f["label"], mid, label_right, 0, 12, align="center")
-    d.line([(0, 12), (W - 1, 12)], fill=0)
-    newest_row(d, f, stones, waiting, mid, f["big"], 13, TIMES_Y1, 3, STOPWATCH_BIG, (13 + TIMES_Y1) // 2,
-               center=True)
+def times_top(d, f, stones, waiting, mid, y0=0):
+    """The top of the times, every mode: the newest stone large, B2H on white left of mid, H2H on
+    black right of it (no labels: as in the columns), a stopwatch where an awaited time will appear.
+    y0: the digits' box starts lower (coach: under the page marks)."""
+    d.rectangle([mid, 0, W - 1, TIMES_Y1 - 1], fill=0)
+    newest_row(d, f, stones, waiting, mid, (f["big"], f["big_long"]), y0, TIMES_Y1, STOPWATCH_BIG,
+               (y0 + TIMES_Y1) // 2)
     d.line([(0, TIMES_Y1), (W - 1, TIMES_Y1)], fill=0, width=2)
-    d.line([(mid, 0), (mid, TIMES_Y1 - 1)], fill=0)
 
 
 def four_columns(d, f, stones, me, active, bottom, waiting, zoom):
@@ -574,13 +594,13 @@ def small_rock(d, cx, cy, state, cursor):
 
 
 def page_marks(d, page):
-    """Two small squares top right: filled = the page showing."""
+    """Two small squares at the top right, white on the H2H half's black: filled = the page showing."""
     for k in range(2):
-        x = W - 16 + k * 8
+        x = W - 12 + k * 6
         if k == page:
-            d.rectangle([x, 3, x + 5, 8], fill=0)
+            d.rectangle([x, 1, x + 3, 4], fill=1)
         else:
-            d.rectangle([x, 3, x + 5, 8], outline=0)
+            d.rectangle([x, 1, x + 3, 4], outline=1)
 
 
 def position_percent(shots, p):
@@ -594,6 +614,7 @@ def coach_rock(d, i, shots, cx, cy):
     small_rock(d, cx, cy, state, i == len(shots))
 
 
+COACH_TIMES_Y0 = 4  # coach: the newest stone's digits start under the page marks (y 1-4)
 COACH_TIP = ("Double click rocker to", "switch page", "", "Hold rocker down: rocks", MOVE_TIP, UNDO_LINE)
 
 
@@ -605,9 +626,9 @@ def coach_timer_screen(stones, shots, waiting=None, active=0, tip=False, focus="
     img = Image.new("1", (W, H), 1)
     d = ImageDraw.Draw(img)
     d.fontmode = "1"
-    page_marks(d, 0)
     bottom = 150
-    times_top(d, f, stones, waiting, WIDE_MID, W - 18)  # left of the page marks
+    times_top(d, f, stones, waiting, WIDE_MID, COACH_TIMES_Y0)  # the digits under the page marks
+    page_marks(d, 0)
     player_columns(d, f, stones, 0, W, [0, 1, 2, 3, THEM], active, bottom, f["narrow"], "zoom_coach")
     d.line([(0, bottom), (W - 1, bottom)], fill=0, width=2)
     gx = COACH_GX
@@ -648,12 +669,10 @@ def coach_rocks_screen(stones, shots, waiting=None, tip=False, focus="players"):
     d = ImageDraw.Draw(img)
     d.fontmode = "1"
     mid = WIDE_MID
-    text_in_box(d, "Back2Hog", f["label"], 0, mid, 0, 12, align="center")
-    text_in_box(d, "Hog2Hog", f["label"], mid, W - 18, 0, 12, align="center")
-    d.line([(0, 12), (W - 1, 12)], fill=0)
+    d.rectangle([mid, 0, W - 1, 32], fill=0)  # H2H white on black, as on page 1
+    newest_row(d, f, stones, waiting, mid, (f["top_small"], f["top_small"]), COACH_TIMES_Y0, 33,
+               STOPWATCH_SMALL, (COACH_TIMES_Y0 + 33) // 2)
     page_marks(d, 1)
-    newest_row(d, f, stones, waiting, mid, f["pct"], 13, 33, 20, STOPWATCH_SMALL, 25)
-    d.line([(mid, 0), (mid, 33)], fill=0)
     d.line([(0, 33), (W - 1, 33)], fill=0, width=2)
     gx = COACH_GX
     for p in range(4):
@@ -679,7 +698,7 @@ def coach_rocks_screen(stones, shots, waiting=None, tip=False, focus="players"):
             draw_pie(d, x + 5, 193, v)
             d.text((x + 13, 187), txt, font=f["label"], fill=0)
     if focus == "players":
-        d.rectangle([0, 12, W - 1, 34], outline=0, width=2)
+        d.rectangle([0, 0, W - 1, 34], outline=0, width=2)
     else:
         d.rectangle([0, 33, W - 1, 186], outline=0, width=2)
     if tip in ("undo", "off"):

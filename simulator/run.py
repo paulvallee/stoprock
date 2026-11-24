@@ -43,6 +43,7 @@ class Device:
         self.listeners = []
         self.history = []  # recent console lines, replayed to a page that connects later
         self.export = None  # lines of a games listing being collected (@GAMES ... @END)
+        self.crash = None   # the "@CRASH" line printed just before it, kept in the export
         self.control_port = control_port
         self.uart1_port = uart1_port
         self.battery = 100                # the page's slider
@@ -100,8 +101,11 @@ class Device:
 
     def _collect(self, line):
         """The games listing the Export button asked for: saved to exports/ once it's complete."""
-        if line.startswith("@GAMES "):
-            self.export = [line]
+        if line.startswith("@CRASH "):
+            self.crash = line
+        elif line.startswith("@GAMES "):
+            self.export = ([self.crash] if self.crash else []) + [line]
+            self.crash = None
         elif self.export is not None:
             self.export.append(line)
             if line == "@END":
