@@ -117,7 +117,11 @@ class Device:
             _, x, y, w, h, full, data = line.split(" ", 6)
             x, y, w, h = int(x), int(y), int(w), int(h)
             raw = bytes.fromhex(data.strip())
+            if len(raw) != (w // 8) * h:
+                raise ValueError("short")
         except ValueError:
+            # A garbled update would leave old pixels on the page: say so rather than hide it.
+            print("warning: a screen update arrived garbled and was dropped (the page may be stale)")
             return
         bpr = w // 8
         with self.lock:

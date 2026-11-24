@@ -120,20 +120,21 @@ void show(const stoprock::Canvas& c, stoprock::Rect r, bool full) {
     const int64_t wait = (full ? kFullUs : kPartialUs) - (esp_timer_get_time() - t0);
     if (wait > 0) delay(wait / 1000);
 
+    // The whole update as one line, written at once: the app's own console lines (beeps, logs)
+    // come from the other task, and one landing in the middle of a line written in pieces made
+    // run.py drop the update, leaving the old pixels on the page.
     static const char hex[] = "0123456789ABCDEF";
-    Serial.printf("@FB %d %d %d %d %d ", r.x, r.y, r.w, r.h, full ? 1 : 0);
-    char line[2 * stoprock::Canvas::STRIDE + 1];
+    static char buf[48 + 2 * stoprock::Canvas::STRIDE * stoprock::Canvas::H + 2];
+    int n = snprintf(buf, 48, "@FB %d %d %d %d %d ", r.x, r.y, r.w, r.h, full ? 1 : 0);
     for (int y = r.y; y < r.y + r.h; ++y) {
         const uint8_t* row = c.data() + y * stoprock::Canvas::STRIDE + r.x / 8;
-        int n = 0;
         for (int i = 0; i < r.w / 8; ++i) {
-            line[n++] = hex[row[i] >> 4];
-            line[n++] = hex[row[i] & 15];
+            buf[n++] = hex[row[i] >> 4];
+            buf[n++] = hex[row[i] & 15];
         }
-        line[n] = 0;
-        Serial.print(line);
     }
-    Serial.println();
+    buf[n++] = '\n';
+    Serial.write(reinterpret_cast<const uint8_t*>(buf), n);
 }
 
 void tone(uint16_t hz) { Serial.printf("@TONE %u\n", hz); }
