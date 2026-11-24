@@ -60,7 +60,8 @@ const Note kMade[] = {{3000, 70}};
 const Note kMissed[] = {{1000, 110}};
 const Note kUndo[] = {{1800, 60}, {0, 25}, {1200, 80}};
 constexpr Note kError[] = {{300, 180, 50}};
-constexpr Note kBasicError[] = {{kError[0].hz, kError[0].ms, kError[0].volume / 2}};
+// On CoreInk, 13% maps to 16 PWM counts, half the previous 32.
+constexpr Note kBasicError[] = {{kError[0].hz, kError[0].ms, 13}};
 
 struct Sound {
     const Note* notes = nullptr;
