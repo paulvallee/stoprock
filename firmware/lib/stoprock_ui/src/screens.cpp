@@ -316,7 +316,6 @@ void endRow(Canvas& c, const ShotLog& shots, int end, int cy) {
 
 }  // namespace
 
-constexpr int kTipTop = GRID_LABEL_Y1 + 1;  // switch-on tips start below the column headers, so a new position shows in them
 constexpr int kHintTop = kTimesY1 + 2;      // the hold hints: over the times
 
 // A bordered box (2 px) centred in top..bottom, its lines centred, bold (drawn twice, a pixel apart)
@@ -344,11 +343,43 @@ static void tooltip(Canvas& c, const char* const* lines, int n, int top, int bot
     }
 }
 
-// The switch-on tip (competition and league): your position, big. Also shown when you change it.
+// The switch-on tip (competition and league), also shown when you change position: "You are / SKIP"
+// (bold Spleen 16x32) and "2x to change" (12x24) in a box on the left, level with the rocker, and an
+// arrow from it to the rocker (a double click changes position).
+constexpr int kRockerY = 51;  // the rocker's height beside the screen (CoreInk: right side)
 static const char* const kYouAre[4] = {"LEAD", "SECOND", "THIRD", "SKIP"};
-static void switchOnTip(Canvas& c, uint8_t me, int top, int bottom) {
-    const char* const lines[2] = {"You are", kYouAre[me % 4]};
-    tooltip(c, lines, 2, top, bottom, true);
+
+// An arrow from xFrom to the screen's right edge at y, pointing right, on a white band (so it reads
+// over anything): a 5 px shaft and a head 9 px each side, drawn in columns.
+static void arrowRight(Canvas& c, int xFrom, int y) {
+    constexpr int tip = W - 1, head = 9;
+    c.fillRect(xFrom, y - head - 2, tip, y + head + 2, false);
+    c.fillRect(xFrom, y - 2, tip - head, y + 2);
+    for (int i = 0; i <= head; ++i) c.fillRect(tip - i, y - i, tip - i, y + i);
+}
+
+static void switchOnTip(Canvas& c, uint8_t me) {
+    struct Line { const char* text; bool big; };
+    const Line lines[3] = {{"You are", true}, {kYouAre[me % 4], true}, {"2x to change", false}};
+    int w = 0, h = 10;
+    for (const Line& l : lines) {
+        const int lw = (l.big ? 16 : 12) * static_cast<int>(strlen(l.text));
+        if (lw > w) w = lw;
+        h += l.big ? 32 : 24;
+    }
+    w += 1 + 16;
+    const int x0 = 2, y0 = kRockerY - 11, x1 = x0 + w - 1, y1 = y0 + h - 1;
+    c.fillRect(x0, y0, x1, y1, false);
+    rectOutline(c, x0, y0, x1, y1);
+    rectOutline(c, x0 + 1, y0 + 1, x1 - 1, y1 - 1);
+    int y = y0 + 5;
+    for (const Line& l : lines) {
+        const int cw = l.big ? 16 : 12;
+        const int x = x0 + (w - (cw * static_cast<int>(strlen(l.text)) + 1)) / 2;
+        for (int dx = 0; dx < 2; ++dx) c.text(l.big ? kFontSpleen16x32 : kFontSpleen12x24, x + dx, y, l.text);
+        y += l.big ? 32 : 24;
+    }
+    arrowRight(c, x1 + 1, kRockerY);
 }
 
 // While the rocker centre is held, before the undo (1 s): the hold does something. tip says which:
@@ -500,7 +531,7 @@ void drawCompetition(Canvas& c, const Stone* stones, uint8_t count, uint8_t me, 
     const char* const lines[2] = {"COMPETITION", lowBattery ? "Battery low" : "STOPWATCH ONLY"};
     for (int i = 0; i < 2; ++i)
         c.text(label, W - 2 - 6 * static_cast<int>(strlen(lines[i])), strip + 1 + 12 * i, lines[i], false);
-    if (tip == Tip::SwitchOn) switchOnTip(c, me, kTipTop, strip);
+    if (tip == Tip::SwitchOn) switchOnTip(c, me);
     if (tip == Tip::Undo || tip == Tip::PowerOff) undoTip(c, kHintTop, strip, tip);
     if (tip == Tip::Move) moveTip(c, strip, H);  // over the badge strip
 }
@@ -538,7 +569,7 @@ void drawLeague(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& sh
         y0 += 13;
     }
     if (shots.count() > 0) bigPercent(c, shots.percent(), x0, W - 2, y0, H);
-    if (tip == Tip::SwitchOn) switchOnTip(c, me, kTipTop, top);
+    if (tip == Tip::SwitchOn) switchOnTip(c, me);
     if (tip == Tip::Undo || tip == Tip::PowerOff) undoTip(c, kHintTop, top, tip);
     if (tip == Tip::Move) moveTip(c, top, H);  // over your rocks
 }

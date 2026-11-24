@@ -380,7 +380,6 @@ def newest_row(d, f, stones, waiting, mid, fonts_, y0, y1, r, cy):
 # Tips, big: the switch-on tip (competition and league) says only your position, also shown when you
 # change it (the help page has the controls); the hold hints say what holding does.
 YOU_ARE = ("LEAD", "SECOND", "THIRD", "SKIP")
-TIP_TOP = GRID_LABEL[1] + 1  # the switch-on tip: below the column headers, so a new position shows in them
 HINT_TOP = TIMES_Y1 + 2       # the hold hints: over the times
 UNDO_TIP = ("Keep holding", "to undo")       # tip="undo": the rocker centre held, before the undo (1 s)
 OFF_TIP = ("Keep holding", "to turn off")    # tip="off": the side button held, before it switches off (3 s)
@@ -389,8 +388,41 @@ MOVE_HINT = ("Moving time",)  # tip="move": the rocker held to move the newest t
 TIP_FONTS = {"hint": ("hint", 12, 24), "big": ("menu", 16, 32)}  # by size: the font, its advance and line height
 
 
+YOU_ARE_TIP = ("You are", "2x to change")  # the switch-on tip's first line and its last (under the position)
+ROCKER_Y = 51  # the rocker's height beside the screen (CoreInk: right side): the switch-on tip points at it
+
+
 def you_are(me):
-    return ("You are", YOU_ARE[me])
+    return (YOU_ARE_TIP[0], YOU_ARE[me])
+
+
+def you_are_tip(d, f, me):
+    """The switch-on tip: "You are / SKIP" (bold Spleen 16x32) and "2x to change" (12x24) in a box on
+    the left, level with the rocker, an arrow from it to the rocker (a double click changes position)."""
+    lines = ((YOU_ARE_TIP[0], "big"), (YOU_ARE[me], "big"), (YOU_ARE_TIP[1], "hint"))
+    w = max(TIP_FONTS[s][1] * len(text) for text, s in lines) + 1 + 16
+    h = sum(TIP_FONTS[s][2] for _, s in lines) + 10
+    x0, y0 = 2, ROCKER_Y - 11
+    x1, y1 = x0 + w - 1, y0 + h - 1
+    d.rectangle([x0, y0, x1, y1], fill=1, outline=0, width=2)
+    y = y0 + 5
+    for text, s in lines:
+        key, cw, lh = TIP_FONTS[s]
+        x = x0 + (w - (cw * len(text) + 1)) // 2
+        for dx in (0, 1):
+            d.text((x + dx, y), text, font=f[key], fill=0)
+        y += lh
+    arrow(d, x1 + 1, ROCKER_Y)
+
+
+def arrow(d, x_from, y):
+    """An arrow from x_from to the screen's right edge at y, pointing right, on a white band (so it
+    reads over anything): a 5 px shaft and a head 9 px each side, drawn in columns."""
+    tip, head = W - 1, 9
+    d.rectangle([x_from, y - head - 2, tip, y + head + 2], fill=1)
+    d.rectangle([x_from, y - 2, tip - head, y + 2], fill=0)
+    for i in range(head + 1):
+        d.rectangle([tip - i, y - i, tip - i, y + i], fill=0)
 
 
 def tooltip(d, f, lines, top, bottom, size="hint"):
@@ -433,7 +465,7 @@ def competition_screen(stones, me=0, active=0, low_battery=False, tip=False, wai
     elif tip == "move":  # over the badge strip, clear of the columns
         tooltip(d, f, MOVE_HINT, strip, H)
     elif tip:
-        tooltip(d, f, you_are(me), TIP_TOP, strip, "big")
+        you_are_tip(d, f, me)
     return img
 
 
@@ -575,7 +607,7 @@ def league_screen(stones, shots, me=0, active=0, low_battery=False, tip=False, w
     elif tip == "move":  # over your rocks, clear of the columns
         tooltip(d, f, MOVE_HINT, top, H)
     elif tip:  # below the headers, over the rocks too: it doesn't fit above them
-        tooltip(d, f, you_are(me), TIP_TOP, top, "big")
+        you_are_tip(d, f, me)
     return img
 
 

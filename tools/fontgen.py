@@ -115,7 +115,7 @@ def main():
     # the mode menu and the switch-on tip; the hold hints: only the characters they use
     big = "".join(screen.MENU_MODES) + "".join(screen.you_are(0)) + "".join(screen.YOU_ARE)
     emit_font("kFontSpleen16x32", f["menu"], "".join(sorted(set(big))), out)
-    hint = "".join(screen.UNDO_TIP + screen.OFF_TIP + screen.PAGE_TIP + screen.MOVE_HINT)
+    hint = "".join(screen.UNDO_TIP + screen.OFF_TIP + screen.PAGE_TIP + screen.MOVE_HINT + screen.YOU_ARE_TIP[1:])
     emit_font("kFontSpleen12x24", f["hint"], "".join(sorted(set(hint))), out)
     emit_bitmap("kLogo", logo.device_logo(), out)
     emit_bitmap("kLogoStrip", logo.strip_logo(), out)  # competition's badge strip, drawn white
