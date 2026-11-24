@@ -128,14 +128,15 @@ static void test_cursor_follows_the_clock() {
     o.place(0, 0);
     TEST_ASSERT_EQUAL_INT(2, o.lastThrow());
     TEST_ASSERT_EQUAL_UINT8(ThrowOrder::kThem, o.predict(10 * S));
-    // halfway to the throw after: THEM's (50 s) and yours (52 s) -> 76 s, then 128 s
-    TEST_ASSERT_EQUAL_INT64(76 * S, o.nextChange(10 * S));
-    TEST_ASSERT_EQUAL_INT64(128 * S, o.nextChange(76 * S));
+    // 75% of the way to the throw after: THEM's lead (45 s), then yours (50 s more) -> 82.5 s;
+    // then 95 + 37.5 = 132.5 s
+    TEST_ASSERT_EQUAL_INT64(82500000, o.nextChange(10 * S));
+    TEST_ASSERT_EQUAL_INT64(132500000, o.nextChange(82500000));
     // nothing timed since: THEM, you, THEM, you, THEM, then the 3rd, about 6 throws on
     int64_t t = 0, firstThird = -1;
     while ((t = o.nextChange(t)) >= 0 && t < 600 * S)
         if (firstThird < 0 && o.predict(t) == 1) firstThird = t;
-    TEST_ASSERT_EQUAL_INT64(286 * S, firstThird);  // halfway between THEM's last (258 s) and the 3rd (314 s)
+    TEST_ASSERT_EQUAL_INT64(284 * S, firstThird);  // 75% of the way from THEM's last (245 s) to the 3rd (297 s)
 }
 
 static void test_mine_so_far() {
@@ -214,6 +215,22 @@ static void test_undo_steps_back() {
     TEST_ASSERT_EQUAL_INT(2, o.lastThrow());
 }
 
+// A real end, timed by a coach on 23 Nov 2026: THEM first; THEM's lead's second stone untimed;
+// their skip thought for 130 s before their last stone. Only the game's first stone can't be known.
+static void test_real_end_coach() {
+    struct Stone { int start; uint8_t col; };  // coach columns: 0 lead .. 3 skip, 4 THEM
+    const Stone end[] = {{432, 4}, {471, 0}, {569, 0}, {621, 4}, {678, 1}, {719, 4}, {768, 1},
+                         {813, 4}, {869, 2}, {915, 4}, {977, 2}, {1089, 4}, {1176, 3}, {1306, 4}};
+    ThrowOrder o;
+    o.reset(ThrowOrder::kCoach);
+    int wrong = 0;
+    for (const Stone& st : end) {
+        if (o.predict(st.start * S) != st.col) ++wrong;
+        o.place(st.col, st.start * S);
+    }
+    TEST_ASSERT_EQUAL_INT(1, wrong);  // the first stone: who throws first isn't known
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_column_of);
@@ -228,5 +245,6 @@ int main() {
     RUN_TEST(test_mine_so_far);
     RUN_TEST(test_coach_times_every_stone);
     RUN_TEST(test_undo_steps_back);
+    RUN_TEST(test_real_end_coach);
     return UNITY_END();
 }

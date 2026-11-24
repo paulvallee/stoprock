@@ -6,7 +6,9 @@
 //   - guesses who throws next: the throw after the last one, skipping yours (you're throwing it);
 //   - when a stone starts, uses the time since the previous one to count throws nobody timed,
 //     from the time each throw takes (kIntervalS: by position, skips slowest, plus the swap before
-//     the first skip stone and the break between ends): the count whose expected time is nearest;
+//     the first skip stone and the break between ends): a throw counts as missed only once the gap
+//     is kMissedThrowPct of the way to the throw after it (a slow throw, a skip thinking, is far more
+//     common than a missed one, which nearly doubles the gap);
 //   - files each stone where it's told (the column the cursor was on) and moves the game on to the
 //     nearest throw of that column, so a correction from the rocker puts it back in step;
 //   - takes your logged shots as fixed points: your rock 1 or 2 of the end, in the end your
@@ -30,11 +32,15 @@ public:
     // Expected time from one stone's start to the next's, in seconds, by who throws the next one:
     // lead, 2nd, 3rd, skip (both teams). Skips take longest; before the first skip stone of an end
     // the skip and vice swap ends (kSkipSwapS more), and between ends there's a break (kEndBreakS
-    // more). About 15.5 minutes an end. Guesses until real games say otherwise: see
-    // tools/analyze_games.py, which reads these lines.
-    static constexpr int kIntervalS[4] = {50, 52, 56, 70};
-    static constexpr int kSkipSwapS = 20;
+    // more). About 16.7 minutes an end. From one real end timed in full (23 Nov 2026: lead ~45 s,
+    // 2nd ~50, 3rd ~52, skips 87-130 s, 112 s before the first skip stone); the end break is still a
+    // guess. tools/analyze_games.py reports these from timed games, and reads these lines.
+    static constexpr int kIntervalS[4] = {45, 50, 52, 100};
+    static constexpr int kSkipSwapS = 15;
     static constexpr int kEndBreakS = 60;
+    // How far, in %, from the next throw's expected start to the one after's, the gap must reach for
+    // the next throw to count as missed (untimed). 50 would be halfway.
+    static constexpr int kMissedThrowPct = 75;
     static constexpr int64_t kShotLagUs = 20LL * 1000000;    // you log your shot about this long after throwing
 
     // me: your position (0 lead .. 3 skip), or kCoach.
@@ -84,6 +90,7 @@ private:
     };
     int throwsSince(int64_t t) const;
     int64_t after(int k) const;  // expected time from the last throw's start to throw k after it
+    int64_t countUp(int n) const;  // when (after the last start) the count goes from n to n + 1
     Pos best(const Pos& from, int n, int want) const;  // want: a column, or -1 = any of the others'
 
     struct State {

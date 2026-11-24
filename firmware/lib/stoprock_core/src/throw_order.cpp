@@ -50,13 +50,19 @@ int64_t ThrowOrder::after(int k) const {
 
 int64_t ThrowOrder::expectedStart(int k) const { return lastT_ < 0 ? -1 : lastT_ + after(k); }
 
-// The count of throws whose expected time is nearest the time since the last start: the next
-// one up to halfway to the one after, and so on.
+// When the count of throws since the last start goes from n to n + 1: kMissedThrowPct of the way
+// from the n-th throw's expected start to the next's.
+int64_t ThrowOrder::countUp(int n) const {
+    return after(n) + (after(n + 1) - after(n)) * kMissedThrowPct / 100;
+}
+
+// The count of throws since the last start, from the time since it: the next one until the gap is
+// most of the way (kMissedThrowPct) to the one after, and so on.
 int ThrowOrder::throwsSince(int64_t t) const {
     if (t < 0 || lastT_ < 0) return 1;
     const int64_t gap = t - lastT_;
     int n = 1;
-    while (n < 24 && gap >= (after(n) + after(n + 1)) / 2) ++n;
+    while (n < 24 && gap >= countUp(n)) ++n;
     return n;
 }
 
@@ -116,7 +122,7 @@ int64_t ThrowOrder::nextChange(int64_t t) const {
     if (lastT_ < 0) return -1;
     const int n = throwsSince(t);
     if (n >= 24) return -1;
-    return lastT_ + (after(n) + after(n + 1)) / 2;  // halfway to the throw after
+    return lastT_ + countUp(n);
 }
 
 void ThrowOrder::place(uint8_t c, int64_t t) {

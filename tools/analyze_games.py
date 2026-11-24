@@ -78,10 +78,11 @@ def describe(values):
 
 def full_ends(g):
     """The game's stones as throws: ends of 16 from its first stone, each throw (start, team,
-    position). A throw of yours nobody could time (competition, league) is filled in, start None,
-    where the other team has two in a row within an end (two in a row across ends is just who threw
-    first). Only the ends whose order checks out (alternating, your team's stones in order lead,
-    lead, 2nd, 2nd, ...) are returned."""
+    position). A single untimed throw is filled in (start None) where a team has two stones in a
+    row within an end: your own (competition and league can't time you), or anyone's. Two in a row
+    across ends is just who threw first, so nothing is filled there. The last end may be short
+    (its last stones untimed). Only the ends whose order checks out (alternating, your team's
+    stones in order lead, lead, 2nd, 2nd, ...) are returned."""
     seq = [(st[3], team(st[2]), POSITION.get(st[2])) for st in g["stones"] if len(st) >= 4 and st[3] is not None]
     ours = {p for _, t, p in seq if t == "us"}
     me = (set(range(4)) - ours).pop() if len(ours) == 3 else None  # competition and league: you
@@ -91,20 +92,23 @@ def full_ends(g):
             ends.append(end)
             end = []
         if end and end[-1][1] == ev[1]:
-            if ev[1] != "them" or me is None:
-                break  # a stone missing that isn't yours: can't tell which, so stop here
-            end.append((None, "us", me))  # yours, untimed
+            # one throw of the other team in between went untimed (ours: you, if it's competition or league)
+            missing = ("us", me) if ev[1] == "them" else ("them", None)
+            end.append((None, missing[0], missing[1]))
             if len(end) == 16:
                 ends.append(end)
                 end = []
         end.append(ev)
-    if len(end) == 16:
-        ends.append(end)
+    if end:
+        ends.append(end)  # the last, perhaps short
+    order = [0, 0, 1, 1, 2, 2, 3, 3]
     good = []
     for end in ends:
         positions = [p for _, t, p in end if t == "us"]
-        if positions == [0, 0, 1, 1, 2, 2, 3, 3]:
-            good.append(end)
+        # an untimed stone of ours has no position: it takes the one the order says
+        if len(positions) <= 8 and all(p is None or p == order[i] for i, p in enumerate(positions)):
+            good.append([(st, t, order[[k for k, (_, tt, _) in enumerate(end) if tt == "us"].index(i)] if t == "us" else None)
+                         for i, (st, t, _) in enumerate(end)])
     return good
 
 
@@ -184,7 +188,7 @@ def main(paths):
         print(f"  all                    {total[0]}/{total[1]} ({100 * total[0] // total[1]}%)")
     expected = {"lead": INTERVAL_S[0], "2nd": INTERVAL_S[1], "3rd": INTERVAL_S[2],
                 "first skip": INTERVAL_S[3] + SKIP_SWAP_S, "skip": INTERVAL_S[3], "end break": INTERVAL_S[0] + END_BREAK_S}
-    print(f"\nTime to each stone from the one before, by who threw it ({ends_used} fully timed end(s)):")
+    print(f"\nTime to each stone from the one before, by who threw it ({ends_used} end(s) timed from the start):")
     if not ends_used:
         print("  none: time an end from its first stone, every stone but your own, to see these")
     for key, gaps in per_throw.items():
