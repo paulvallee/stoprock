@@ -147,7 +147,6 @@ uint8_t columns() { return columnCount(seat()); }
 // The cursor is on the player about to throw: the throw order (ThrowOrder) puts it on whoever
 // throws next, and the rocker moves it too (or moves a time afterwards).
 uint8_t activeCol = 0;          // the column with the cursor
-uint8_t competitionFirst = 0;   // first visible column in Competition
 int competitionScroll = 0;      // split rows skipped in Competition history
 int basicScroll = 0;             // basic: rows scrolled down, to older stones (the rocker; a new stone resets it)
 // League: what rocker up/down work on, the focus (bold border): the players' columns (up = next,
@@ -340,7 +339,6 @@ void newGame() {
     tipUntil = -1;
     stoneCount = 0;
     basicScroll = 0;
-    competitionFirst = 0;
     competitionScroll = 0;
     Serial.printf("game: new, %s mode\n", modeName(mode));
 }
@@ -367,7 +365,6 @@ struct Model {
     uint8_t page = 0;       // coach: which page
     uint8_t me = 0;         // competition: your position
     uint8_t activeCol = 0;  // competition and league: the column with the cursor
-    uint8_t competitionFirst = 0;
     int scroll = 0;         // history offset in Basic or Competition
     Stone stones[kMaxStones];
     uint8_t stoneCount = 0;
@@ -421,8 +418,7 @@ void displayTask(void*) {
         } else if (m.mode == GameMode::Basic) {
             drawBasic(next, m.stones, m.stoneCount, m.warning, m.tip, m.waiting, m.scroll);
         } else if (m.mode == GameMode::Competition) {
-            drawCompetition(next, m.stones, m.stoneCount, m.me, m.activeCol, m.warning, m.tip, m.waiting,
-                            m.competitionFirst, m.scroll);
+            drawCompetition(next, m.stones, m.stoneCount, m.me, m.activeCol, m.warning, m.tip, m.waiting, m.scroll);
         } else if (m.mode == GameMode::Coach) {
             if (m.page == 0)
                 drawCoachTimer(next, m.stones, m.stoneCount, m.shots, m.waiting, m.activeCol, m.tip, m.focus);
@@ -448,12 +444,9 @@ void displayTask(void*) {
 void syncModel(board::Refresh refresh = board::Refresh::Partial) {
     static board::Refresh requestedRefresh;
     requestedRefresh = refresh;
-    if (mode == GameMode::Competition) {
-        competitionFirst = competitionFirstColumn(competitionFirst, activeCol);
-        if (competitionScroll > 0) {
-            const int limit = competitionHistoryLimit(stones, stoneCount, myPosition, competitionFirst);
-            if (competitionScroll > limit) competitionScroll = limit;
-        }
+    if (mode == GameMode::Competition && competitionScroll > 0) {
+        const int limit = competitionHistoryLimit(stones, stoneCount, myPosition, activeCol);
+        if (competitionScroll > limit) competitionScroll = limit;
     }
     {  // basic: never scrolled past the end (an undo can take a row away)
         const int most = stoneCount + (timing.state() == TimingState::Started ? 1 : 0) - 4;
@@ -464,7 +457,6 @@ void syncModel(board::Refresh refresh = board::Refresh::Partial) {
         m.page = coachPage;
         m.me = myPosition;
         m.activeCol = activeCol;
-        m.competitionFirst = competitionFirst;
         m.scroll = mode == GameMode::Competition ? competitionScroll : basicScroll;
         memcpy(m.stones, stones, sizeof stones);
         m.stoneCount = stoneCount;
@@ -986,7 +978,7 @@ void scrollBasic(int dir) {
 }
 
 void stepCompetitionHistory(ButtonState& s, int64_t now) {
-    const int limit = competitionHistoryLimit(stones, stoneCount, myPosition, competitionFirst);
+    const int limit = competitionHistoryLimit(stones, stoneCount, myPosition, activeCol);
     const bool returnToLatest = !s.holdFired && limit > 0 && competitionScroll == limit;
     s.holdFired = true;  // releasing a long press never moves the player cursor
     s.nextRepeat = 0;

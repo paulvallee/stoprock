@@ -484,6 +484,26 @@ void drawBasic(Canvas& c, const Stone* stones, uint8_t count, bool lowBattery, T
 }
 
 constexpr int kCompetitionSplits = 4;
+constexpr uint8_t kCompetitionSlots = kLeagueColumns - 1;
+constexpr uint8_t kRightTeammate = kCompetitionSlots - 1;
+
+CompetitionPanel competitionPanel(const Stone* stones, uint8_t count, uint8_t me, uint8_t activeCol) {
+    if (activeCol != themColumn(me)) return CompetitionPanel::Closed;
+    const uint8_t left = columnPlayer(me, 0), right = columnPlayer(me, kRightTeammate);
+    for (uint8_t i = 0; i < count; ++i) {
+        const Stone& stone = stones[i];
+        if (stone.bh < 0 && stone.hh < 0) continue;
+        if (stone.player == left) return CompetitionPanel::Right;
+        if (stone.player == right) return CompetitionPanel::Left;
+    }
+    return CompetitionPanel::Right;
+}
+
+static uint8_t competitionColumn(CompetitionPanel panel, uint8_t slot) {
+    const bool coversLeft = panel == CompetitionPanel::Left && slot == 0;
+    const bool coversRight = panel == CompetitionPanel::Right && slot == kRightTeammate;
+    return coversLeft || coversRight ? kLeagueColumns - 1 : slot;
+}
 
 static int competitionColumnLimit(const Stone* stones, int count, uint8_t player) {
     int splits = 0;
@@ -493,44 +513,52 @@ static int competitionColumnLimit(const Stone* stones, int count, uint8_t player
     return splits > kCompetitionSplits ? splits - kCompetitionSplits : 0;
 }
 
-int competitionHistoryLimit(const Stone* stones, uint8_t count, uint8_t me, uint8_t firstColumn) {
+static int competitionHistoryLimit(const Stone* stones, uint8_t count, uint8_t me, CompetitionPanel panel) {
     int limit = 0;
-    for (uint8_t slot = 0; slot < kCompetitionVisibleColumns; ++slot) {
-        const int columnLimit = competitionColumnLimit(stones, count, columnPlayer(me, firstColumn + slot));
+    for (uint8_t slot = 0; slot < kCompetitionSlots; ++slot) {
+        const uint8_t player = columnPlayer(me, competitionColumn(panel, slot));
+        const int columnLimit = competitionColumnLimit(stones, count, player);
         if (columnLimit > limit) limit = columnLimit;
     }
     return limit;
 }
 
+int competitionHistoryLimit(const Stone* stones, uint8_t count, uint8_t me, uint8_t activeCol) {
+    return competitionHistoryLimit(stones, count, me, competitionPanel(stones, count, me, activeCol));
+}
+
 static void competitionHistory(Canvas& c, const Stone* stones, uint8_t count, uint8_t me,
-                               uint8_t active, uint8_t first, int bottom, int scroll) {
-    constexpr int edgeWidth = 8;
-    constexpr int columnWidth = (W - edgeWidth) / kCompetitionVisibleColumns;
+                               uint8_t active, CompetitionPanel panel, int bottom, int scroll) {
+    constexpr int margin = 4;
+    constexpr int columnWidth = (W - 2 * margin) / kCompetitionSlots;
     const int pitch = (bottom - kLinesTop) / kCompetitionSplits;
-    const int x0 = first ? edgeWidth : 0;
-    const int marker = first ? 0 : W - edgeWidth;
-    c.fillRect(marker + 2, GRID_LABEL_Y0, marker + 5, GRID_LABEL_Y1);
-    vline(c, first ? edgeWidth - 1 : W - edgeWidth, GRID_LABEL_Y0, bottom - 1);
     if (scroll > 0) {
-        const int limit = competitionHistoryLimit(stones, count, me, first);
+        const int limit = competitionHistoryLimit(stones, count, me, panel);
         if (scroll > limit) scroll = limit;
         if (limit > 0) {
             constexpr int thumbHeight = 10;
             const int trackTop = kLinesTop + 2, trackBottom = bottom - 4;
             const int thumbTop = trackTop + scroll * (trackBottom - trackTop + 1 - thumbHeight) / limit;
-            vline(c, marker + 4, trackTop, trackBottom);
-            c.fillRect(marker + 2, thumbTop, marker + 5, thumbTop + thumbHeight - 1);
+            const int track = panel == CompetitionPanel::Right ? 1 : W - 2;
+            vline(c, track, trackTop, trackBottom);
+            c.fillRect(track - 1, thumbTop, track + 1, thumbTop + thumbHeight - 1);
         }
     }
 
-    for (int slot = 0; slot < kCompetitionVisibleColumns; ++slot) {
-        const int column = first + slot;
-        const int left = x0 + slot * columnWidth;
+    for (uint8_t slot = 0; slot < kCompetitionSlots; ++slot) {
+        const uint8_t column = competitionColumn(panel, slot);
+        const int left = margin + slot * columnWidth;
         const int right = left + columnWidth;
-        const uint8_t player = columnPlayer(me, static_cast<uint8_t>(column));
+        const uint8_t player = columnPlayer(me, column);
         const char* name = player == kThem ? "THEM" : kPositions[player];
         const bool focused = column == active;
         if (focused) c.fillRect(left, GRID_LABEL_Y0, right - 1, GRID_LABEL_Y1);
+        if (player == kThem) {
+            const bool fromLeft = panel == CompetitionPanel::Left;
+            c.fillRect(fromLeft ? 0 : right, GRID_LABEL_Y0,
+                       fromLeft ? left - 1 : W - 1, GRID_LABEL_Y1);
+            vline(c, fromLeft ? right - 1 : left + 1, GRID_LABEL_Y0, bottom - 1);
+        }
         c.text(kFontSpleen6x12, (left + right - 6 * static_cast<int>(strlen(name))) / 2,
                GRID_LABEL_Y0, name, !focused);
         if (slot > 0) vline(c, left, GRID_LABEL_Y0, bottom - 1);
@@ -558,11 +586,11 @@ static void competitionHistory(Canvas& c, const Stone* stones, uint8_t count, ui
 }
 
 void drawCompetition(Canvas& c, const Stone* stones, uint8_t count, uint8_t me, uint8_t activeCol,
-                     bool lowBattery, Tip tip, Waiting waiting, uint8_t firstColumn, int scroll) {
+                     bool lowBattery, Tip tip, Waiting waiting, int scroll) {
     c.clear();
     const int strip = H - TIP_H;
     timesTop(c, stones, count, waiting, COMP_MID);
-    competitionHistory(c, stones, count, me, activeCol, competitionFirstColumn(firstColumn, activeCol), strip, scroll);
+    competitionHistory(c, stones, count, me, activeCol, competitionPanel(stones, count, me, activeCol), strip, scroll);
     badgeStrip(c, "COMPETITION", lowBattery);
     if (tip == Tip::SwitchOn) switchOnTip(c, me);
     if (tip == Tip::Undo || tip == Tip::PowerOff) undoTip(c, kHintTop, strip, tip);

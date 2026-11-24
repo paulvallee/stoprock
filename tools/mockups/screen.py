@@ -529,22 +529,23 @@ def basic_screen(stones, low_battery=False, tip=False, waiting=None, scroll=0):
     return img
 
 
-def competition_screen(stones, me=0, active=0, low_battery=False, tip=False, waiting=None, first_column=0, scroll=0):
-    """Three player columns with large splits and a marker at the hidden edge."""
+def competition_screen(stones, me=0, active=0, low_battery=False, tip=False, waiting=None, scroll=0):
+    """Three fixed columns, with THEM over one edge when selected."""
     f = fonts()
     img = Image.new("1", (W, H), 1)
     d = ImageDraw.Draw(img)
     d.fontmode = "1"
     strip = H - TIP_H
     times_top(d, f, stones, waiting, COMP_MID)
-    first = 0 if active == 0 else 1 if active == 3 else int(bool(first_column))
-    edge_width, column_width = 8, 64
-    x0 = edge_width if first else 0
-    marker = 0 if first else W - edge_width
-    d.rectangle((marker + 2, GRID_LABEL[0], marker + 5, GRID_LABEL[1]), fill=0)
-    edge = edge_width - 1 if first else W - edge_width
-    d.line((edge, GRID_LABEL[0], edge, strip - 1), fill=0)
-    players = league_columns(me)[first:first + 3]
+    players = list(league_columns(me)[:3])
+    panel = None
+    if active == 3:
+        left, _, right = players
+        recent_edge = next((owner for bh, hh, owner in stones
+                            if owner in (left, right) and (bh is not None or hh is not None)), left)
+        panel = 0 if recent_edge == right else 2
+        players[panel] = THEM
+    margin, column_width = 4, 64
     columns = [[(value, half) for bh, hh, owner in stones if owner == player
                 for half, value in enumerate((bh, hh)) if value is not None] for player in players]
     limit = max(0, max(map(len, columns)) - 4)
@@ -552,16 +553,22 @@ def competition_screen(stones, me=0, active=0, low_battery=False, tip=False, wai
     if scroll > 0:
         top, bottom, thumb_height = LEAGUE_TOP + 2, strip - 4, 10
         thumb = top + scroll * (bottom - top + 1 - thumb_height) // limit
-        d.line((marker + 4, top, marker + 4, bottom), fill=0)
-        d.rectangle((marker + 2, thumb, marker + 5, thumb + thumb_height - 1), fill=0)
+        track = 1 if panel == 2 else W - 2
+        d.line((track, top, track, bottom), fill=0)
+        d.rectangle((track - 1, thumb, track + 1, thumb + thumb_height - 1), fill=0)
     pitch = (strip - LEAGUE_TOP) // 4
     for slot, (player, splits) in enumerate(zip(players, columns)):
-        left = x0 + slot * column_width
+        left = margin + slot * column_width
         right = left + column_width
         name = "THEM" if player == THEM else POSITION_NAMES[player]
-        focused = first + slot == active
+        focused = (3 if slot == panel else slot) == active
         if focused:
             d.rectangle((left, GRID_LABEL[0], right - 1, GRID_LABEL[1]), fill=0)
+        if slot == panel:
+            outer_left, outer_right = (0, left - 1) if panel == 0 else (right, W - 1)
+            d.rectangle((outer_left, GRID_LABEL[0], outer_right, GRID_LABEL[1]), fill=0)
+            inner = right - 1 if panel == 0 else left + 1
+            d.line((inner, GRID_LABEL[0], inner, strip - 1), fill=0)
         d.text(((left + right - 6 * len(name)) // 2, GRID_LABEL[0]), name, font=f["label"], fill=int(focused))
         if slot:
             d.line((left, GRID_LABEL[0], left, strip - 1), fill=0)
