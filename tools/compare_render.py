@@ -31,6 +31,8 @@ def main():
     refs["competition-undo"] = screen.competition_screen(ls, lme, lact, tip="undo")
     refs["league-undo"] = screen.league_screen(ls, shots, lme, lact, tip="undo")
     refs["coach1-undo"] = screen.coach_timer_screen(render.COACH_STONES, render.COACH_SHOTS, tip="undo")
+    refs["coach1-rocks"] = screen.coach_timer_screen(render.COACH_STONES, render.COACH_SHOTS, focus="rocks")
+    refs["coach2-rocks"] = screen.coach_rocks_screen(render.COACH_STONES, render.COACH_SHOTS, focus="rocks")
     refs["coach2-undo"] = screen.coach_rocks_screen(render.COACH_STONES, render.COACH_SHOTS, tip="undo")
     refs["competition-wait-b2h"] = screen.competition_screen(ls, lme, lact, waiting="b2h")
     refs["league-rocks"] = screen.league_screen(ls, shots, lme, lact, waiting="b2h", focus="rocks")

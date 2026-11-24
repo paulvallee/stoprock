@@ -51,8 +51,8 @@ first run also downloads the push-button part (`pushbutton.wasm`) from the esp-e
 |---|---|---|
 | <kbd>Space</kbd> or <kbd>T</kbd> | **top** | Timing click |
 | <kbd>S</kbd> | **side / power** | Timing click; hold 3 s to switch off (shows the help page; press it again to switch back on) |
-| <kbd>↑</kbd> | rocker **▲** | Made shot (coach: when let go; competition: next column; league: next column, or made once you hold <kbd>↓</kbd> for your rocks) |
-| <kbd>↓</kbd> | rocker **▼** | Missed shot (competition: previous column; league: previous column, hold it for your rocks) |
+| <kbd>↑</kbd> | rocker **▲** | Next column; on the rocks (league, coach: hold <kbd>↓</kbd> to get there), made. Hold to move the newest time (on the rocks: back to the times) |
+| <kbd>↓</kbd> | rocker **▼** | Previous column, or missed on the rocks; hold it for the rocks (league, coach) or to move the newest time left (competition) |
 | <kbd>Enter</kbd> | rocker **●** | Hold 1 s to undo the newest time or shot ("Keep holding to undo" shows after 0.2 s); keep holding to undo another every 1 s. Press twice quickly: change your position (coach: switch page) |
 
 **Export games** asks the device for every game it has recorded and saves the listing to
@@ -72,7 +72,7 @@ changes.
 |---|---|---|
 | Competition | <kbd>S</kbd> | Times only, the badge strip at the bottom; four columns as in league (your teammates and THEM); the cursor follows the throw order by itself. <kbd>↑</kbd>/<kbd>↓</kbd> next/previous column; hold <kbd>↑</kbd> to move the newest time a column right every 0.6 s; <kbd>Enter</kbd> twice quickly changes your own position |
 | League | <kbd>↓</kbd> + <kbd>S</kbd> | Times in four columns: your three teammates and THEM (Hog2Hog white on black); the cursor follows the throw order by itself. <kbd>↑</kbd>/<kbd>↓</kbd> next/previous column; hold <kbd>↑</kbd> to move the newest time a column right every 0.6 s (let go where it belongs); hold <kbd>↓</kbd> to log your rocks (<kbd>↑</kbd> made, <kbd>↓</kbd> missed, then back to the columns); <kbd>Enter</kbd> twice quickly changes your position |
-| Coach | <kbd>↑</kbd> + <kbd>S</kbd> | 64 rocks for the whole team; page 1 has times in five columns (Lead, 2nd, 3rd, Skip, THEM) with the cursor following the throw order; <kbd>↑</kbd>/<kbd>↓</kbd> made/missed (when let go); hold <kbd>↑</kbd> to move the newest time a column right every 0.6 s; <kbd>Enter</kbd> twice quickly switches between the timer page and the rocks page |
+| Coach | <kbd>↑</kbd> + <kbd>S</kbd> | 64 rocks for the whole team; page 1 has times in five columns (Lead, 2nd, 3rd, Skip, THEM) with the cursor following the throw order. As in league: <kbd>↑</kbd>/<kbd>↓</kbd> next/previous column, hold <kbd>↑</kbd> to move the newest time, hold <kbd>↓</kbd> for the rocks (<kbd>↑</kbd> made, <kbd>↓</kbd> missed; hold <kbd>↑</kbd> back to the times); <kbd>Enter</kbd> twice quickly switches between the timer page and the rocks page |
 
 The **Battery** slider sets the battery level the firmware reads (`run.py` sends it to the emulated chip's
 second serial port). Below 15% the screen shows the low-battery warning (league: a bar over your %; competition: the badge strip), within about 2 s. To try the battery

@@ -142,14 +142,23 @@ static void test_mine_so_far() {
     const int64_t S2 = 1000000;
     ThrowOrder o;
     o.reset(0);  // lead, throwing first
-    TEST_ASSERT_EQUAL_INT(0, o.mineSoFar());
+    TEST_ASSERT_EQUAL_INT(0, o.toLogSoFar());
     o.ownShot(0, 0, 45 * S2);
-    TEST_ASSERT_EQUAL_INT(1, o.mineSoFar());
+    TEST_ASSERT_EQUAL_INT(1, o.toLogSoFar());
     o.place(ThrowOrder::kThem, 70 * S2);
-    TEST_ASSERT_EQUAL_INT(1, o.mineSoFar());
+    TEST_ASSERT_EQUAL_INT(1, o.toLogSoFar());
     o.place(ThrowOrder::kThem, 180 * S2);  // their next, after your second rock (not logged yet)
     TEST_ASSERT_EQUAL_INT(3, o.lastThrow());
-    TEST_ASSERT_EQUAL_INT(2, o.mineSoFar());  // one shot owed
+    TEST_ASSERT_EQUAL_INT(2, o.toLogSoFar());  // one shot owed
+    // a coach logs the whole team's rocks: each of ours counts
+    ThrowOrder c;
+    c.reset(ThrowOrder::kCoach);
+    c.place(c.themColumn(), 0);  // THEM first
+    c.place(0, 55 * S2);         // our lead
+    TEST_ASSERT_EQUAL_INT(1, c.toLogSoFar());
+    c.place(c.themColumn(), 110 * S2);
+    c.place(0, 165 * S2);
+    TEST_ASSERT_EQUAL_INT(2, c.toLogSoFar());
 }
 
 static void test_coach_times_every_stone() {

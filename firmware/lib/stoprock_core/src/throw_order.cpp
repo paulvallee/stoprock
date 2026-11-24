@@ -102,9 +102,13 @@ int ThrowOrder::throwsToMine() const {
     return -1;
 }
 
-int ThrowOrder::mineSoFar() const {
-    int n = last_.end * 2;
-    for (int s = 0; s <= last_.s; ++s) n += columnOf(s, last_.ourFirst) == kMine;
+int ThrowOrder::toLogSoFar() const {
+    const bool coach = me_ > 3;
+    int n = last_.end * (coach ? 8 : 2);
+    for (int s = 0; s <= last_.s; ++s) {
+        const uint8_t col = columnOf(s, last_.ourFirst);
+        n += coach ? col != themColumn() : col == kMine;
+    }
     return n;
 }
 

@@ -64,12 +64,14 @@ void addStone(Stone* list, uint8_t& count, uint8_t capacity, const Stone& s);
 // Coach (side button + rocker up), 64 rocks: 8 ends x 4 positions x 2.
 // Page 1, timer priority: the newest stone large, a column per position and THEM (6 lines, narrow
 // digits; activeCol 0-4 highlighted), % per position, the previous and current end. tip: the
-// switch-on tip (double click to switch page, hold up to move the last time).
+// switch-on tip (double click to switch page, the holds). focus: as in league, a bold border
+// round the times or the rocks (on both pages).
 void drawCoachTimer(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& shots,
-                    Waiting waiting = Waiting::None, uint8_t activeCol = 0, Tip tip = Tip::None);
+                    Waiting waiting = Waiting::None, uint8_t activeCol = 0, Tip tip = Tip::None,
+                    Focus focus = Focus::Players);
 // Page 2, rock priority: the newest times only, all 64 rocks, a pie and % per position.
 void drawCoachRocks(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& shots,
-                    Waiting waiting = Waiting::None, Tip tip = Tip::None);
+                    Waiting waiting = Waiting::None, Tip tip = Tip::None, Focus focus = Focus::Players);
 
 // Hundredths of a second from microseconds, rounded.
 inline int32_t toHundredths(int64_t us) { return static_cast<int32_t>((us + 5000) / 10000); }

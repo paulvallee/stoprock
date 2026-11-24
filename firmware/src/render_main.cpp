@@ -95,6 +95,12 @@ int main(int argc, char** argv) {
         drawCoachRocks(c, many, 12, s35, Waiting::None, Tip::Undo);
         snprintf(path, sizeof path, "%s/coach2-undo.pbm", dir);
         writePbm(c, path);
+        drawCoachTimer(c, many, 12, s35, Waiting::None, 0, Tip::None, Focus::Rocks);
+        snprintf(path, sizeof path, "%s/coach1-rocks.pbm", dir);
+        writePbm(c, path);
+        drawCoachRocks(c, many, 12, s35, Waiting::None, Tip::None, Focus::Rocks);
+        snprintf(path, sizeof path, "%s/coach2-rocks.pbm", dir);
+        writePbm(c, path);
     }
 
     // a stone being timed: the stopwatch where the awaited time will appear

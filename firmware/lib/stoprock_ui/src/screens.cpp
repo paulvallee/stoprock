@@ -242,6 +242,12 @@ void rectOutline(Canvas& c, int x0, int y0, int x1, int y1) {
     c.fillRect(x1, y0, x1, y1);
 }
 
+// The focus: a 2 px border round the half the rocker works on.
+void focusBox(Canvas& c, int x0, int y0, int x1, int y1) {
+    rectOutline(c, x0, y0, x1, y1);
+    rectOutline(c, x0 + 1, y0 + 1, x1 - 1, y1 - 1);
+}
+
 // Competition and league history: four columns, your teammates and THEM (leagueTimes). H2H times
 // are a digit wider, so the H2H half of the large row is wider (x 92).
 constexpr int COMP_MID = 92;
@@ -431,13 +437,8 @@ void drawLeague(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& sh
         }
     }
     // the focus: a bold border around the half the rocker works on
-    if (focus == Focus::Players) {
-        rectOutline(c, 0, 47, W - 1, top + 1);
-        rectOutline(c, 1, 48, W - 2, top);
-    } else {
-        rectOutline(c, 0, top, split + 1, H - 1);
-        rectOutline(c, 1, top + 1, split, H - 2);
-    }
+    if (focus == Focus::Players) focusBox(c, 0, 47, W - 1, top + 1);
+    else focusBox(c, 0, top, split + 1, H - 1);
     const int x0 = split + 2;
     int y0 = top + 2;
     if (lowBattery) {  // a black bar over the percentage
@@ -451,7 +452,7 @@ void drawLeague(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& sh
 }
 
 void drawCoachTimer(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& shots, Waiting waiting,
-                    uint8_t activeCol, Tip tip) {
+                    uint8_t activeCol, Tip tip, Focus focus) {
     c.clear();
     const Font& label = kFontSpleen6x12;
     pageMarks(c, 0);
@@ -475,16 +476,18 @@ void drawCoachTimer(Canvas& c, const Stone* stones, uint8_t count, const ShotLog
     if (first > 6) first = 6;
     if (first < 0) first = 0;
     for (int row = 0; row < 2; ++row) endRow(c, shots, first + row, bottom + 24 + row * 15);
+    if (focus == Focus::Players) focusBox(c, 0, 47, W - 1, bottom + 1);
+    else focusBox(c, 0, bottom, W - 1, H - 1);
     if (tip == Tip::Undo) undoTip(c, 49, bottom);
     if (tip == Tip::SwitchOn) {
-        const char* const lines[5] = {"Double click rocker to", "switch page", "", "Hold rocker up: move last time",
-                                      "Hold rocker middle: undo"};
-        tooltip(c, lines, 5, 49, bottom);
+        const char* const lines[6] = {"Double click rocker to", "switch page", "", "Hold rocker down: rocks",
+                                      "Hold rocker up: move last time", "Hold rocker middle: undo"};
+        tooltip(c, lines, 6, 49, bottom);
     }
 }
 
 void drawCoachRocks(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& shots, Waiting waiting,
-                    Tip tip) {
+                    Tip tip, Focus focus) {
     c.clear();
     const Font& label = kFontSpleen6x12;
     textInBox(c, label, "Back2Hog", 0, WIDE_MID, 0, LABEL_H, kCentre, 4);
@@ -512,6 +515,8 @@ void drawCoachRocks(Canvas& c, const Stone* stones, uint8_t count, const ShotLog
         drawPie(c, x + 5, 193, v);
         c.text(label, x + 13, 187, text);
     }
+    if (focus == Focus::Players) focusBox(c, 0, 12, W - 1, 34);
+    else focusBox(c, 0, 33, W - 1, 186);
     if (tip == Tip::Undo) undoTip(c, 47, 185);  // over the rocks
 }
 

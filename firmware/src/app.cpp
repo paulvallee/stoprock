@@ -117,14 +117,14 @@ uint8_t myPosition = 0;         // 0 lead .. 3 skip (double press of the rocker 
 // What differs between the modes, all in one place: everything else is the same code for all three.
 struct ModeRules {
     uint8_t shotsPerEnd;  // rocks logged an end: 0 competition, 2 league (yours), 8 coach (the team's)
-    bool focus;           // league: the rocker works on the times or on your rocks (hold down / up)
+    bool focus;           // league, coach: the rocker works on the times or on the rocks (hold down / up)
     bool positions;       // you have a position (double click changes it); a coach has none (double click: page)
 };
 const ModeRules& rules() {
     static const ModeRules kRules[3] = {  // indexed by GameMode: League, Competition, Coach
         {2, true, true},
         {0, false, true},
-        {8, false, false},
+        {8, true, false},
     };
     return kRules[static_cast<uint8_t>(mode)];
 }
@@ -322,8 +322,9 @@ void displayTask(void*) {
         } else if (m.mode == GameMode::Competition) {
             drawCompetition(next, m.stones, m.stoneCount, m.me, m.activeCol, m.warning, m.tip, m.waiting);
         } else if (m.mode == GameMode::Coach) {
-            if (m.page == 0) drawCoachTimer(next, m.stones, m.stoneCount, m.shots, m.waiting, m.activeCol, m.tip);
-            else drawCoachRocks(next, m.stones, m.stoneCount, m.shots, m.waiting, m.tip);
+            if (m.page == 0)
+                drawCoachTimer(next, m.stones, m.stoneCount, m.shots, m.waiting, m.activeCol, m.tip, m.focus);
+            else drawCoachRocks(next, m.stones, m.stoneCount, m.shots, m.waiting, m.tip, m.focus);
         } else {
             drawLeague(next, m.stones, m.stoneCount, m.shots, m.me, m.activeCol, m.warning, m.tip, m.waiting, m.focus);
         }
@@ -427,7 +428,7 @@ void countTimedStone(int64_t now, int64_t delay) {
     // League: the rocker goes to the times, or to your rocks if you threw since your last logged shot
     // (one owed: more means you aren't logging them, so don't pull the focus down every stone).
     if (rules().focus) {
-        const Focus f = order.mineSoFar() - shots.count() == 1 ? Focus::Rocks : Focus::Players;
+        const Focus f = order.toLogSoFar() - shots.count() == 1 ? Focus::Rocks : Focus::Players;
         if (f != focus) Serial.printf("focus: %s (after a timed stone)\n", f == Focus::Rocks ? "rocks, a shot to log" : "players");
         focus = f;
         planRocksFocus();

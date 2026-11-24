@@ -522,10 +522,10 @@ def coach_rock(d, i, shots, cx, cy):
 
 COACH_COLS = [0, 40, 80, 120, 160, 200]  # page 1's five columns: Lead, 2nd, 3rd, Skip, THEM
 COACH_LINES = 6
-COACH_TIP = ("Double click rocker to", "switch page", "", MOVE_TIP, UNDO_LINE)
+COACH_TIP = ("Double click rocker to", "switch page", "", "Hold rocker down: rocks", MOVE_TIP, UNDO_LINE)
 
 
-def coach_timer_screen(stones, shots, waiting=None, active=0, tip=False):
+def coach_timer_screen(stones, shots, waiting=None, active=0, tip=False, focus="players"):
     """Coach page 1, timer priority: the newest stone large, then a column per position and THEM
     (active: the column, 0-4, with the cursor), the previous and current end below.
     stones: (b2h, h2h, player 0-3 or THEM) newest first."""
@@ -553,6 +553,11 @@ def coach_timer_screen(stones, shots, waiting=None, active=0, tip=False):
         for p in range(4):
             for r in range(2):
                 coach_rock(d, end * 8 + p * 2 + r, shots, gx[p] + 15 + r * 17, cy)
+    # the focus, as in league: a bold border round the times or the rocks
+    if focus == "players":
+        d.rectangle([0, 47, W - 1, bottom + 1], outline=0, width=2)
+    else:
+        d.rectangle([0, bottom, W - 1, H - 1], outline=0, width=2)
     if tip == "undo":
         tooltip(d, f, UNDO_TIP, 49, bottom)
     elif tip:
@@ -560,7 +565,7 @@ def coach_timer_screen(stones, shots, waiting=None, active=0, tip=False):
     return img
 
 
-def coach_rocks_screen(stones, shots, waiting=None, tip=False):
+def coach_rocks_screen(stones, shots, waiting=None, tip=False, focus="players"):
     """Coach page 2, rock priority: newest times only, all 64 rocks, % per position."""
     f = fonts()
     img = Image.new("1", (W, H), 1)
@@ -597,6 +602,10 @@ def coach_rocks_screen(stones, shots, waiting=None, tip=False):
             x = (gx[p] + gx[p + 1] - w) // 2
             draw_pie(d, x + 5, 193, v)
             d.text((x + 13, 187), txt, font=f["label"], fill=0)
+    if focus == "players":
+        d.rectangle([0, 12, W - 1, 34], outline=0, width=2)
+    else:
+        d.rectangle([0, 33, W - 1, 186], outline=0, width=2)
     if tip == "undo":
         tooltip(d, f, UNDO_TIP, 47, 185)  # over the rocks
     return img
