@@ -84,7 +84,7 @@ A stone gives at most one **B2H** (back line, or tee line, to hog line) followed
 - After an H2H the stone is finished, so the next click always starts the next stone, however soon it comes (an opposing team may throw quickly).
 - The window limits (1, 5.5 and 20 s) are settings, with these values as defaults. The double-press limit is 1 s, not 1.5 s, because B2H may be timed from the tee line: tee-to-hog is about 0.5 s shorter than back-to-hog, so a peel is about 2 s and big weight can approach 1.6 s. The B2H/H2H boundary is 5.5 s, not 7 s: back-to-hog stays under about 4.8 s even for a light guard on fast ice, while a big-weight peel can cross hog to hog in about 6 s.
 - Every result is also saved to the game databank (section 6).
-- The stopwatch icon on screen is the "timing in progress" sign. The green LED is not used (the case covers it).
+- The stopwatch icon on screen is the "timing in progress" sign, drawn where the awaited time will appear: in the Back2Hog box after the first click, in the Hog2Hog box once a B2H is logged. If 5.5 s pass after the first click with no second, the time can only be an H2H (the first click was at the near hog line), so the stopwatch moves to the Hog2Hog box then (one screen update; the device wakes from sleep for it). A double press puts it back in the Back2Hog box. The green LED is not used (the case covers it).
 
 ## 5. Shots
 

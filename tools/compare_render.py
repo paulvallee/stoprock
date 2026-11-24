@@ -32,6 +32,10 @@ def main():
     refs["league-rocks"] = screen.league_screen(ls, shots, lme, lact, waiting="b2h", focus="rocks")
     lhalf = [(ls[0][0], None, ls[0][2])] + list(ls[1:])
     refs["league-wait-h2h"] = screen.league_screen(lhalf, shots, lme, 3, waiting="h2h")
+    refs["league-wait-h2h-only"] = screen.league_screen(ls, shots, lme, 3, waiting="h2h-only")
+    refs["competition-wait-h2h-only"] = screen.competition_screen(ls, lme, 3, waiting="h2h-only")
+    refs["coach2-wait-h2h-only"] = screen.coach_rocks_screen(render.COACH_STONES, render.COACH_SHOTS,
+                                                             waiting="h2h-only")
     cs = render.COACH_STONES
     refs["coach1-wait-b2h"] = screen.coach_timer_screen(cs, render.COACH_SHOTS, waiting="b2h")
     refs["coach2-wait-h2h"] = screen.coach_rocks_screen([(cs[0][0], None)] + cs[1:], render.COACH_SHOTS, waiting="h2h")

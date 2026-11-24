@@ -124,6 +124,9 @@ ThrowOrder order;               // competition and league: where in the end the 
 bool manualCursor = false;      // the cursor was put where it is with the rocker: leave it there
 int64_t stoneStart = -1;        // when the stone being timed started
 int64_t gameStartUs = 0;        // when this game started (switch-on)
+// A stone started with no second click for longer than a B2H can be (5.5 s): it can only be an
+// H2H, so the stopwatch moves to the H2H box. h2hSwitchAt: when that happens for the stone under way.
+int64_t h2hSwitchAt = -1;
 uint8_t moveSteps = 0;          // columns the newest time has moved during this hold of rocker up
 // League: when your throw is next, the focus moves to your rocks by itself this long after the
 // stone before yours started (about 13 s after it's done, if it was timed), ready for your shot.
@@ -135,6 +138,7 @@ int64_t followAt = -1;
 int64_t lastRockerPress = -kSec; // coach: when the rocker was last pressed (short presses only count)
 
 TimingEngine timing;
+bool h2hOnly() { return h2hSwitchAt < 0 && stoneStart >= 0 && timing.state() == TimingState::Started; }
 ShotLog shots;
 Stone stones[kMaxStones];
 uint8_t stoneCount = 0;
@@ -324,7 +328,7 @@ void syncModel(bool full = false) {
         m.full = m.full || sFull;
         m.tip = tipWaiting || tipUntil >= 0;
         m.focus = focus;
-        m.waiting = timing.state() == TimingState::Started     ? Waiting::BackToHog
+        m.waiting = timing.state() == TimingState::Started     ? (h2hOnly() ? Waiting::HogToHogOnly : Waiting::BackToHog)
                     : timing.state() == TimingState::WaitingHH ? Waiting::HogToHog
                                                                : Waiting::None;
     });
@@ -412,6 +416,7 @@ void handleOutcome(const Outcome& o, int64_t now) {
     case TimingEvent::Started:
         sleptAtAnchor = sleptUs;
         stoneStart = now;
+        h2hSwitchAt = now + timing.config().bhMaxUs;
         rocksFocusAt = -1;  // someone's throwing: not you
         followAt = -1;      // the cursor stays on this stone's column until it's done
         cursorToNext(now);  // the time since the last stone says how many throws went untimed
@@ -426,6 +431,8 @@ void handleOutcome(const Outcome& o, int64_t now) {
     case TimingEvent::Restarted:
         sleptAtAnchor = sleptUs;
         stoneStart = now;
+        h2hSwitchAt = now + timing.config().bhMaxUs;
+        syncModel();  // back to awaiting the B2H, if it had moved on
         cursorToNext(now);
         Serial.println("timing: double press, restart");
         break;
@@ -959,6 +966,13 @@ void loop() {
         tipUntil = -1;
         if (!timing.active()) syncModel();
     }
+    if (h2hSwitchAt >= 0 && now >= h2hSwitchAt) {  // no B2H in time: it's an H2H under way
+        h2hSwitchAt = -1;
+        if (timing.state() == TimingState::Started) {
+            Serial.println("timing: no B2H, an H2H under way");
+            syncModel();
+        }
+    }
     if (followAt >= 0 && now >= followAt) {  // another throw's worth of time: the cursor may move on
         planFollow(now);
         if (!timing.active() && !manualCursor) {
@@ -1005,6 +1019,7 @@ void loop() {
         if (tipUntil >= 0 && tipUntil < wake) wake = tipUntil;
         if (rocksFocusAt >= 0 && rocksFocusAt < wake) wake = rocksFocusAt;
         if (followAt >= 0 && followAt < wake) wake = followAt;
+        if (h2hSwitchAt >= 0 && h2hSwitchAt < wake) wake = h2hSwitchAt;
         if (nextAuditAt < wake) wake = nextAuditAt;
         if (timing.active() && timing.deadline() + 1000 < wake) wake = timing.deadline() + 1000;
         const int64_t before = esp_timer_get_time();

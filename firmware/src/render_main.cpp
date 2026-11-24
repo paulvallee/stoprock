@@ -87,6 +87,13 @@ int main(int argc, char** argv) {
     drawLeague(c, league, nl, shots, 1, 1, false, false, Waiting::BackToHog, Focus::Rocks);
     snprintf(path, sizeof path, "%s/league-rocks.pbm", dir);
     writePbm(c, path);
+    // 5.5 s with no second click: an H2H under way, the stopwatch in the H2H box
+    drawLeague(c, league, nl, shots, 1, 3, false, false, Waiting::HogToHogOnly);
+    snprintf(path, sizeof path, "%s/league-wait-h2h-only.pbm", dir);
+    writePbm(c, path);
+    drawCompetition(c, league, nl, 1, 3, false, false, Waiting::HogToHogOnly);
+    snprintf(path, sizeof path, "%s/competition-wait-h2h-only.pbm", dir);
+    writePbm(c, path);
     Stone lhalf[sizeof league / sizeof league[0]];
     for (int i = 0; i < nl; ++i) lhalf[i] = league[i];
     lhalf[0].hh = -1;
@@ -104,6 +111,9 @@ int main(int argc, char** argv) {
         coach[0].hh = -1;
         drawCoachRocks(c, coach, 12, s, Waiting::HogToHog);
         snprintf(path, sizeof path, "%s/coach2-wait-h2h.pbm", dir);
+        writePbm(c, path);
+        drawCoachRocks(c, many, 12, s, Waiting::HogToHogOnly);
+        snprintf(path, sizeof path, "%s/coach2-wait-h2h-only.pbm", dir);
         writePbm(c, path);
     }
 

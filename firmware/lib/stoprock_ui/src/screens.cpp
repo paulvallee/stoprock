@@ -248,12 +248,13 @@ constexpr int GRID_LABEL_Y0 = 49, GRID_LABEL_Y1 = 60;
 constexpr int GRID_PITCH = 14;
 
 // The current stone across both halves; a stopwatch where an awaited time will appear.
-// Awaiting the B2H, the row is still empty (the new stone has no time yet).
+// Awaiting the B2H, or the H2H of a stone with no B2H, the row is still empty (no time yet).
 void newestRow(Canvas& c, const Stone* stones, int count, Waiting waiting, int mid, const Font& font, int y0,
                int y1, int margin, const Sprite& watch, int cy) {
-    const Stone* cur = waiting == Waiting::BackToHog || count == 0 ? nullptr : &stones[0];
+    const bool fresh = waiting == Waiting::BackToHog || waiting == Waiting::HogToHogOnly;  // no time yet
+    const Stone* cur = fresh || count == 0 ? nullptr : &stones[0];
     const int32_t vals[2] = {cur ? cur->bh : -1, cur ? cur->hh : -1};
-    const Waiting want[2] = {Waiting::BackToHog, Waiting::HogToHog};
+    const Waiting want[2] = {Waiting::BackToHog, waiting == Waiting::HogToHogOnly ? waiting : Waiting::HogToHog};
     for (int k = 0; k < 2; ++k) {
         const int x0 = k == 0 ? 0 : mid, x1 = k == 0 ? mid : W;
         if (vals[k] >= 0) dsegNumber(c, vals[k], x0, x1, y0, y1, margin, font);
