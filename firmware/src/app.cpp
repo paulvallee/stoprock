@@ -775,11 +775,15 @@ void finishMove() {
     bank.setLastPlayer(stones[0].player, board::clockNow());
     order.move(col);
     manualCursor = false;
-    if (timing.state() == TimingState::WaitingHH) activeCol = col;  // that stone is still being timed
-    else cursorToNext(timing.state() == TimingState::Started ? stoneStart : -1);
-    if (!timing.active()) {
-        planRocksFocus();
-        planFollow(esp_timer_get_time());
+    if (timing.state() == TimingState::Started) {
+        cursorToNext(stoneStart);  // a new stone under way: the cursor is where its time will go
+    } else {
+        // The cursor stays on the column the time was let go in (it's still being timed, or you just
+        // put it there), not the next thrower: jumping on looked like the time kept moving. It
+        // follows the clock again, and goes to the next thrower, when the next stone starts.
+        activeCol = col;
+        followAt = -1;
+        if (!timing.active()) planRocksFocus();
     }
     Serial.printf("timing: newest time moved to column %d\n", col + 1);
     syncModel();
@@ -881,8 +885,9 @@ void pollButtons(int64_t now) {
                 s.holdFired = true;  // not a short press when it's let go
                 activity(now);
                 setFocus(b == board::kUp ? Focus::Players : Focus::Rocks);
-            } else if (rocker && (b == board::kUp || !rules().focus) && focus == Focus::Players &&
+            } else if (rocker && raw && (b == board::kUp || !rules().focus) && focus == Focus::Players &&
                        now - s.downSince >= kMoveStepUs * (moveSteps + 1)) {
+                // raw: no step once it's let go (it counts as released only after 20 ms up)
                 activity(now);  // up moves the newest time right; down (no focus to move) left
                 if (!stepMove(b == board::kUp ? 1 : -1)) s.holdFired = true;
             }
