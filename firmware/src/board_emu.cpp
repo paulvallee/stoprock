@@ -73,7 +73,7 @@ bool readBatteryLines() {
             got = true;
         } else if (!strncmp(line, "hold ", 5)) {
             const char* w = line + 5;
-            savedHold = !strcmp(w, "up") ? kUp : !strcmp(w, "down") ? kDown : kButtonCount;
+            savedHold = !strcmp(w, "up") ? kUp : !strcmp(w, "down") ? kDown : !strcmp(w, "press") ? kPress : kButtonCount;
             savedHoldMagic = kHoldMagic;
         } else if (!strncmp(line, "cmd ", 4)) {  // the page's Export button: "cmd games"
             strncpy(pendingCommand, line + 4, sizeof pendingCommand - 1);

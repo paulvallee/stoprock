@@ -54,15 +54,15 @@ Timing clicks are timestamped in the interrupt handler, so screen activity never
 
 ### Start-up modes
 
-What the rocker is doing while the side button switches the device on picks the mode for that game:
+Switching on with the side button alone shows the **mode menu**: the three modes, each with a line about it, and the one used last selected. Rocker up/down choose (round and round), the rocker's middle starts the one selected. The menu also says how to skip it next time: hold the rocker while switching on (middle competition, down league, up coach). At the menu the side button held 3 s still switches off, and 5 minutes untouched switches off too.
 
 | Switch on with | Mode | Screen | Rocker |
 |---|---|---|---|
-| Side button only | **Competition** | Times only: the history in four columns (your teammates and THEM) as in league, with a cursor on the player about to throw; a black badge strip at the bottom shows the stoprock logo and `COMPETITION` / `STOPWATCH ONLY`, for an umpire | Moves the cursor, hold up to move the newest time; double press: your position |
-| Side button + rocker **down** | **League** | Section 8: your teammates' and the other team's times, your own 16 rocks and % | Next / previous column, hold up to move the newest time; hold down for made / missed; undo; double press: your position |
-| Side button + rocker **up** | **Coach** | Two pages (section 8a): times by position and THEM, the whole team's 64 rocks | As league: next / previous column, hold up to move the newest time, hold down for made / missed; undo; double press switches page |
+| Side button + rocker **middle** (or choose it in the menu) | **Competition** | Times only: the history in four columns (your teammates and THEM) as in league, with a cursor on the player about to throw; a black badge strip at the bottom shows the stoprock logo and `COMPETITION` / `STOPWATCH ONLY`, for an umpire | Moves the cursor, hold up to move the newest time; double press: your position |
+| Side button + rocker **down** (or the menu) | **League** | Section 8: your teammates' and the other team's times, your own 16 rocks and % | Next / previous column, hold up to move the newest time; hold down for made / missed; undo; double press: your position |
+| Side button + rocker **up** (or the menu) | **Coach** | Two pages (section 8a): times by position and THEM, the whole team's 64 rocks | As league: next / previous column, hold up to move the newest time, hold down for made / missed; undo; double press switches page |
 
-- Competition is the default because it is what a tournament allows: World Curling's rules (R11(c)) limit stopwatches to giving time data only, and forbid electronic communication. Competition mode shows and records times only, and never uses the radio (the radio isn't used in any mode yet).
+- The menu starts on the mode used last; competition the first time, because it is what a tournament allows: World Curling's rules (R11(c)) limit stopwatches to giving time data only, and forbid electronic communication. Competition mode shows and records times only, and never uses the radio (the radio isn't used in any mode yet).
 - The mode lasts until the device switches off; every switch-on is a new game in the mode chosen then. The databank records each game's mode.
 - Coach mode will be unlocked by the paid companion app ([`PRO_MODE.md`](PRO_MODE.md)); until the licence check exists it is open to all.
 - The rocker is read once, when the firmware starts (about a second after the side button is pressed): hold it before pressing the side button and keep holding until the screen changes.
@@ -158,7 +158,7 @@ stoprock logo (176 px), then Spleen 6×12:
 
 ```
  [START] hold side button, plus:
-     nothing     = competition mode
+     nothing     = mode menu
      rocker down = league mode
      rocker up   = coach mode
 

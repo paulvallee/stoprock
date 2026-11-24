@@ -212,6 +212,40 @@ def draw_pie(d, cx, cy, pct):
 HELP_EQ_X = 5 + 6 * len("SHOTS") + 8 + 6 * len("up/down ")  # x of every "=" on the help page
 
 
+# The menu at switch-on (unless the rocker is held: then that mode straight away). The mode used last
+# is selected; up/down choose, the rocker's middle starts it.
+MENU_MODES = (("COMPETITION", "Times only, for tournaments"),
+              ("LEAGUE", "Times, plus your own shots"),
+              ("COACH", "Times and the team's 64 shots"))
+MENU_TIPS = ("up/down: choose  middle: start", "", "Next time, skip this: hold the", "rocker as you switch on:",
+             "  middle = competition", "  down   = league", "  up     = coach")
+
+
+def mode_menu(selected):
+    """selected: 0 competition, 1 league, 2 coach."""
+    f = fonts()
+    img = Image.new("1", (W, H), 1)
+    d = ImageDraw.Draw(img)
+    d.fontmode = "1"
+    from logo import strip_logo  # here, not at the top: logo.py is a sibling module
+    lg = strip_logo()
+    img.paste(0, ((W - lg.width) // 2, 3), ImageChops.invert(lg.convert("L")).convert("1"))
+    for i, (name, about) in enumerate(MENU_MODES):
+        y0 = 30 + i * 27
+        on = i == selected
+        if on:
+            d.rectangle([2, y0, W - 3, y0 + 25], fill=0)
+        d.text((8, y0 + 1), name, font=f["label"], fill=1 if on else 0)
+        d.text((8, y0 + 13), about, font=f["label"], fill=1 if on else 0)
+    d.line([(0, 113), (W - 1, 113)], fill=0)
+    y = 117
+    for t in MENU_TIPS:
+        if t:
+            d.text((6, y), t, font=f["label"], fill=0)
+        y += 12 if t else 4
+    return img
+
+
 def help_page(device_logo, last_game, shot_pct=None, battery=None, battery_note=None):
     img = Image.new("1", (W, H), 1)
     d = ImageDraw.Draw(img)
@@ -242,7 +276,7 @@ def help_page(device_logo, last_game, shot_pct=None, battery=None, battery_note=
         y += 12
 
     tag("START", "hold side button, plus:")
-    eq_line("nothing     = competition mode")
+    eq_line("nothing     = mode menu")
     eq_line("rocker down = league mode")
     eq_line("rocker up   = coach mode")
     y += 5

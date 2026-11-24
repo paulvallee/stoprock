@@ -196,7 +196,7 @@ void drawHelp(Canvas& c, const char* lastGame, int shotPct, int battery, const c
         y += 12;
     };
     tag("START", "hold side button, plus:");
-    eqLine("nothing     = competition mode");
+    eqLine("nothing     = mode menu");
     eqLine("rocker down = league mode");
     eqLine("rocker up   = coach mode");
     y += 5;
@@ -458,6 +458,31 @@ static void fourColumns(Canvas& c, const Stone* stones, int count, uint8_t me, u
                         Waiting waiting, const Zoom& zoom) {
     timesTop(c, stones, count, waiting, COMP_MID, W);
     leagueTimes(c, stones, count, me, active, bottom, zoom);
+}
+
+void drawModeMenu(Canvas& c, uint8_t selected) {
+    c.clear();
+    const Font& f = kFontSpleen6x12;
+    c.blit(kLogoStrip, (W - kLogoStrip.w) / 2, 3);
+    static const char* const kModes[3][2] = {{"COMPETITION", "Times only, for tournaments"},
+                                             {"LEAGUE", "Times, plus your own shots"},
+                                             {"COACH", "Times and the team's 64 shots"}};
+    for (int i = 0; i < 3; ++i) {
+        const int y0 = 30 + i * 27;
+        const bool on = i == selected;
+        if (on) c.fillRect(2, y0, W - 3, y0 + 25);
+        c.text(f, 8, y0 + 1, kModes[i][0], !on);
+        c.text(f, 8, y0 + 13, kModes[i][1], !on);
+    }
+    hline(c, 0, W - 1, 113);
+    static const char* const kTips[] = {"up/down: choose  middle: start", "", "Next time, skip this: hold the",
+                                        "rocker as you switch on:", "  middle = competition", "  down   = league",
+                                        "  up     = coach"};
+    int y = 117;
+    for (const char* t : kTips) {
+        if (*t) c.text(f, 6, y, t);
+        y += *t ? 12 : 4;
+    }
 }
 
 void drawCompetition(Canvas& c, const Stone* stones, uint8_t count, uint8_t me, uint8_t activeCol,

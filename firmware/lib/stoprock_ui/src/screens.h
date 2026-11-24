@@ -38,6 +38,10 @@ enum class Tip : uint8_t { None, SwitchOn, Undo, Move, PowerOff, Page };
 void drawHelp(Canvas& c, const char* lastGame, int shotPct = -1, int battery = -1,
               const char* batteryNote = nullptr);
 
+// The menu at switch-on (unless the rocker is held: then that mode straight away): the three modes
+// with a line about each, and how to skip it next time. selected: 0 competition, 1 league, 2 coach.
+void drawModeMenu(Canvas& c, uint8_t selected);
+
 // Competition (switched on with the side button alone): times only, and a badge strip an umpire
 // can read. lowBattery replaces the strip's second line. The history is as in league (below): four
 // columns, your teammates and THEM, 8 lines; activeCol (0-3) has its header highlighted.

@@ -209,9 +209,9 @@ def make_handler(device):
                 self.send_response(204 if ok else 503)
                 self.end_headers()
                 return
-            if self.path == "/hold":  # the rocker held at the next start-up: up, down or none
+            if self.path == "/hold":  # the rocker held at the next start-up: up, down, press or none
                 which = body.get("rocker")
-                if which not in ("up", "down", "none"):
+                if which not in ("up", "down", "press", "none"):
                     self.send_error(400)
                     return
                 ok = device.send_uart1(f"hold {which}")

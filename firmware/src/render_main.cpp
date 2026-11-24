@@ -69,6 +69,13 @@ int main(int argc, char** argv) {
         writePbm(c, path);
     }
 
+    // switch-on: the mode menu, each mode selected
+    for (uint8_t i = 0; i < 3; ++i) {
+        drawModeMenu(c, i);
+        snprintf(path, sizeof path, "%s/menu%d.pbm", dir, i);
+        writePbm(c, path);
+    }
+
     // switch-on: no stones yet, the position tip over the times
     drawCompetition(c, league, 0, 0, 0, false, Tip::SwitchOn);
     snprintf(path, sizeof path, "%s/competition-tip.pbm", dir);

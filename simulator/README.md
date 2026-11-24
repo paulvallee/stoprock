@@ -62,11 +62,12 @@ first run also downloads the push-button part (`pushbutton.wasm`) from the esp-e
 The **Restart in** buttons also tell the firmware which rocker is held over the second serial port,
 because the emulator's restart may not keep a button pressed through it.
 
-**Start-up modes.** The simulator starts **switched off**, showing the off page, as a device would: press <kbd>S</kbd> to switch it on in **competition** mode (the side button alone). To
-pick another, use the **Restart in competition / league / coach** buttons: they switch the device off (side
-button held 3 s) and back on with the rocker held, as you would on the device. By keyboard: switch off, then
-hold <kbd>↓</kbd> (league) or <kbd>↑</kbd> (coach) and press <kbd>S</kbd>, keeping both held until the screen
-changes.
+**Start-up modes.** The simulator starts **switched off**, showing the off page, as a device would: press <kbd>S</kbd> to
+switch it on, and the **mode menu** comes up: <kbd>↑</kbd>/<kbd>↓</kbd> choose, <kbd>Enter</kbd> (the rocker's middle)
+starts the mode selected (the one used last, at first). To skip the menu, hold the rocker while switching on: switch off,
+then hold <kbd>Enter</kbd> (competition), <kbd>↓</kbd> (league) or <kbd>↑</kbd> (coach) and press <kbd>S</kbd>, keeping
+both held until the screen changes. The **Restart in competition / league / coach** buttons do that for you: they switch
+the device off (side button held 3 s) and back on with the rocker held.
 
 | Mode | Switch on with | What to try |
 |---|---|---|

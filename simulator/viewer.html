@@ -127,7 +127,7 @@ function unlockAudio() { if (!audio) audio = new AudioContext(); }
 
 let poweredOn = false;  // from the console: "stoprock ready" / "power: off" (it starts off)
 function addLog(text) {
-  if (text.includes("stoprock ready")) poweredOn = true;
+  if (text.includes("stoprock ready") || text.includes("menu: choose a mode")) poweredOn = true;
   else if (text.includes("power: off")) poweredOn = false;
   log.textContent += text + "\n";
   if (log.textContent.length > 20000) log.textContent = log.textContent.slice(-15000);
@@ -189,7 +189,7 @@ document.addEventListener("keyup", (e) => {
 // the side button switches it on, and let go once it's up.
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 async function restartIn(mode) {
-  const rocker = { league: "down", coach: "up" }[mode];
+  const rocker = { league: "down", coach: "up", competition: "press" }[mode];
   const status = document.getElementById("mode-status");
   const buttons = document.querySelectorAll("button.mode");
   buttons.forEach(b => b.disabled = true);

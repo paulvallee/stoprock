@@ -296,6 +296,8 @@ struct Model {
     ShotLog shots;          // the shots on screen (deferred while a stone is timed)
     bool warning = false;
     bool help = false;
+    bool menu = false;      // the mode menu at switch-on
+    uint8_t menuSel = 0;    // ... its selected mode: 0 competition, 1 league, 2 coach
     bool full = false;      // next update is a ghost-clearing full refresh
     Tip tip = Tip::None;    // a box over the times: the switch-on tip, or "Keep holding to undo"
     Waiting waiting = Waiting::None;  // a stone being timed: the stopwatch shows where its time will go
@@ -332,6 +334,8 @@ void displayTask(void*) {
 
         if (m.help) {
             drawHelp(next, m.lastGame, m.shotPct, m.battery, m.batteryNote);
+        } else if (m.menu) {
+            drawModeMenu(next, m.menuSel);
         } else if (m.mode == GameMode::Competition) {
             drawCompetition(next, m.stones, m.stoneCount, m.me, m.activeCol, m.warning, m.tip, m.waiting);
         } else if (m.mode == GameMode::Coach) {
@@ -369,6 +373,7 @@ void syncModel(bool full = false) {
         if (!timing.active()) m.shots = shots;
         m.warning = lowBattery;
         m.help = false;
+        m.menu = false;
         m.full = m.full || sFull;
         m.tip = offHint ? Tip::PowerOff : undoHint ? Tip::Undo : moveHint ? Tip::Move :
                 pageTipUntil >= 0 ? Tip::Page : tipWaiting || tipUntil >= 0 ? Tip::SwitchOn : Tip::None;
@@ -656,6 +661,65 @@ void showHelpAndPowerOff() {
 }
 
 // ------------------------------------------------------------------ input actions
+// ------------------------------------------------------------------ the mode menu
+// The menu's modes, in its order, and the rocker held at switch-on that skips to each.
+const GameMode kMenuModes[3] = {GameMode::Competition, GameMode::League, GameMode::Coach};
+uint8_t menuIndex(GameMode m) { return m == GameMode::League ? 1 : m == GameMode::Coach ? 2 : 0; }
+constexpr int64_t kMenuIdleUs = 5 * 60 * kSec;  // untouched this long at the menu: switch off
+
+// At switch-on, unless the rocker is held: the three modes, the one used last selected. Up/down
+// choose (round and round), the rocker's middle starts the one selected. The side button held 3 s
+// switches off as always (once it's been let go after switching on).
+GameMode chooseMode() {
+    static uint8_t sel;
+    static bool full;
+    sel = prefs.getUChar("lastmode", 0) % 3;
+    auto show = [](bool f) {
+        full = f;
+        publish([](Model& m) {
+            m.menu = true;
+            m.menuSel = sel;
+            m.help = false;
+            m.full = m.full || full;
+        });
+    };
+    show(true);
+    Serial.println("menu: choose a mode");
+    const board::Button rocker[3] = {board::kUp, board::kPress, board::kDown};
+    bool down[3] = {}, seen[3] = {};  // debounced state, and the previous sample
+    int64_t lastInput = esp_timer_get_time(), sideSince = -1;
+    bool sideLetGo = !board::held(board::kSide);
+    for (;;) {
+        const int64_t now = esp_timer_get_time();
+        sound.update(now);
+        for (int i = 0; i < 3; ++i) {
+            const bool raw = board::held(rocker[i]);
+            const bool pressed = raw && seen[i] && !down[i];  // two samples, 10 ms apart: not a bounce
+            seen[i] = raw;
+            if (raw == down[i] || (raw && !pressed)) continue;
+            down[i] = raw;
+            if (!raw) continue;
+            lastInput = now;
+            sound.play(kClick);
+            if (rocker[i] == board::kPress) {
+                Serial.printf("menu: %s\n", modeName(kMenuModes[sel]));
+                return kMenuModes[sel];
+            }
+            sel = (sel + (rocker[i] == board::kUp ? 2 : 1)) % 3;  // up: the one above
+            show(false);
+        }
+        if (board::held(board::kSide)) {
+            if (sideLetGo && sideSince < 0) sideSince = now;
+            if (sideSince >= 0 && now - sideSince >= kPowerHoldUs) showHelpAndPowerOff();
+        } else {
+            sideLetGo = true;
+            sideSince = -1;
+        }
+        if (now - lastInput >= kMenuIdleUs) showHelpAndPowerOff();
+        delay(10);
+    }
+}
+
 void activity(int64_t now) {
     lastActivity = now;
     if (sleepAt < now + kAwakeAfterPressUs) sleepAt = now + kAwakeAfterPressUs;
@@ -1114,10 +1178,13 @@ void setup() {
     // The simulator's first start is "off": the off page, until the side button switches it on (a
     // restart, picking the mode as below). Never on the CoreInk.
     if (board::startsOff()) showHelpAndPowerOff();
-    // The mode: whatever the rocker is doing while the side button switches the device on.
+    // The mode: the rocker held while the side button switches the device on picks it (down league,
+    // up coach, middle competition); otherwise the menu.
     if (board::heldAtStart(board::kDown)) mode = GameMode::League;
     else if (board::heldAtStart(board::kUp)) mode = GameMode::Coach;
-    else mode = GameMode::Competition;
+    else if (board::heldAtStart(board::kPress)) mode = GameMode::Competition;
+    else mode = chooseMode();
+    prefs.putUChar("lastmode", menuIndex(mode));  // selected in the menu next time
     newGame();  // every switch-on starts a new game
 
     // A button already held at start-up (the side button used to switch on) is neither a
