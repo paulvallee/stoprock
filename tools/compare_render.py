@@ -26,7 +26,7 @@ def main():
     }
     refs["competition-tip"] = screen.competition_screen([], 0, 0, tip=True)
     refs["league-tip"] = screen.league_screen([], [], 2, 0, tip=True)
-    for i in range(4):
+    for i in range(len(screen.MENU_ITEMS)):
         refs[f"menu{i}"] = screen.mode_menu(i)
     refs["coach1-tip"] = screen.coach_timer_screen([], [], tip=True)
     refs["competition-undo"] = screen.competition_screen(ls, lme, lact, tip="undo")

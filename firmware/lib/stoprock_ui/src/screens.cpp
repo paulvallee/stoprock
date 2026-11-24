@@ -442,23 +442,6 @@ static void fourColumns(Canvas& c, const Stone* stones, int count, uint8_t me, u
     leagueTimes(c, stones, count, me, active, bottom, zoom);
 }
 
-// The modes at switch-on, big (bold Spleen 16x32), one a line; the selected one white on black. No help text: the help
-// page has it.
-void drawModeMenu(Canvas& c, uint8_t selected) {
-    c.clear();
-    c.blit(kLogoStrip, (W - kLogoStrip.w) / 2, 4);
-    static const char* const kModes[4] = {"BASIC", "COMPETITION", "LEAGUE", "COACH"};
-    constexpr int kRowTop = 30, kRowPitch = 42, kRowH = 38;
-    for (int i = 0; i < 4; ++i) {
-        const int y0 = kRowTop + i * kRowPitch;
-        const bool on = i == selected;
-        if (on) c.fillRect(2, y0, W - 3, y0 + kRowH - 1);
-        const InkBox b = c.ink(kFontSpleen16x32, kModes[i]);
-        const int x = (W - (b.r - b.l + 1)) / 2 - b.l, y = y0 + (kRowH - (b.b - b.t)) / 2 - b.t;
-        for (int dx = 0; dx < 2; ++dx) c.text(kFontSpleen16x32, x + dx, y, kModes[i], !on);  // bold: twice, a pixel apart
-    }
-}
-
 // The bottom TIP_H px, white on black, for an umpire: the logo on the left, the mode's name and
 // "STOPWATCH ONLY" (or "Battery low", or a note) right-aligned.
 static void badgeStrip(Canvas& c, const char* name, bool lowBattery, const char* note = nullptr) {

@@ -54,7 +54,7 @@ Timing clicks are timestamped in the interrupt handler, so screen activity never
 
 ### Start-up modes
 
-Switching on with the side button alone shows the **mode menu**: the four modes in big bold letters (Spleen 16×32), one a line, under the logo (BASIC, COMPETITION, LEAGUE, COACH), and the one used last selected. Rocker up/down choose (round and round), the rocker's middle starts the one selected. To skip it, hold the rocker while switching on (middle competition, down league, up coach). At the menu the side button held 3 s still switches off, and 5 minutes untouched switches off too.
+Switching on with the side button alone shows the **mode menu**: the 176 px logo stays fixed above a scrollable window with three visible cards. Each card shows a mode and a short description. The last-used mode is selected. Rocker up/down moves the selection and wraps at the ends. Press the rocker centre to open the selected mode. To skip it, hold the rocker while switching on (middle competition, down league, up coach). At the menu the side button held 3 s still switches off, and 5 minutes untouched switches off too.
 
 | Switch on with | Mode | Screen | Rocker |
 |---|---|---|---|
@@ -198,8 +198,9 @@ Rules:
 |---|---|---|
 | DSEG7 Classic Bold | Newest result, percentage | SIL Open Font License 1.1 |
 | Spleen 6×12 | Labels | BSD 2-clause |
-| Spleen 16×32, 12×24 | Mode menu, tips | BSD 2-clause |
+| Spleen 16×32, 12×24 | Tips | BSD 2-clause |
 | Nunito Black | Logo | SIL Open Font License 1.1 |
+| Nunito ExtraBold and Bold | Startup menu | SIL Open Font License 1.1 |
 | Drawn segments | Older results, end numbers | Our own code |
 
 ## 14. Out of scope

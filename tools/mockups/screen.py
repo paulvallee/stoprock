@@ -152,9 +152,17 @@ def fonts():
 
 
 def _make_fonts():
+    from logo import NUNITO
+
+    menu_title = ImageFont.truetype(str(NUNITO), 18)
+    menu_title.set_variation_by_name("ExtraBold")
+    menu_detail = ImageFont.truetype(str(NUNITO), 13)
+    menu_detail.set_variation_by_name("Bold")
     return dict(
+        menu_title=menu_title,
+        menu_detail=menu_detail,
         label=bdf("spleen-6x12"),
-        menu=bdf("spleen-16x32"),  # the mode menu and the switch-on tip
+        menu=bdf("spleen-16x32"),  # the switch-on tip
         hint=bdf("spleen-12x24"),  # the hold hints
         big=ImageFont.truetype(str(DSEG), 37),  # the newest stone, at the top
         big_long=ImageFont.truetype(str(DSEG), 33),  # ... an H2H of 20.00 s, too wide at 37
@@ -217,31 +225,60 @@ def draw_pie(d, cx, cy, pct):
                     d.point((cx + dx, cy + dy), fill=0)
 
 
-# The menu at switch-on (unless the rocker is held: then that mode straight away). The mode used last
-# is selected; up/down choose, the rocker's middle starts it.
-MENU_MODES = ("BASIC", "COMPETITION", "LEAGUE", "COACH")
-MENU_ROW_TOP, MENU_ROW_PITCH, MENU_ROW_H = 30, 42, 38  # the modes, big, one a line
+MENU_ITEMS = (
+    ("Basic", "Just the stopwatch"),
+    ("Competition", "Times only, by player"),
+    ("League", "Team times, your shots"),
+    ("Coach", "Track the whole team"),
+)
+MENU_TOP, MENU_PITCH, MENU_HEIGHT, MENU_VISIBLE = 51, 44, 40, 3
 
 
-def mode_menu(selected):
-    """The modes at switch-on, big (Spleen 16x32, bold), one a line; selected (0 basic, 1 competition,
-    2 league, 3 coach) white on black. Up/down choose, and the middle starts the selected mode."""
+def mode_menu(selected, first_visible=0):
+    """The startup list below the fixed wordmark. The window follows the selected row."""
+    from logo import NATIVE_LOGO
+
     f = fonts()
     img = Image.new("1", (W, H), 1)
     d = ImageDraw.Draw(img)
     d.fontmode = "1"
-    from logo import strip_logo  # here, not at the top: logo.py is a sibling module
-    lg = strip_logo()
-    img.paste(0, ((W - lg.width) // 2, 4), ImageChops.invert(lg.convert("L")).convert("1"))
-    for i, name in enumerate(MENU_MODES):
-        y0 = MENU_ROW_TOP + i * MENU_ROW_PITCH
-        on = i == selected
+    with Image.open(NATIVE_LOGO) as logo:
+        img.paste(logo, ((W - logo.width) // 2, 4))
+
+    def card(left, top, right, bottom, fill):
+        for row, inset in enumerate((3, 2, 1)):
+            d.line((left + inset, top + row, right - inset, top + row), fill=fill)
+            d.line((left + inset, bottom - row, right - inset, bottom - row), fill=fill)
+        d.rectangle((left, top + 3, right, bottom - 3), fill=fill)
+
+    count = len(MENU_ITEMS)
+    first_visible = max(selected - MENU_VISIBLE + 1, min(first_visible, selected, count - MENU_VISIBLE))
+    for row, (title, description) in enumerate(MENU_ITEMS[first_visible:first_visible + MENU_VISIBLE]):
+        top = MENU_TOP + row * MENU_PITCH
+        bottom = top + MENU_HEIGHT - 1
+        on = row + first_visible == selected
+        card(10, top, 184, bottom, 0)
+        if not on:
+            card(11, top + 1, 183, bottom - 1, 1)
+        glyphs(d, title, f["menu_title"], 20, top + 3, int(on))
+        glyphs(d, description, f["menu_detail"], 20, top + 22, int(on))
         if on:
-            d.rectangle([2, y0, W - 3, y0 + MENU_ROW_H - 1], fill=0)
-        l, tp, r, b = ink(name, f["menu"])
-        x, y = (W - (r - l + 1)) // 2 - l, y0 + (MENU_ROW_H - (b - tp)) // 2 - tp
-        for dx in (0, 1):  # bold: twice, a pixel apart
-            d.text((x + dx, y), name, font=f["menu"], fill=1 if on else 0)
+            for offset in (0, 1):
+                d.line((170 + offset, top + 15, 175 + offset, top + 20, 170 + offset, top + 25), fill=1)
+
+    if count > MENU_VISIBLE:
+        top = MENU_TOP + 2
+        height = (MENU_VISIBLE - 1) * MENU_PITCH + MENU_HEIGHT - 4
+        thumb = max(12, height * MENU_VISIBLE // count)
+        offset = first_visible * (height - thumb) // (count - MENU_VISIBLE)
+        d.line((192, top, 192, top + height - 1), fill=0)
+        d.rectangle((190, top + offset, 194, top + offset + thumb - 1), fill=0)
+    d.line((26, 190, 29, 187, 32, 190), fill=0)
+    d.line((26, 192, 29, 195, 32, 192), fill=0)
+    glyphs(d, "Scroll", f["menu_detail"], 38, 183)
+    for box in ((93, 188, 95, 194), (91, 190, 97, 192), (92, 189, 96, 193)):
+        d.rectangle(box, fill=0)
+    glyphs(d, "Press to open", f["menu_detail"], 104, 183)
     return img
 
 

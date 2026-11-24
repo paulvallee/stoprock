@@ -5,6 +5,7 @@ from PIL import Image, ImageChops, ImageDraw, ImageFont
 
 ROOT = Path(__file__).resolve().parents[2]
 NUNITO = ROOT / "assets" / "fonts" / "Nunito[wght].ttf"
+NATIVE_LOGO = ROOT / "assets" / "logo" / "stoprock-logo-176px-1bit.png"
 F = 400  # working size; the result is scaled down
 
 

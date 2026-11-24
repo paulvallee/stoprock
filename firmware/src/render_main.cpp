@@ -5,6 +5,7 @@
 #include <initializer_list>
 
 #include "screens.h"
+#include "startup_menu.h"
 
 using namespace stoprock;
 
@@ -70,8 +71,10 @@ int main(int argc, char** argv) {
     }
 
     // switch-on: the mode menu, each mode selected
-    for (uint8_t i = 0; i < 4; ++i) {
-        drawModeMenu(c, i);
+    StartupMenuSelection menuSelection;
+    for (int i = 0; i < kStartupMenuCount; ++i) {
+        menuSelection.select(i, kStartupMenuCount);
+        drawStartupMenu(c, kStartupMenuItems, kStartupMenuCount, menuSelection);
         snprintf(path, sizeof path, "%s/menu%d.pbm", dir, i);
         writePbm(c, path);
     }

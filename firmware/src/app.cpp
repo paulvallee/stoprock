@@ -12,6 +12,7 @@
 #include "databank.h"
 #include "screens.h"
 #include "shots.h"
+#include "startup_menu.h"
 #include "throw_order.h"
 #include "timing.h"
 
@@ -363,7 +364,7 @@ struct Model {
     bool warning = false;
     bool off = false;
     bool menu = false;      // the mode menu at switch-on
-    uint8_t menuSel = 0;    // ... its selected mode: 0 competition, 1 league, 2 coach
+    StartupMenuSelection menuSelection;
     bool full = false;      // next update is a ghost-clearing full refresh
     Tip tip = Tip::None;    // a box over the times: the switch-on tip, or "Keep holding to undo"
     Waiting waiting = Waiting::None;  // a stone being timed: the stopwatch shows where its time will go
@@ -403,7 +404,7 @@ void displayTask(void*) {
         if (m.off) {
             drawOffPage(next);
         } else if (m.menu) {
-            drawModeMenu(next, m.menuSel);
+            drawStartupMenu(next, kStartupMenuItems, kStartupMenuCount, m.menuSelection);
         } else if (m.mode == GameMode::Basic) {
             drawBasic(next, m.stones, m.stoneCount, m.warning, m.tip, m.waiting, m.scroll);
         } else if (m.mode == GameMode::Competition) {
@@ -720,13 +721,14 @@ void showOffPageAndPowerOff() {
 
 // ------------------------------------------------------------------ input actions
 // ------------------------------------------------------------------ the mode menu
-// The menu's modes, in its order, and the rocker held at switch-on that skips to each.
-constexpr int kMenuCount = 4;
-const GameMode kMenuModes[kMenuCount] = {GameMode::Basic, GameMode::Competition, GameMode::League, GameMode::Coach};
-uint8_t menuIndex(GameMode m) {
-    for (uint8_t i = 0; i < kMenuCount; ++i)
-        if (kMenuModes[i] == m) return i;
-    return 0;
+int menuIndex(GameMode mode) {
+    int fallback = 0;
+    for (int i = 0; i < kStartupMenuCount; ++i) {
+        const GameMode itemMode = kStartupMenuItems[i].mode;
+        if (itemMode == mode) return i;
+        if (itemMode == GameMode::Competition) fallback = i;
+    }
+    return fallback;
 }
 constexpr int64_t kMenuIdleUs = 5 * 60 * kSec;  // untouched this long at the menu: switch off
 
@@ -734,16 +736,17 @@ constexpr int64_t kMenuIdleUs = 5 * 60 * kSec;  // untouched this long at the me
 // choose (round and round), the rocker's middle starts the one selected. The side button held 3 s
 // switches off as always (once it's been let go after switching on).
 GameMode chooseMode() {
-    static uint8_t sel;
+    static StartupMenuSelection selection;
     static bool full;
     // the mode itself is kept (not its place in the menu, which may change); competition the first time
     const uint8_t last = prefs.getUChar("menumode", static_cast<uint8_t>(GameMode::Competition));
-    sel = menuIndex(last < kMenuCount ? static_cast<GameMode>(last) : GameMode::Competition);
+    selection = {};
+    selection.select(menuIndex(static_cast<GameMode>(last)), kStartupMenuCount);
     auto show = [](bool f) {
         full = f;
         publish([](Model& m) {
             m.menu = true;
-            m.menuSel = sel;
+            m.menuSelection = selection;
             m.off = false;
             m.full = m.full || full;
         });
@@ -767,10 +770,11 @@ GameMode chooseMode() {
             lastInput = now;
             sound.play(kClick);
             if (rocker[i] == board::kPress) {
-                Serial.printf("menu: %s\n", modeName(kMenuModes[sel]));
-                return kMenuModes[sel];
+                const GameMode mode = kStartupMenuItems[selection.selected].mode;
+                Serial.printf("menu: %s\n", modeName(mode));
+                return mode;
             }
-            sel = (sel + (rocker[i] == board::kUp ? kMenuCount - 1 : 1)) % kMenuCount;  // up: the one above
+            selection.select(selection.selected + (rocker[i] == board::kUp ? -1 : 1), kStartupMenuCount);
             show(false);
         }
         if (board::held(board::kSide)) {

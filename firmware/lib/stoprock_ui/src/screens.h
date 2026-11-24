@@ -35,9 +35,6 @@ enum class Tip : uint8_t { None, SwitchOn, Undo, Move, PowerOff, Page };
 // The full-screen wake instructions shown while the device is switched off.
 void drawOffPage(Canvas& c);
 
-// The mode menu at switch-on: the modes, big, one a line. selected: 0 basic, 1 competition, 2 league, 3 coach.
-void drawModeMenu(Canvas& c, uint8_t selected);
-
 // Basic: times only, no players, a row a stone (4), as big as they go; the badge strip below. scroll:
 // rows scrolled down, to older stones (the badge then says which show, e.g. "5-8 of 14").
 void drawBasic(Canvas& c, const Stone* stones, uint8_t count, bool lowBattery, Tip tip = Tip::None,

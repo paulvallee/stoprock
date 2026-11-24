@@ -2,6 +2,7 @@
 #include <unity.h>
 
 #include "screens.h"
+#include "startup_menu.h"
 
 using namespace stoprock;
 
@@ -65,11 +66,31 @@ static void test_every_player_keeps_a_screenful() {
     for (int i = 1; i < n; ++i) TEST_ASSERT_TRUE(list[i].bh < list[i - 1].bh);  // order kept
 }
 
+static void test_startup_menu_scrolls_and_wraps_with_more_entries() {
+    StartupMenuSelection selection;
+    constexpr int count = 6;
+    selection.select(2, count);
+    TEST_ASSERT_EQUAL_INT(0, selection.firstVisible);
+    selection.select(3, count);
+    TEST_ASSERT_EQUAL_INT(1, selection.firstVisible);
+    selection.select(2, count);
+    TEST_ASSERT_EQUAL_INT(1, selection.firstVisible);
+    selection.select(5, count);
+    TEST_ASSERT_EQUAL_INT(3, selection.firstVisible);
+    selection.select(selection.selected + 1, count);
+    TEST_ASSERT_EQUAL_INT(0, selection.selected);
+    TEST_ASSERT_EQUAL_INT(0, selection.firstVisible);
+    selection.select(selection.selected - 1, count);
+    TEST_ASSERT_EQUAL_INT(5, selection.selected);
+    TEST_ASSERT_EQUAL_INT(3, selection.firstVisible);
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_no_players_drops_oldest);
     RUN_TEST(test_player_with_few_stones_keeps_them);
     RUN_TEST(test_every_player_keeps_a_screenful);
     RUN_TEST(test_teammates);
+    RUN_TEST(test_startup_menu_scrolls_and_wraps_with_more_entries);
     return UNITY_END();
 }

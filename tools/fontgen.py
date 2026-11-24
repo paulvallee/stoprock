@@ -110,10 +110,13 @@ def main():
     emit_font("kFontDseg33", f["big_long"], "0123456789", out)  # ... an H2H of 20.00 s
     emit_font("kFontDseg24", f["top_small"], "0123456789", out)  # coach page 2's newest stone
     emit_font("kFontDseg16", f["pct"], "0123456789", out)
-    spleen_chars = "".join(chr(c) for c in range(32, 127)) + "°"
-    emit_font("kFontSpleen6x12", f["label"], spleen_chars, out)
-    # the mode menu and the switch-on tip; the hold hints: only the characters they use
-    big = "".join(screen.MENU_MODES) + "".join(screen.you_are(0)) + "".join(screen.YOU_ARE)
+    ascii_chars = "".join(chr(c) for c in range(32, 127))
+    emit_font("kFontSpleen6x12", f["label"], ascii_chars + "°", out)
+    # The startup menu uses printable ASCII so new entries can be added without changing the font subset.
+    emit_font("kFontMenuTitle", f["menu_title"], ascii_chars, out)
+    emit_font("kFontMenuDetail", f["menu_detail"], ascii_chars, out)
+    # The switch-on tip and the hold hints use only these characters.
+    big = "".join(screen.you_are(0)) + "".join(screen.YOU_ARE)
     emit_font("kFontSpleen16x32", f["menu"], "".join(sorted(set(big))), out)
     hint = "".join(screen.UNDO_TIP + screen.OFF_TIP + screen.PAGE_TIP + screen.MOVE_HINT + screen.YOU_ARE_TIP[1:])
     emit_font("kFontSpleen12x24", f["hint"], "".join(sorted(set(hint))), out)
@@ -121,6 +124,10 @@ def main():
         if off_page.mode != "1" or off_page.size != (screen.W, screen.H):
             raise ValueError("The off page must be a 200 x 200, 1-bit image")
         emit_bitmap("kOffPage", off_page, out)
+    with Image.open(logo.NATIVE_LOGO) as native_logo:
+        if native_logo.mode != "1" or native_logo.size != (176, 39):
+            raise ValueError("The startup logo must be a 176 x 39, 1-bit image")
+        emit_bitmap("kLogo", native_logo, out)
     emit_bitmap("kLogoStrip", logo.strip_logo(), out)  # competition's badge strip, drawn white
     # rocks (radius 5) for league and coach, drawn as tools/mockups/screen.py small_rock()
     emit_sprite("kRockSmall", lambda d, c: d.ellipse([c - 5, c - 5, c + 5, c + 5], outline=0, width=1), 15, out)
