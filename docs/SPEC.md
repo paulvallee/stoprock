@@ -73,8 +73,8 @@ A stone gives at most one **B2H** (back line, or tee line, to hog line) followed
 |---|---|---|
 | **Idle** (usually asleep) | Click | Start a new stone; record the time; stopwatch icon on screen |
 | **Started** | Click under 1 s later | Double press: restart timing from this click |
-| | Click 1 s to under 5.5 s later | Log **B2H** → *Waiting for H2H* |
-| | Click 5.5–20 s later | Log **H2H** on a new row (B2H blank) → *Done* |
+| | Click 1 s to under 7 s later | Log **B2H** → *Waiting for H2H* |
+| | Click 7–20 s later | Log **H2H** on a new row (B2H blank) → *Done* |
 | | No click for 20 s | Abandon the stone (nothing logged) → *Idle* |
 | **Waiting for H2H** | Click under 5.5 s after the B2H click | Ignore it (error buzz); keep timing from the B2H click |
 | | Click 5.5–20 s after the B2H click | Log **H2H** on the same row → *Done* |
@@ -82,9 +82,9 @@ A stone gives at most one **B2H** (back line, or tee line, to hog line) followed
 | **Done** | — | Sleep at once → *Idle* |
 
 - After an H2H the stone is finished, so the next click always starts the next stone, however soon it comes (an opposing team may throw quickly).
-- The window limits (1, 5.5 and 20 s) are settings, with these values as defaults. The double-press limit is 1 s, not 1.5 s, because B2H may be timed from the tee line: tee-to-hog is about 0.5 s shorter than back-to-hog, so a peel is about 2 s and big weight can approach 1.6 s. The B2H/H2H boundary is 5.5 s, not 7 s: back-to-hog stays under about 4.8 s even for a light guard on fast ice, while a big-weight peel can cross hog to hog in about 6 s.
+- The window limits (1 s double press, 7 s B2H, 5.5 s shortest H2H after a B2H, 20 s) are settings, with these values as defaults. The double-press limit is 1 s, not 1.5 s, because B2H may be timed from the tee line: tee-to-hog is about 0.5 s shorter than back-to-hog, so a peel is about 2 s and big weight can approach 1.6 s. The B2H limit is 7 s: back-to-hog stays under about 4.8 s for a slide delivery even for a light guard on fast ice, but a stick delivery can take over 5.5 s. After a B2H, though, an H2H can be as short as 5.5 s (a big-weight peel can cross hog to hog in about 6 s), so that limit stays at 5.5 s. Only a stone timed hog to hog alone (two clicks) with 5.5–7 s between them is ambiguous: it reads as a B2H, closed without an H2H, the price of not cutting stick deliveries short.
 - Every result is also saved to the game databank (section 6).
-- The stopwatch icon on screen is the "timing in progress" sign, drawn where the awaited time will appear: in the Back2Hog box after the first click, in the Hog2Hog box once a B2H is logged. If 5.5 s pass after the first click with no second, the time can only be an H2H (the first click was at the near hog line), so the stopwatch moves to the Hog2Hog box then (one screen update; the device wakes from sleep for it). A double press puts it back in the Back2Hog box. The green LED is not used (the case covers it).
+- The stopwatch icon on screen is the "timing in progress" sign, drawn where the awaited time will appear: in the Back2Hog box after the first click, in the Hog2Hog box once a B2H is logged. If 7 s pass after the first click with no second, the time can only be an H2H (the first click was at the near hog line), so the stopwatch moves to the Hog2Hog box then (one screen update; the device wakes from sleep for it). A double press puts it back in the Back2Hog box. The green LED is not used (the case covers it).
 
 ## 5. Shots
 

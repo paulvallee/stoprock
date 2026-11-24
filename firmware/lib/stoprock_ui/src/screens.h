@@ -19,7 +19,7 @@ struct Stone {
 
 // While a stone is being timed: which time is awaited. The screens show a stopwatch where it will
 // appear; awaiting the B2H, the large row is the new stone's (empty) and the last stone counts as older.
-// HogToHogOnly: 5.5 s after the first click with no second, it can only be an H2H (the first click
+// HogToHogOnly: 7 s after the first click with no second, it can only be an H2H (the first click
 // was at the near hog line): the row is still the new stone's, the stopwatch in the H2H box.
 enum class Waiting : uint8_t { None, BackToHog, HogToHog, HogToHogOnly };
 

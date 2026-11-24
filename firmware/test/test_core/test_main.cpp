@@ -59,10 +59,16 @@ static void test_window_boundaries() {
     TEST_ASSERT_EQUAL_INT64(sec(1.6), heavy.us);
     t.reset();
     t.click(0);
-    TEST_ASSERT_EQUAL(TimingEvent::HH, t.click(sec(5.5)).event);  // 5.5 s is H2H
+    TEST_ASSERT_EQUAL(TimingEvent::HH, t.click(sec(7.0)).event);  // 7 s with no B2H before: H2H
     t.reset();
     t.click(0);
-    TEST_ASSERT_EQUAL(TimingEvent::BH, t.click(sec(5.49)).event); // just under: B2H
+    TEST_ASSERT_EQUAL(TimingEvent::BH, t.click(sec(6.99)).event); // just under: B2H (a stick delivery)
+    t.reset();
+    t.click(0);
+    TEST_ASSERT_EQUAL(TimingEvent::BH, t.click(sec(6.2)).event);  // a slow stick delivery: B2H
+    Outcome after = t.click(sec(6.2 + 12.0));                     // its H2H
+    TEST_ASSERT_EQUAL(TimingEvent::HH, after.event);
+    TEST_ASSERT_EQUAL_INT64(sec(12.0), after.us);
     t.reset();
     t.click(0);
     t.click(sec(2.6));                                            // heavy B2H

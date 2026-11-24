@@ -136,7 +136,7 @@ int main(int argc, char** argv) {
     drawLeague(c, league, nl, shots, 1, 1, false, Tip::None, Waiting::BackToHog, Focus::Rocks);
     snprintf(path, sizeof path, "%s/league-rocks.pbm", dir);
     writePbm(c, path);
-    // 5.5 s with no second click: an H2H under way, the stopwatch in the H2H box
+    // 7 s with no second click: an H2H under way, the stopwatch in the H2H box
     drawLeague(c, league, nl, shots, 1, 3, false, Tip::None, Waiting::HogToHogOnly);
     snprintf(path, sizeof path, "%s/league-wait-h2h-only.pbm", dir);
     writePbm(c, path);

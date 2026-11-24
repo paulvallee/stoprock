@@ -48,7 +48,7 @@ Outcome TimingEngine::click(int64_t t) {
         break;
 
     case TimingState::WaitingHH:
-        if (gap < cfg_.bhMaxUs) {
+        if (gap < cfg_.hhMinUs) {
             o.event = TimingEvent::IgnoredTooSoon;
         } else {
             state_ = TimingState::Idle;

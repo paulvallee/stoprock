@@ -315,7 +315,7 @@ STOPWATCH_BIG, STOPWATCH_SMALL = 10, 6  # ring radius: in the large row, and coa
 def newest_row(d, f, stones, waiting, mid, font, y0, y1, margin, r, cy):
     """The current stone across both halves. waiting: "b2h", "h2h" or "h2h-only" while it's being
     timed (a stopwatch where that time will appear; for "b2h" and "h2h-only", a stone whose first
-    click was 5.5 s ago with no second, so it can only be an H2H, the row is still empty)."""
+    click was 7 s ago with no second, so it can only be an H2H, the row is still empty)."""
     cur = None if waiting in ("b2h", "h2h-only") or not stones else stones[0]
     for k, (x0, x1) in enumerate(((0, mid), (mid, W))):
         if cur is not None and cur[k] is not None:

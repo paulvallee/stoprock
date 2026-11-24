@@ -149,7 +149,7 @@ ThrowOrder order;               // where in the end the game is
 bool manualCursor = false;      // the cursor was put where it is with the rocker: leave it there
 int64_t stoneStart = -1;        // when the stone being timed started
 int64_t gameStartUs = 0;        // when this game started (switch-on)
-// A stone started with no second click for longer than a B2H can be (5.5 s): it can only be an
+// A stone started with no second click for longer than a B2H can be (7 s): it can only be an
 // H2H, so the stopwatch moves to the H2H box. h2hSwitchAt: when that happens for the stone under way.
 int64_t h2hSwitchAt = -1;
 uint8_t moveSteps = 0;          // columns the newest time has moved during this hold of rocker up
