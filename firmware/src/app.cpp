@@ -561,6 +561,11 @@ void handleOutcome(const Outcome& o, int64_t now) {
             focusTo(Focus::Players);
             Serial.println("focus: players (timing)");
         }
+        // tips go: timing has the screen (the hold hints stay while their hold lasts)
+        tipWaiting = false;
+        tipUntil = -1;
+        pageTipUntil = -1;
+        singleClickAt = -1;
         // no LED: the case covers it, and the stopwatch icon shows timing in progress
         Serial.println("timing: start");
         syncModel();  // a stopwatch where the time will appear
