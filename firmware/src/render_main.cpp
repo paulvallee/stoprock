@@ -70,7 +70,7 @@ int main(int argc, char** argv) {
     }
 
     // switch-on: the mode menu, each mode selected
-    for (uint8_t i = 0; i < 3; ++i) {
+    for (uint8_t i = 0; i < 4; ++i) {
         drawModeMenu(c, i);
         snprintf(path, sizeof path, "%s/menu%d.pbm", dir, i);
         writePbm(c, path);
@@ -189,6 +189,31 @@ int main(int argc, char** argv) {
         ShotLog s(ShotLog::kCoachSlots);
         drawCoachTimer(c, coach, 12, s, Waiting::None, 4);
         snprintf(path, sizeof path, "%s/coach1-20.pbm", dir);
+        writePbm(c, path);
+    }
+
+    {  // zoom: a row a stone; timing; a 20.00 H2H with a low battery and the undo hint
+        drawZoom(c, league, nl, false);
+        snprintf(path, sizeof path, "%s/zoom.pbm", dir);
+        writePbm(c, path);
+        drawZoom(c, league, nl, false, Tip::None, Waiting::BackToHog);
+        snprintf(path, sizeof path, "%s/zoom-wait-b2h.pbm", dir);
+        writePbm(c, path);
+        drawZoom(c, league, nl, false, Tip::None, Waiting::HogToHogOnly);
+        snprintf(path, sizeof path, "%s/zoom-wait-h2h-only.pbm", dir);
+        writePbm(c, path);
+        Stone half[sizeof league / sizeof league[0]];
+        for (int i = 0; i < nl; ++i) half[i] = league[i];
+        half[0].hh = -1;
+        drawZoom(c, half, nl, false, Tip::None, Waiting::HogToHog);
+        snprintf(path, sizeof path, "%s/zoom-wait-h2h.pbm", dir);
+        writePbm(c, path);
+        half[0] = Stone{352, 2000, 4};
+        drawZoom(c, half, nl, true, Tip::Undo);
+        snprintf(path, sizeof path, "%s/zoom-20.pbm", dir);
+        writePbm(c, path);
+        drawZoom(c, league, 2, false, Tip::PowerOff);
+        snprintf(path, sizeof path, "%s/zoom-few.pbm", dir);
         writePbm(c, path);
     }
 

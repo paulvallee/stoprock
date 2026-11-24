@@ -118,7 +118,7 @@ GameMode mode = GameMode::Competition;
 uint8_t coachPage = 0;          // coach: 0 timer priority, 1 rock priority
 uint8_t myPosition = 0;         // 0 lead .. 3 skip (double press of the rocker centre; kept)
 
-// What differs between the modes, all in one place: everything else is the same code for all three.
+// What differs between the modes, all in one place: everything else is the same code for all four.
 struct ModeRules {
     uint8_t shotsPerEnd;  // rocks logged an end: 0 competition, 2 league (yours), 8 coach (the team's)
     bool focus;           // league, coach: the rocker works on the times or on the rocks (hold down / up)
@@ -126,12 +126,15 @@ struct ModeRules {
                           // it; a coach (who may log many rocks at once) keeps it where they put it.
                           // Either way, starting the stopwatch brings it to the times.
     bool positions;       // you have a position (double click changes it); a coach has none (double click: page)
+    bool columns;         // the times are in a column per player, with a cursor (zoom: no players, a row a stone)
+    bool pages;           // coach: two pages (double click switches)
 };
 const ModeRules& rules() {
-    static const ModeRules kRules[3] = {  // indexed by GameMode: League, Competition, Coach
-        {2, true, true, true},
-        {0, false, false, true},
-        {8, true, false, false},
+    static const ModeRules kRules[4] = {  // indexed by GameMode: League, Competition, Coach, Zoom
+        {2, true, true, true, true, false},
+        {0, false, false, true, true, false},
+        {8, true, false, false, true, true},
+        {0, false, false, false, false, false},
     };
     return kRules[static_cast<uint8_t>(mode)];
 }
@@ -405,6 +408,8 @@ void displayTask(void*) {
             drawHelp(next, m.lastGame, m.shotPct, m.battery, m.batteryNote);
         } else if (m.menu) {
             drawModeMenu(next, m.menuSel);
+        } else if (m.mode == GameMode::Zoom) {
+            drawZoom(next, m.stones, m.stoneCount, m.warning, m.tip, m.waiting);
         } else if (m.mode == GameMode::Competition) {
             drawCompetition(next, m.stones, m.stoneCount, m.me, m.activeCol, m.warning, m.tip, m.waiting);
         } else if (m.mode == GameMode::Coach) {
@@ -461,29 +466,29 @@ void syncModel(bool full = false) {
 // to check the guesses against real games).
 uint8_t stoneGuess = Stone::kNoPlayer;
 void pushStone(Stone s) {
-    s.player = columnPlayer(seat(), activeCol);
-    stoneGuess = columnPlayer(seat(), order.predict(stoneStart));
+    s.player = rules().columns ? columnPlayer(seat(), activeCol) : Stone::kNoPlayer;
+    stoneGuess = rules().columns ? columnPlayer(seat(), order.predict(stoneStart)) : Stone::kNoPlayer;
     addStone(stones, stoneCount, kMaxStones, s);
     addEntry(Entry::Stone);
-    order.place(activeCol, stoneStart);
+    if (rules().columns) order.place(activeCol, stoneStart);
     manualCursor = false;
 }
 
 // The cursor on whoever the throw order says throws next (unless you put it somewhere).
 void cursorToNext(int64_t start = -1) {
-    if (manualCursor) return;
+    if (manualCursor || !rules().columns) return;
     activeCol = order.predict(start);
 }
 
 // Coach page 2 shows the rocks, not the columns: there the rocker always works on the rocks.
-bool rocksPage() { return !rules().positions && coachPage == 1; }  // pages: a coach (no position)
+bool rocksPage() { return rules().pages && coachPage == 1; }
 
 // The focus the device moves to by itself (timing, a stone done, a shot logged): never off the
 // rocks on the rocks page.
 void focusTo(Focus f) { focus = rocksPage() ? Focus::Rocks : f; }
 
 // The next time the cursor may move on by itself, from now.
-void planFollow(int64_t now) { followAt = order.nextChange(now); }
+void planFollow(int64_t now) { followAt = rules().columns ? order.nextChange(now) : -1; }
 
 // The throw order moved on between stones: the cursor on whoever's next, and when it may move on.
 void reaim(int64_t now) {
@@ -739,17 +744,22 @@ void showHelpAndPowerOff() {
 // ------------------------------------------------------------------ input actions
 // ------------------------------------------------------------------ the mode menu
 // The menu's modes, in its order, and the rocker held at switch-on that skips to each.
-const GameMode kMenuModes[3] = {GameMode::Competition, GameMode::League, GameMode::Coach};
-uint8_t menuIndex(GameMode m) { return m == GameMode::League ? 1 : m == GameMode::Coach ? 2 : 0; }
+constexpr int kMenuCount = 4;
+const GameMode kMenuModes[kMenuCount] = {GameMode::Competition, GameMode::League, GameMode::Coach, GameMode::Zoom};
+uint8_t menuIndex(GameMode m) {
+    for (uint8_t i = 0; i < kMenuCount; ++i)
+        if (kMenuModes[i] == m) return i;
+    return 0;
+}
 constexpr int64_t kMenuIdleUs = 5 * 60 * kSec;  // untouched this long at the menu: switch off
 
-// At switch-on, unless the rocker is held: the three modes, the one used last selected. Up/down
+// At switch-on, unless the rocker is held: the modes, the one used last selected. Up/down
 // choose (round and round), the rocker's middle starts the one selected. The side button held 3 s
 // switches off as always (once it's been let go after switching on).
 GameMode chooseMode() {
     static uint8_t sel;
     static bool full;
-    sel = prefs.getUChar("lastmode", 0) % 3;
+    sel = prefs.getUChar("lastmode", 0) % kMenuCount;
     auto show = [](bool f) {
         full = f;
         publish([](Model& m) {
@@ -781,7 +791,7 @@ GameMode chooseMode() {
                 Serial.printf("menu: %s\n", modeName(kMenuModes[sel]));
                 return kMenuModes[sel];
             }
-            sel = (sel + (rocker[i] == board::kUp ? 2 : 1)) % 3;  // up: the one above
+            sel = (sel + (rocker[i] == board::kUp ? kMenuCount - 1 : 1)) % kMenuCount;  // up: the one above
             show(false);
         }
         if (board::held(board::kSide)) {
@@ -935,9 +945,9 @@ void onRockerPress(ButtonState& s, int64_t t) {
         s.holdFired = true;      // this press can't turn into an undo
         lastRockerPress = -kSec; // a third press starts over
         sound.play(kClick);
-        if (!rules().positions) {
+        if (rules().pages) {
             switchPage();
-        } else {
+        } else if (rules().positions) {
             myPosition = (myPosition + 1) % 4;
             prefs.putUChar("mypos", myPosition);
             restartOrder();
@@ -1014,7 +1024,7 @@ void releaseAction(uint8_t b);
 void onRelease(uint8_t b) {
     // Coach: a quick click of the centre that wasn't the second of a double click (that one is
     // holdFired): if no second click follows within the window, say how to switch page.
-    if (b == board::kPress && !rules().positions && !buttons[b].holdFired && lastRockerPress >= 0 &&
+    if (b == board::kPress && rules().pages && !buttons[b].holdFired && lastRockerPress >= 0 &&
         esp_timer_get_time() - lastRockerPress < kDoublePressUs) {
         singleClickPress = lastRockerPress;
         singleClickAt = lastRockerPress + kDoublePressUs;
@@ -1034,7 +1044,7 @@ void releaseAction(uint8_t b) {
     if (moveSteps > 0) { finishMove(); return; }  // a held up (or down) moved the newest time
     if (buttons[b].holdFired) return;
     if (rules().shotsPerEnd && (!rules().focus || focus == Focus::Rocks)) onShot(b == board::kUp);
-    else movePlayer(b == board::kUp ? 1 : -1);  // up = next player, down = previous
+    else if (rules().columns) movePlayer(b == board::kUp ? 1 : -1);  // up = next player, down = previous
 }
 
 void onPress(uint8_t b, int64_t t) {
@@ -1124,7 +1134,8 @@ void pollButtons(int64_t now) {
             // columns to move the newest time a column right every 0.7 s (let go where it belongs);
             // without a focus (competition, coach), hold down to move it left.
             const bool rocker = b == board::kUp || b == board::kDown;
-            const bool moves = rocker && raw && (b == board::kUp || !rules().focus) && focus == Focus::Players;
+            const bool moves = rules().columns && rocker && raw && (b == board::kUp || !rules().focus) &&
+                               focus == Focus::Players;
             if (moves && !moveHint && stoneCount > 0 && now - s.downSince >= kUndoHintUs) {
                 moveHint = true;  // a press of up/down is quicker: it never shows for one
                 syncModel();
@@ -1134,8 +1145,7 @@ void pollButtons(int64_t now) {
                 s.holdFired = true;  // not a short press when it's let go
                 activity(now);
                 setFocus(b == board::kUp ? Focus::Players : Focus::Rocks);
-            } else if (rocker && raw && (b == board::kUp || !rules().focus) && focus == Focus::Players &&
-                       now - s.downSince >= kMoveStepUs * (moveSteps + 1)) {
+            } else if (moves && now - s.downSince >= kMoveStepUs * (moveSteps + 1)) {
                 // raw: no step once it's let go (it counts as released only after 20 ms up)
                 activity(now);  // up moves the newest time right; down (no focus to move) left
                 if (!stepMove(b == board::kUp ? 1 : -1)) s.holdFired = true;
@@ -1202,12 +1212,13 @@ void runCommand(const char* buf) {
         if (!strcmp(name, "competition")) mode = GameMode::Competition;
         else if (!strcmp(name, "league")) mode = GameMode::League;
         else if (!strcmp(name, "coach")) mode = GameMode::Coach;
-        else { Serial.println("modes: competition | league | coach"); return; }
+        else if (!strcmp(name, "zoom")) mode = GameMode::Zoom;
+        else { Serial.println("modes: competition | league | coach | zoom"); return; }
         coachPage = 0;
         newGame();
         syncModel(true);
     } else if (!strcmp(buf, "page")) {  // testing: coach page switch, as a double press
-        if (!rules().positions) { switchPage(); syncModel(); }
+        if (rules().pages) { switchPage(); syncModel(); }
     } else if (!strcmp(buf, "o")) {
         showHelpAndPowerOff();
     } else if (!strcmp(buf, "s")) {
@@ -1230,7 +1241,7 @@ void runCommand(const char* buf) {
     } else if (buf[0]) {
         Serial.println("commands: t <unix seconds> | s | games | games new | game <id> | ack <id> | bank | "
                        "erase-all yes | audit | crash | crash clear | sleeptiming on|off | n (new game) | "
-                       "o (power off) | mode competition|league|coach | page");
+                       "o (power off) | mode competition|league|coach|zoom | page");
     }
 }
 

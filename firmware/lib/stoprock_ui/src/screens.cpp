@@ -507,9 +507,9 @@ static void fourColumns(Canvas& c, const Stone* stones, int count, uint8_t me, u
 void drawModeMenu(Canvas& c, uint8_t selected) {
     c.clear();
     c.blit(kLogoStrip, (W - kLogoStrip.w) / 2, 4);
-    static const char* const kModes[3] = {"COMPETITION", "LEAGUE", "COACH"};
-    constexpr int kRowTop = 34, kRowPitch = 55, kRowH = 48;
-    for (int i = 0; i < 3; ++i) {
+    static const char* const kModes[4] = {"COMPETITION", "LEAGUE", "COACH", "ZOOM"};
+    constexpr int kRowTop = 30, kRowPitch = 42, kRowH = 38;
+    for (int i = 0; i < 4; ++i) {
         const int y0 = kRowTop + i * kRowPitch;
         const bool on = i == selected;
         if (on) c.fillRect(2, y0, W - 3, y0 + kRowH - 1);
@@ -519,18 +519,47 @@ void drawModeMenu(Canvas& c, uint8_t selected) {
     }
 }
 
+// The bottom TIP_H px, white on black, for an umpire: the logo on the left, the mode's name and
+// "STOPWATCH ONLY" (or "Battery low") right-aligned.
+static void badgeStrip(Canvas& c, const char* name, bool lowBattery) {
+    const int strip = H - TIP_H;
+    c.fillRect(0, strip, W - 1, H - 1);
+    c.blit(kLogoStrip, 2, strip + (TIP_H - kLogoStrip.h) / 2, false);
+    const char* const lines[2] = {name, lowBattery ? "Battery low" : "STOPWATCH ONLY"};
+    for (int i = 0; i < 2; ++i)
+        c.text(kFontSpleen6x12, W - 2 - 6 * static_cast<int>(strlen(lines[i])), strip + 1 + 12 * i, lines[i], false);
+}
+
+// Zoom: competition's times with no players, as big as they go: a row a stone, newest first, 4 rows,
+// B2H black on white left of COMP_MID, H2H white on black right of it, the badge strip below. The top
+// row is the stone being timed, as the newest row of the other modes; the rows below, the ones before.
+void drawZoom(Canvas& c, const Stone* stones, uint8_t count, bool lowBattery, Tip tip, Waiting waiting) {
+    c.clear();
+    const int strip = H - TIP_H, rowH = (H - TIP_H) / 4;
+    c.fillRect(COMP_MID, 0, W - 1, strip - 1);
+    newestRow(c, stones, count, waiting, COMP_MID, kFontDseg37, kFontDseg33, 0, rowH, kStopwatch, rowH / 2);
+    const bool fresh = waiting == Waiting::BackToHog || waiting == Waiting::HogToHogOnly;  // row 0: no stone yet
+    for (int i = 1, s = fresh ? 0 : 1; i < 4 && s < count; ++i, ++s) {
+        const int y0 = i * rowH;
+        c.fillRect(0, y0, COMP_MID - 1, y0);  // between rows: black on white, white on black
+        c.fillRect(COMP_MID, y0, W - 1, y0, false);
+        const int32_t vals[2] = {stones[s].bh, stones[s].hh};
+        for (int k = 0; k < 2; ++k) {
+            if (vals[k] < 0) continue;
+            dsegNumber(c, vals[k], k ? COMP_MID : 0, k ? W : COMP_MID, y0, y0 + rowH, 0,
+                       vals[k] >= 2000 ? kFontDseg33 : kFontDseg37, true, k == 0);
+        }
+    }
+    badgeStrip(c, "ZOOM", lowBattery);
+    if (tip == Tip::Undo || tip == Tip::PowerOff) undoTip(c, kHintTop, strip, tip);
+}
+
 void drawCompetition(Canvas& c, const Stone* stones, uint8_t count, uint8_t me, uint8_t activeCol,
                      bool lowBattery, Tip tip, Waiting waiting) {
     c.clear();
-    const Font& label = kFontSpleen6x12;
     const int strip = H - TIP_H;
     fourColumns(c, stones, count, me, activeCol, strip, waiting, kZoomComp);
-    // the badge strip: the logo white on black, and two lines right-aligned
-    c.fillRect(0, strip, W - 1, H - 1);
-    c.blit(kLogoStrip, 2, strip + (TIP_H - kLogoStrip.h) / 2, false);
-    const char* const lines[2] = {"COMPETITION", lowBattery ? "Battery low" : "STOPWATCH ONLY"};
-    for (int i = 0; i < 2; ++i)
-        c.text(label, W - 2 - 6 * static_cast<int>(strlen(lines[i])), strip + 1 + 12 * i, lines[i], false);
+    badgeStrip(c, "COMPETITION", lowBattery);
     if (tip == Tip::SwitchOn) switchOnTip(c, me);
     if (tip == Tip::Undo || tip == Tip::PowerOff) undoTip(c, kHintTop, strip, tip);
     if (tip == Tip::Move) moveTip(c, strip, H);  // over the badge strip

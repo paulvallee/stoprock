@@ -222,13 +222,13 @@ HELP_EQ_X = 5 + 6 * len("SHOTS") + 8 + 6 * len("up/down ")  # x of every "=" on 
 
 # The menu at switch-on (unless the rocker is held: then that mode straight away). The mode used last
 # is selected; up/down choose, the rocker's middle starts it.
-MENU_MODES = ("COMPETITION", "LEAGUE", "COACH")
-MENU_ROW_TOP, MENU_ROW_PITCH, MENU_ROW_H = 34, 55, 48  # the three modes, big, one line each
+MENU_MODES = ("COMPETITION", "LEAGUE", "COACH", "ZOOM")
+MENU_ROW_TOP, MENU_ROW_PITCH, MENU_ROW_H = 30, 42, 38  # the modes, big, one a line
 
 
 def mode_menu(selected):
     """The modes at switch-on, big (Spleen 16x32, bold), one a line; selected (0 competition, 1 league,
-    2 coach) white on black. Up/down choose, the middle starts it: no help text, the help page has it."""
+    2 coach, 3 zoom) white on black. Up/down choose, the middle starts it: no help text, the help page has it."""
     f = fonts()
     img = Image.new("1", (W, H), 1)
     d = ImageDraw.Draw(img)
@@ -442,6 +442,50 @@ def tooltip(d, f, lines, top, bottom, size="hint"):
         y += lh
 
 
+def badge_strip(img, d, f, name, low_battery):
+    """The bottom TIP_H px, white on black, for an umpire: the logo on the left, the mode's name and
+    "STOPWATCH ONLY" (or "Battery low") right-aligned."""
+    strip = H - TIP_H
+    d.rectangle([0, strip, W - 1, H - 1], fill=0)
+    from logo import strip_logo  # here, not at the top: logo.py is a sibling module
+    lg = strip_logo()
+    img.paste(1, (2, strip + (TIP_H - lg.height) // 2), ImageChops.invert(lg.convert("L")).convert("1"))
+    sub = "Battery low" if low_battery else "STOPWATCH ONLY"
+    for t, y in ((name, strip + 1), (sub, strip + 13)):
+        d.text((W - 2 - 6 * len(t), y), t, font=f["label"], fill=1)
+
+
+# Zoom: competition's times with no players, as big as they go: a row a stone, newest first, 4 rows,
+# B2H black on white left of COMP_MID, H2H white on black right of it, the badge strip below.
+ZOOM_ROW_H = (H - TIP_H) // 4  # 43
+
+
+def zoom_screen(stones, low_battery=False, tip=False, waiting=None):
+    """stones: (b2h, h2h, ...) newest first. The top row is the stone being timed, as the newest row
+    of the other modes (a stopwatch where its time will appear); the rows below, the ones before."""
+    f = fonts()
+    img = Image.new("1", (W, H), 1)
+    d = ImageDraw.Draw(img)
+    d.fontmode = "1"
+    strip = H - TIP_H
+    d.rectangle([COMP_MID, 0, W - 1, strip - 1], fill=0)
+    newest_row(d, f, stones, waiting, COMP_MID, (f["big"], f["big_long"]), 0, ZOOM_ROW_H, STOPWATCH_BIG,
+               ZOOM_ROW_H // 2)
+    before = stones if waiting in ("b2h", "h2h-only") else stones[1:]
+    for i, st in enumerate(before[:3], 1):
+        y0 = i * ZOOM_ROW_H
+        d.line([(0, y0), (COMP_MID - 1, y0)], fill=0)  # between rows: black on white, white on black
+        d.line([(COMP_MID, y0), (W - 1, y0)], fill=1)
+        for k, (x0, x1) in enumerate(((0, COMP_MID), (COMP_MID, W))):
+            if st[k] is not None:
+                font = f["big_long"] if st[k] >= 20 else f["big"]
+                dseg_number(d, st[k], font, x0, x1, y0, y0 + ZOOM_ROW_H, margin=0, align="center", fill=k)
+    badge_strip(img, d, f, "ZOOM", low_battery)
+    if tip in ("undo", "off"):
+        tooltip(d, f, UNDO_TIP if tip == "undo" else OFF_TIP, HINT_TOP, strip)
+    return img
+
+
 def competition_screen(stones, me=0, active=0, low_battery=False, tip=False, waiting=None):
     """Times only, with a badge strip an umpire can read at a glance: the four columns as in
     league, 8 lines. stones: (b2h, h2h, player 0-3 or THEM) newest first; me: your position;
@@ -452,14 +496,7 @@ def competition_screen(stones, me=0, active=0, low_battery=False, tip=False, wai
     d.fontmode = "1"
     strip = H - TIP_H
     four_columns(d, f, stones, me, active, strip, waiting, "zoom_comp")
-    # the badge strip: the logo white on black, and two lines right-aligned
-    d.rectangle([0, strip, W - 1, H - 1], fill=0)
-    from logo import strip_logo  # here, not at the top: logo.py is a sibling module
-    lg = strip_logo()
-    img.paste(1, (2, strip + (TIP_H - lg.height) // 2), ImageChops.invert(lg.convert("L")).convert("1"))
-    sub = "Battery low" if low_battery else "STOPWATCH ONLY"
-    for t, y in (("COMPETITION", strip + 1), (sub, strip + 13)):
-        d.text((W - 2 - 6 * len(t), y), t, font=f["label"], fill=1)
+    badge_strip(img, d, f, "COMPETITION", low_battery)
     if tip in ("undo", "off"):
         tooltip(d, f, UNDO_TIP if tip == "undo" else OFF_TIP, HINT_TOP, strip)
     elif tip == "move":  # over the badge strip, clear of the columns

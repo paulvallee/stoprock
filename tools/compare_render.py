@@ -27,7 +27,7 @@ def main():
     }
     refs["competition-tip"] = screen.competition_screen([], 0, 0, tip=True)
     refs["league-tip"] = screen.league_screen([], [], 2, 0, tip=True)
-    for i in range(3):
+    for i in range(4):
         refs[f"menu{i}"] = screen.mode_menu(i)
     refs["coach1-tip"] = screen.coach_timer_screen([], [], tip=True)
     refs["competition-undo"] = screen.competition_screen(ls, lme, lact, tip="undo")
@@ -71,6 +71,12 @@ def main():
     refs["league-20"] = screen.league_screen(slow, shots, lme, 3)
     refs["competition-20"] = screen.competition_screen(slow, lme, 3)
     refs["coach1-20"] = screen.coach_timer_screen([(3.52, 20.00, 4)] + list(render.COACH_STONES[1:]), [], active=4)
+    refs["zoom"] = screen.zoom_screen(ls)
+    refs["zoom-wait-b2h"] = screen.zoom_screen(ls, waiting="b2h")
+    refs["zoom-wait-h2h-only"] = screen.zoom_screen(ls, waiting="h2h-only")
+    refs["zoom-wait-h2h"] = screen.zoom_screen(lhalf, waiting="h2h")
+    refs["zoom-20"] = screen.zoom_screen(slow, low_battery=True, tip="undo")
+    refs["zoom-few"] = screen.zoom_screen(ls[:2], tip="off")
     rows, worst = [], 0
     for name, ref in refs.items():
         fw = Image.open(src / f"{name}.pbm").convert("1")
