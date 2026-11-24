@@ -346,7 +346,7 @@ static void tooltip(Canvas& c, const char* const* lines, int n, int top, int bot
 // The switch-on tip (competition and league), also shown when you change position: "You are / SKIP"
 // (bold Spleen 16x32) and "2x to change" (12x24) in a box on the left, level with the rocker, and an
 // arrow from it to the rocker (a double click changes position).
-constexpr int kRockerY = 51;  // the rocker's height beside the screen (CoreInk: right side)
+constexpr int kRockerY = 55;  // the rocker's height beside the screen (CoreInk: right side)
 static const char* const kYouAre[4] = {"LEAD", "SECOND", "THIRD", "SKIP"};
 
 // An arrow from xFrom to the screen's right edge at y, pointing right, on a white band (so it reads
