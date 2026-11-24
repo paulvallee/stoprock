@@ -4,6 +4,7 @@
 #include <M5Unified.h>
 #include <driver/gpio.h>
 #include <esp_sleep.h>
+#include <soc/gpio_reg.h>
 #include <sys/time.h>
 
 #include "board.h"
@@ -120,27 +121,38 @@ bool command(char*, size_t) { return false; }  // commands come over USB only
 bool startsOff() { return false; }               // running means it was switched on
 
 bool lightSleep(int64_t wakeAtUs) {
-    // Waking on a button needs a low-level trigger, and gpio_wakeup_enable writes it over the
-    // falling edge the timing buttons interrupt on (gpio_wakeup_disable doesn't put it back). Left
-    // like that, a press interrupts without end for as long as it's held, the app never gets to
-    // see it held, and it's dropped. So: no interrupts while asleep, and the edge back after.
-    for (Button b : {kTop, kSide}) gpio_intr_disable(static_cast<gpio_num_t>(kPins[b]));
+    Serial.flush();
+    // GPIO wake uses the same trigger field as the awake interrupt. Keep CPU interrupts
+    // disabled on all five buttons while any of them is configured for level-triggered wake.
+    for (int p : kPins) gpio_intr_disable(static_cast<gpio_num_t>(p));
     for (int p : kPins) gpio_wakeup_enable(static_cast<gpio_num_t>(p), GPIO_INTR_LOW_LEVEL);
     esp_sleep_enable_gpio_wakeup();
     if (wakeAtUs >= 0) {
         const int64_t now = esp_timer_get_time();
         esp_sleep_enable_timer_wakeup(wakeAtUs > now ? wakeAtUs - now : 1000);
     }
-    Serial.flush();
     gpio_hold_en(kPowerHoldPin);  // keep the power latch on through the sleep (or the board switches off)
     esp_light_sleep_start();
+    for (int p : kPins) {
+        const auto pin = static_cast<gpio_num_t>(p);
+        gpio_wakeup_disable(pin);
+        gpio_set_intr_type(pin, GPIO_INTR_DISABLE);
+    }
+    // The wake level can leave a latched GPIO status bit on either bank. Stop the level
+    // triggers before clearing it, so a button that's still held can't set it again.
+    constexpr uint32_t timingMask = (1u << kPins[kTop]) | (1u << kPins[kSide]);
+    constexpr uint32_t rockerMask = (1u << (kPins[kUp] - 32)) | (1u << (kPins[kPress] - 32))
+                                 | (1u << (kPins[kDown] - 32));
+    REG_WRITE(GPIO_STATUS_W1TC_REG, timingMask);
+    REG_WRITE(GPIO_STATUS1_W1TC_REG, rockerMask);
+    // The app samples the level separately for the press that woke it.
+    for (Button b : {kTop, kSide}) {
+        const auto pin = static_cast<gpio_num_t>(kPins[b]);
+        gpio_set_intr_type(pin, GPIO_INTR_NEGEDGE);
+        gpio_intr_enable(pin);
+    }
     gpio_hold_dis(kPowerHoldPin);
     esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_ALL);
-    for (int p : kPins) gpio_wakeup_disable(static_cast<gpio_num_t>(p));
-    for (Button b : {kTop, kSide}) {  // (a press that woke us is the app's to see, from the level)
-        gpio_set_intr_type(static_cast<gpio_num_t>(kPins[b]), GPIO_INTR_NEGEDGE);
-        gpio_intr_enable(static_cast<gpio_num_t>(kPins[b]));
-    }
     return true;
 }
 
