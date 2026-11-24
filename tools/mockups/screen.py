@@ -273,18 +273,32 @@ def mode_menu(selected, first_visible=0):
         offset = first_visible * (height - thumb) // (count - MENU_VISIBLE)
         d.line((192, top, 192, top + height - 1), fill=0)
         d.rectangle((190, top + offset, 194, top + offset + thumb - 1), fill=0)
-    d.line((26, 190, 29, 187, 32, 190), fill=0)
-    d.line((26, 192, 29, 195, 32, 192), fill=0)
-    glyphs(d, "Scroll", f["menu_detail"], 38, 183)
-    for box in ((93, 188, 95, 194), (91, 190, 97, 192), (92, 189, 96, 193)):
-        d.rectangle(box, fill=0)
-    glyphs(d, "Press to open", f["menu_detail"], 104, 183)
     return img
 
 
-def off_page():
+def off_page(battery=-1, games_left=-1):
     with Image.open(OFF_PAGE_PATH) as image:
-        return image.copy()
+        img = image.copy()
+    if battery < 0:
+        return img
+    battery = min(battery, 100)
+    d = ImageDraw.Draw(img)
+    d.fontmode = "1"
+    d.rectangle((12, 182, 27, 191), outline=0)
+    d.rectangle((28, 185, 29, 188), fill=0)
+    fill = (battery * 12 + 50) // 100
+    if fill:
+        d.rectangle((14, 184, 13 + fill, 189), fill=0)
+    if games_left < 0:
+        label = f"{battery}% charged"
+    elif games_left == 0:
+        label = "Charge soon"
+    elif games_left == 1:
+        label = "~1 game left"
+    else:
+        label = f"~{games_left} games left"
+    glyphs(d, label, fonts()["menu_detail"], 36, 179)
+    return img
 
 
 # --------------------------------------------------------------------------- start-up modes

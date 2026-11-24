@@ -176,9 +176,25 @@ static void drawPie(Canvas& c, int cx, int cy, int pct) {
     }
 }
 
-void drawOffPage(Canvas& c) {
+void drawOffPage(Canvas& c, int battery, int gamesLeft) {
     c.clear();
     c.blit(kOffPage, 0, 0);
+    if (battery < 0) return;
+    if (battery > 100) battery = 100;
+
+    // The empty lower-left area under the curve leaves the wake arrow untouched.
+    c.fillRect(12, 182, 27, 191);
+    c.fillRect(13, 183, 26, 190, false);
+    c.fillRect(28, 185, 29, 188);
+    const int fill = (battery * 12 + 50) / 100;
+    if (fill > 0) c.fillRect(14, 184, 13 + fill, 189);
+
+    char label[24];
+    if (gamesLeft < 0) snprintf(label, sizeof label, "%d%% charged", battery);
+    else if (gamesLeft == 0) snprintf(label, sizeof label, "Charge soon");
+    else if (gamesLeft == 1) snprintf(label, sizeof label, "~1 game left");
+    else snprintf(label, sizeof label, "~%d games left", gamesLeft);
+    c.text(kFontMenuDetail, 36, 179, label);
 }
 
 // ------------------------------------------------------------------ start-up modes

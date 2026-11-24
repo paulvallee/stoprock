@@ -43,8 +43,10 @@ constexpr uint8_t kStonesPerClean = 4;         // ghost-clearing full refresh af
 #ifdef STOPROCK_BOARD_EMU
 // Simulator: react to the battery slider quickly.
 constexpr int64_t kBatteryCheckUs = 2 * kSec;
+constexpr uint32_t kMinGameSecondsForBattery = 60;  // allow short games when testing the slider
 #else
 constexpr int64_t kBatteryCheckUs = 30 * kSec;
+constexpr uint32_t kMinGameSecondsForBattery = 20 * 60;
 #endif
 constexpr int kMaxStones = 32;  // kept for the screen: at least a screenful of each player (and THEM)
 
@@ -363,6 +365,8 @@ struct Model {
     ShotLog shots;          // the shots on screen (deferred while a stone is timed)
     bool warning = false;
     bool off = false;
+    int offBattery = -1;
+    int offGamesLeft = -1;
     bool menu = false;      // the mode menu at switch-on
     StartupMenuSelection menuSelection;
     bool full = false;      // next update is a ghost-clearing full refresh
@@ -402,7 +406,7 @@ void displayTask(void*) {
         xSemaphoreGive(modelLock);
 
         if (m.off) {
-            drawOffPage(next);
+            drawOffPage(next, m.offBattery, m.offGamesLeft);
         } else if (m.menu) {
             drawStartupMenu(next, kStartupMenuItems, kStartupMenuCount, m.menuSelection);
         } else if (m.mode == GameMode::Basic) {
@@ -705,11 +709,16 @@ void printAudit(const ClockAudit& a, bool current) {
 
 // ------------------------------------------------------------------ power
 void showOffPageAndPowerOff() {
-    bank.endGame(board::batteryPercent(), board::clockNow());  // log the battery at the end of this game
+    static int battery, gamesLeft;
+    battery = board::batteryPercent();
+    bank.endGame(battery, board::clockNow());
+    gamesLeft = bank.gamesLeft(battery, kMinGameSecondsForBattery);
     auditSampleNow();
     Serial.println("power: off");
     publish([](Model& m) {
         m.off = true;
+        m.offBattery = battery;
+        m.offGamesLeft = gamesLeft;
         m.full = true;
     });
     while (displayBusy) delay(10);

@@ -156,7 +156,7 @@ There are no rotating tips. One tip remains, in competition and league: for 5 s 
 
 ## 9. Off page
 
-The off page displays the [200 × 200 wake screen](../assets/screens/wake-screen-200x200-1bit.png) pixel for pixel. It shows the 176 px Stoprock wordmark, “Push here to wake me up!”, and an arrow pointing to the side button at the bottom right. The screen refreshes before power is cut, and the e-ink retains the image while the device is off.
+The off page uses the [200 × 200 wake screen](../assets/screens/wake-screen-200x200-1bit.png), with its 176 px Stoprock wordmark, “Push here to wake me up!”, and an arrow pointing to the side button at the bottom right. Below the arrow's curve, a battery icon shows estimated games left, “Charge soon” when the one-game reserve is reached, or the charge percentage while the device has too little game history to estimate. The screen refreshes before power is cut, and the e-ink retains the image while the device is off.
 
 ## 10. Screen update plan (responsiveness)
 

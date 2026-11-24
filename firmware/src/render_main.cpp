@@ -232,5 +232,17 @@ int main(int argc, char** argv) {
     drawOffPage(c);
     snprintf(path, sizeof path, "%s/off-page.pbm", dir);
     writePbm(c, path);
+    drawOffPage(c, 84, 11);
+    snprintf(path, sizeof path, "%s/off-page-games.pbm", dir);
+    writePbm(c, path);
+    drawOffPage(c, 16, 1);
+    snprintf(path, sizeof path, "%s/off-page-one-game.pbm", dir);
+    writePbm(c, path);
+    drawOffPage(c, 8, 0);
+    snprintf(path, sizeof path, "%s/off-page-charge-soon.pbm", dir);
+    writePbm(c, path);
+    drawOffPage(c, 84);
+    snprintf(path, sizeof path, "%s/off-page-charge-percent.pbm", dir);
+    writePbm(c, path);
     return 0;
 }

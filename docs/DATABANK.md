@@ -84,8 +84,8 @@ assume. The player you left a stone under is taken as the truth, so move wrong t
 ## Battery drain log
 
 Each game records the battery at switch-on and switch-off. At switch-off the device estimates the games left
-for the help page: the battery now, divided by the average drain of the last 10 completed games, rounded down, less one game
-kept in reserve (so "Charge before next game" shows while about one game's charge is still left).
+for the off page. It divides the current charge by the average drain of the last 10 completed games, rounds down and keeps one game
+in reserve. The off page says “Charge soon” when about one game's charge is still left.
 A game counts only if it has both readings, lost at least 1 %, and lasted at least 20 minutes, so a quick
 on-and-off or a game played on USB power doesn't skew it. The readings are M5Stack's voltage-based estimate,
 so expect the figure to move around by a game or two.

@@ -77,7 +77,7 @@ the device off (side button held 3 s) and back on with the rocker held.
 | Basic | <kbd>S</kbd>, then choose it in the menu (the first entry) | Times only, as big as they go: a row a stone, 4 rows, B2H left, H2H right, no players; <kbd>↓</kbd>/<kbd>↑</kbd> scroll to older/newer stones (the badge says which show); hold <kbd>Enter</kbd> to undo |
 
 The **Battery** slider sets the battery level the firmware reads (`run.py` sends it to the emulated chip's
-second serial port). Below 15% the screen shows the low-battery warning (league: a bar over your %; competition: the badge strip), within about 2 s. Battery levels at the start and end of a game are recorded in the databank.
+second serial port). Below 15% the screen shows the low-battery warning (league: a bar over your %; competition: the badge strip), within about 2 s. Battery levels at the start and end of a game are recorded in the databank. To try the off-page estimate, start a game, log a shot or time, wait at least a minute, lower the battery slider, then switch off.
 
 ## What it doesn't show
 

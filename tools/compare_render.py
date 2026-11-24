@@ -23,6 +23,10 @@ def main():
         "league": screen.league_screen(ls, shots, lme, lact),
         "league-battery": screen.league_screen(ls, shots, lme, lact, low_battery=True),
         "off-page": screen.off_page(),
+        "off-page-games": screen.off_page(84, 11),
+        "off-page-one-game": screen.off_page(16, 1),
+        "off-page-charge-soon": screen.off_page(8, 0),
+        "off-page-charge-percent": screen.off_page(84),
     }
     refs["competition-tip"] = screen.competition_screen([], 0, 0, tip=True)
     refs["league-tip"] = screen.league_screen([], [], 2, 0, tip=True)

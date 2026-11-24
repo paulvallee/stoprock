@@ -80,7 +80,7 @@ def main():
     header = wm.resize((620, round(wm.height * 620 / wm.width)), Image.LANCZOS).convert("RGB")
     sheet("stoprock screens", [
         ("Switched off", "Shown after power-off; e-ink keeps it with no power",
-         screen.off_page()),
+         screen.off_page(84, 11)),
         ("League", "Teammates' and THEM's times; your rocks and % below",
          screen.league_screen(LEAGUE_STONES, BASE + [False], LEAGUE_ME, LEAGUE_ACTIVE)),
         ("Low battery", "A bar over the percentage until charged",
@@ -89,7 +89,7 @@ def main():
 
     sheet("Start-up modes: hold the side button to switch on, plus the rocker to choose", [
         ("Off page", "Press the side button to wake",
-         screen.off_page()),
+         screen.off_page(84, 11)),
         ("Competition (side button only)", "Times only, by player and THEM; badge for umpires",
          screen.competition_screen(LEAGUE_STONES, LEAGUE_ME, LEAGUE_ACTIVE)),
         ("League (+ rocker down)", "Teammates' and THEM's times; your own 16 rocks",

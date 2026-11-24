@@ -32,8 +32,8 @@ enum class Waiting : uint8_t { None, BackToHog, HogToHog, HogToHogOnly };
 // Page: coach, after a single click of the rocker centre, "Double click rocker middle / to change pages".
 enum class Tip : uint8_t { None, SwitchOn, Undo, Move, PowerOff, Page };
 
-// The full-screen wake instructions shown while the device is switched off.
-void drawOffPage(Canvas& c);
+// The wake screen shows games left when known, or charge percentage. -1 means unavailable.
+void drawOffPage(Canvas& c, int battery = -1, int gamesLeft = -1);
 
 // Basic: times only, no players, a row a stone (4), as big as they go; the badge strip below. scroll:
 // rows scrolled down, to older stones (the badge then says which show, e.g. "5-8 of 14").

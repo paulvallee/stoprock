@@ -43,18 +43,6 @@ void drawScrollBar(Canvas& c, int firstVisible, int count) {
     c.fillRect(190, top + offset, 194, top + offset + thumb - 1);
 }
 
-void drawControls(Canvas& c) {
-    c.line(26, 190, 29, 187);
-    c.line(29, 187, 32, 190);
-    c.line(26, 192, 29, 195);
-    c.line(29, 195, 32, 192);
-    c.text(kFontMenuDetail, 38, 183, "Scroll");
-    c.fillRect(93, 188, 95, 194);
-    c.fillRect(91, 190, 97, 192);
-    c.fillRect(92, 189, 96, 193);
-    c.text(kFontMenuDetail, 104, 183, "Press to open");
-}
-
 }  // namespace
 
 void drawStartupMenu(Canvas& c, const StartupMenuItem* items, int count, const StartupMenuSelection& selection) {
@@ -80,7 +68,6 @@ void drawStartupMenu(Canvas& c, const StartupMenuItem* items, int count, const S
         }
     }
     drawScrollBar(c, selection.firstVisible, count);
-    drawControls(c);
 }
 
 }  // namespace stoprock
