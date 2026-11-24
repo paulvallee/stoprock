@@ -478,14 +478,14 @@ def league_screen(stones, shots, me=0, active=0, low_battery=False, tip=False, w
     if focus == "players":
         d.rectangle([0, 47, W - 1, top + 1], outline=0, width=2)
     else:
-        d.rectangle([0, top, split + 1, H - 1], outline=0, width=2)
+        d.rectangle([0, top, W - 1, H - 1], outline=0, width=2)  # the whole bottom: your rocks and your %
     x0, y0 = split + 2, top + 2
     if low_battery:  # a black bar over the percentage
-        d.rectangle([x0, y0, W - 1, y0 + 12], fill=0)
-        text_in_box(d, "Batt low", f["label"], x0, W, y0, y0 + 12, align="center", fill=1)
+        d.rectangle([x0, y0, W - 3, y0 + 12], fill=0)  # inside the focus border (x 198-199), focused or not
+        text_in_box(d, "Low bat", f["label"], x0, W - 2, y0, y0 + 12, align="center", fill=1)
         y0 += 13
     if shots:
-        big_percent(d, f["pct"], percent_of(sum(shots), len(shots)), x0, W, y0, H)
+        big_percent(d, f["pct"], percent_of(sum(shots), len(shots)), x0, W - 2, y0, H)
     if tip in ("undo", "off"):
         tooltip(d, f, UNDO_TIP if tip == "undo" else OFF_TIP, 49, top)
     elif tip == "move":  # over your rocks, clear of the columns

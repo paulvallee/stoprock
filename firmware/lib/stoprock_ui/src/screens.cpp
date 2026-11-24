@@ -447,15 +447,15 @@ void drawLeague(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& sh
     }
     // the focus: a bold border around the half the rocker works on
     if (focus == Focus::Players) focusBox(c, 0, 47, W - 1, top + 1);
-    else focusBox(c, 0, top, split + 1, H - 1);
+    else focusBox(c, 0, top, W - 1, H - 1);  // the whole bottom: your rocks and your %
     const int x0 = split + 2;
     int y0 = top + 2;
     if (lowBattery) {  // a black bar over the percentage
-        c.fillRect(x0, y0, W - 1, y0 + 12);
-        textInBox(c, kFontSpleen6x12, "Batt low", x0, W, y0, y0 + 12, kCentre, 4, false);
+        c.fillRect(x0, y0, W - 3, y0 + 12);  // inside the focus border (x 198-199), focused or not
+        textInBox(c, kFontSpleen6x12, "Low bat", x0, W - 2, y0, y0 + 12, kCentre, 4, false);
         y0 += 13;
     }
-    if (shots.count() > 0) bigPercent(c, shots.percent(), x0, W, y0, H);
+    if (shots.count() > 0) bigPercent(c, shots.percent(), x0, W - 2, y0, H);
     if (tip == Tip::SwitchOn) switchOnTip(c, me, true, 49, top);
     if (tip == Tip::Undo || tip == Tip::PowerOff) undoTip(c, 49, top, tip);
     if (tip == Tip::Move) moveTip(c, top, H);  // over your rocks

@@ -50,7 +50,7 @@ void drawCompetition(Canvas& c, const Stone* stones, uint8_t count, uint8_t me, 
 // teammates in throwing order and the other team (THEM), each listing its stones newest first, a
 // time a line (7 lines): B2H black on white, H2H white on black. Below, your own 16 rocks like a
 // scoreboard (ends across, rock 1 over rock 2) and your percentage. activeCol (0-3) has its header
-// highlighted. lowBattery puts a "Batt low" bar over the percentage.
+// highlighted. lowBattery puts a "Low bat" bar over the percentage.
 // Columns and who's in them: seats.h (kLeagueColumns, columnPlayer, playerColumn).
 constexpr uint8_t kLeagueRows = 7;
 constexpr uint8_t kCoachRows = 6;  // coach page 1: five columns (kCoachColumns), seat kCoachSeat
