@@ -112,6 +112,12 @@ int main(int argc, char** argv) {
         drawCoachRocks(c, many, 12, s35, Waiting::None, Tip::Move);
         snprintf(path, sizeof path, "%s/coach2-move.pbm", dir);
         writePbm(c, path);
+        drawCoachTimer(c, many, 12, s35, Waiting::None, 0, Tip::Page);
+        snprintf(path, sizeof path, "%s/coach1-page.pbm", dir);
+        writePbm(c, path);
+        drawCoachRocks(c, many, 12, s35, Waiting::None, Tip::Page);
+        snprintf(path, sizeof path, "%s/coach2-page.pbm", dir);
+        writePbm(c, path);
         drawCoachRocks(c, many, 12, s35, Waiting::None, Tip::PowerOff);
         snprintf(path, sizeof path, "%s/coach2-off.pbm", dir);
         writePbm(c, path);

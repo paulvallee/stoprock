@@ -332,6 +332,7 @@ TIP_TOP = 61  # switch-on tips start below the column headers, so a new position
 MOVE_TIP = "Hold rocker up: move last time"
 UNDO_LINE = "Hold rocker middle: undo"  # the switch-on tips' last line
 UNDO_TIP = ("Keep holding to undo",)
+PAGE_TIP = ("Double click rocker middle", "to change pages")  # tip="page": coach, the centre clicked once
 OFF_TIP = ("Keep holding to turn off",)  # tip="off": the side button held, before it switches off (3 s)
 MOVE_HINT = ("Keep holding to move time",)  # tip="move": rocker held to move the newest time, over the bottom  # tip="undo": while the rocker centre is held, before the undo (1 s)
 LEAGUE_TIP = ("Hold rocker down: your rocks", MOVE_TIP, UNDO_LINE)
@@ -566,6 +567,8 @@ def coach_timer_screen(stones, shots, waiting=None, active=0, tip=False, focus="
         d.rectangle([0, bottom, W - 1, H - 1], outline=0, width=2)
     if tip in ("undo", "off"):
         tooltip(d, f, UNDO_TIP if tip == "undo" else OFF_TIP, 49, bottom)
+    elif tip == "page":
+        tooltip(d, f, PAGE_TIP, 49, bottom)
     elif tip == "move":  # over the rocks, clear of the columns
         tooltip(d, f, MOVE_HINT, bottom, H)
     elif tip:
@@ -616,6 +619,8 @@ def coach_rocks_screen(stones, shots, waiting=None, tip=False, focus="players"):
         d.rectangle([0, 33, W - 1, 186], outline=0, width=2)
     if tip in ("undo", "off"):
         tooltip(d, f, UNDO_TIP if tip == "undo" else OFF_TIP, 47, 185)  # over the rocks
+    elif tip == "page":
+        tooltip(d, f, PAGE_TIP, 47, 185)
     elif tip == "move":
         tooltip(d, f, MOVE_HINT, 150, H)
     return img

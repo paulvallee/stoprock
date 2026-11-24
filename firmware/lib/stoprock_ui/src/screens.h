@@ -29,7 +29,8 @@ enum class Waiting : uint8_t { None, BackToHog, HogToHog, HogToHogOnly };
 // badge strip), clear of the columns.
 // PowerOff: while the side button is held, before it switches off, "Keep holding to turn off" (where
 // the undo one goes).
-enum class Tip : uint8_t { None, SwitchOn, Undo, Move, PowerOff };
+// Page: coach, after a single click of the rocker centre, "Double click rocker middle / to change pages".
+enum class Tip : uint8_t { None, SwitchOn, Undo, Move, PowerOff, Page };
 
 // lastGame: e.g. "Last game 21 Nov   9/12". shotPct: shown with a pie, -1 = none.
 // battery: charge at switch-off, -1 = unknown. batteryNote: left of the battery, e.g.

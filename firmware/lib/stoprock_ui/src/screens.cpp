@@ -332,6 +332,12 @@ static void undoTip(Canvas& c, int top, int bottom, Tip tip = Tip::Undo) {
     tooltip(c, lines, 1, top, bottom);
 }
 
+// Coach: the rocker centre clicked once (switching page takes a double click).
+static void pageTip(Canvas& c, int top, int bottom) {
+    const char* const lines[2] = {"Double click rocker middle", "to change pages"};
+    tooltip(c, lines, 2, top, bottom);
+}
+
 // While the rocker is held to move the newest time: over the bottom (top..bottom), clear of the columns.
 static void moveTip(Canvas& c, int top, int bottom) {
     const char* const lines[1] = {"Keep holding to move time"};
@@ -490,6 +496,7 @@ void drawCoachTimer(Canvas& c, const Stone* stones, uint8_t count, const ShotLog
     if (focus == Focus::Players) focusBox(c, 0, 47, W - 1, bottom + 1);
     else focusBox(c, 0, bottom, W - 1, H - 1);
     if (tip == Tip::Undo || tip == Tip::PowerOff) undoTip(c, 49, bottom, tip);
+    if (tip == Tip::Page) pageTip(c, 49, bottom);
     if (tip == Tip::Move) moveTip(c, bottom, H);  // over the rocks
     if (tip == Tip::SwitchOn) {
         const char* const lines[6] = {"Double click rocker to", "switch page", "", "Hold rocker down: rocks",
@@ -530,6 +537,7 @@ void drawCoachRocks(Canvas& c, const Stone* stones, uint8_t count, const ShotLog
     if (focus == Focus::Players) focusBox(c, 0, 12, W - 1, 34);
     else focusBox(c, 0, 33, W - 1, 186);
     if (tip == Tip::Undo || tip == Tip::PowerOff) undoTip(c, 47, 185, tip);  // over the rocks
+    if (tip == Tip::Page) pageTip(c, 47, 185);
     if (tip == Tip::Move) moveTip(c, 150, H);
 }
 

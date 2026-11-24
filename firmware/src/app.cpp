@@ -186,6 +186,12 @@ constexpr int64_t kTipUs = 5 * kSec;
 int64_t tipUntil = -1;           // the switch-on tip shows until then
 bool tipWaiting = false;         // ... its 5 s start once the screen showing it is up
 bool undoHint = false;           // "Keep holding to undo": the rocker centre is held, the undo not yet due
+// Coach: a single click of the rocker centre (switching page takes two): "Double click rocker middle
+// to change pages", once the double-click window has passed, for 3 s or till the next press.
+constexpr int64_t kPageTipUs = 3 * kSec;
+int64_t singleClickAt = -1;     // the click to check, once the window has passed (-1: none)
+int64_t singleClickPress = -1;  // ... the press it was (a second press since: a double click)
+int64_t pageTipUntil = -1;
 bool offHint = false;            // "Keep holding to turn off": the side button held, not yet 3 s
 bool moveHint = false;           // "Keep holding to move time": rocker up (or down) held to move a time, till let go
 uint8_t stonesSinceClean = 0;
@@ -361,7 +367,8 @@ void syncModel(bool full = false) {
         m.warning = lowBattery;
         m.help = false;
         m.full = m.full || sFull;
-        m.tip = offHint ? Tip::PowerOff : undoHint ? Tip::Undo : moveHint ? Tip::Move : tipWaiting || tipUntil >= 0 ? Tip::SwitchOn : Tip::None;
+        m.tip = offHint ? Tip::PowerOff : undoHint ? Tip::Undo : moveHint ? Tip::Move :
+                pageTipUntil >= 0 ? Tip::Page : tipWaiting || tipUntil >= 0 ? Tip::SwitchOn : Tip::None;
         m.focus = focus;
         m.waiting = timing.state() == TimingState::Started     ? (h2hOnly() ? Waiting::HogToHogOnly : Waiting::BackToHog)
                     : timing.state() == TimingState::WaitingHH ? Waiting::HogToHog
@@ -862,6 +869,13 @@ void setFocus(Focus f) {
 // newest time instead): made/missed (coach, league on your rocks), or next/previous player.
 void releaseAction(uint8_t b);
 void onRelease(uint8_t b) {
+    // Coach: a quick click of the centre that wasn't the second of a double click (that one is
+    // holdFired): if no second click follows within the window, say how to switch page.
+    if (b == board::kPress && !rules().positions && !buttons[b].holdFired && lastRockerPress >= 0 &&
+        esp_timer_get_time() - lastRockerPress < kDoublePressUs) {
+        singleClickPress = lastRockerPress;
+        singleClickAt = lastRockerPress + kDoublePressUs;
+    }
     const bool hadHint = moveHint && (b == board::kUp || b == board::kDown);
     if (hadHint) moveHint = false;  // let go: "Keep holding to move time" goes
     releaseAction(b);
@@ -882,6 +896,10 @@ void releaseAction(uint8_t b) {
 
 void onPress(uint8_t b, int64_t t) {
     ButtonState& s = buttons[b];
+    if (pageTipUntil >= 0) {  // any press: the page tip goes
+        pageTipUntil = -1;
+        syncModel();
+    }
     s.down = true;
     s.downSince = t;
     s.holdFired = false;
@@ -1151,6 +1169,17 @@ void loop() {
             syncModel();
         }
     }
+    if (singleClickAt >= 0 && now >= singleClickAt) {  // the window passed: a single click, or a double?
+        singleClickAt = -1;
+        if (lastRockerPress == singleClickPress && !buttons[board::kPress].down) {
+            pageTipUntil = now + kPageTipUs;
+            syncModel();
+        }
+    }
+    if (pageTipUntil >= 0 && now >= pageTipUntil) {
+        pageTipUntil = -1;
+        syncModel();
+    }
     if (followAt >= 0 && now >= followAt) {  // another throw's worth of time: the cursor may move on
         planFollow(now);
         if (!timing.active() && !manualCursor) {
@@ -1198,6 +1227,8 @@ void loop() {
         if (rocksFocusAt >= 0 && rocksFocusAt < wake) wake = rocksFocusAt;
         if (followAt >= 0 && followAt < wake) wake = followAt;
         if (h2hSwitchAt >= 0 && h2hSwitchAt < wake) wake = h2hSwitchAt;
+        if (singleClickAt >= 0 && singleClickAt < wake) wake = singleClickAt;
+        if (pageTipUntil >= 0 && pageTipUntil < wake) wake = pageTipUntil;
         if (nextAuditAt < wake) wake = nextAuditAt;
         if (timing.active() && timing.deadline() + 1000 < wake) wake = timing.deadline() + 1000;
         const int64_t before = esp_timer_get_time();
