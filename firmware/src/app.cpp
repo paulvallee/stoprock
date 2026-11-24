@@ -25,7 +25,7 @@ constexpr int64_t kUndoHoldUs = kSec / 2;   // 0.5 s
 constexpr int64_t kPowerHoldUs = 3 * kSec;
 constexpr int64_t kDoublePressUs = 400000;     // two rocker presses within 0.4 s: a double press
 constexpr int64_t kFocusHoldUs = kSec / 2;     // league: hold rocker down (up from your rocks) to move the focus
-constexpr int64_t kMoveStepUs = kSec / 2;      // competition and league: holding rocker up moves the newest time a column right this often
+constexpr int64_t kMoveStepUs = 600000;        // competition and league: holding rocker up moves the newest time a column right this often
 constexpr int64_t kAwakeAfterPressUs = 2 * kSec;    // stay awake this long after a rocker press
 constexpr int64_t kAwakeAfterWakeUs = 40000;        // time to confirm the button that woke us
 constexpr int64_t kAuditEveryUs = 10 * 60 * kSec;   // clock audit sample interval
@@ -686,7 +686,7 @@ void movePlayer(int dir) {
     syncModel();
 }
 
-// Rocker up held on the columns: the newest time moves a column right every 0.5 s (round
+// Rocker up held on the columns: the newest time moves a column right every 0.6 s (round
 // and round), shown where it is. Returns false when there's no time to move.
 bool stepMove() {
     const int col = stoneCount > 0 ? leagueColumn(seat(), stones[0].player) : -1;
@@ -799,7 +799,7 @@ void pollButtons(int64_t now) {
             }
             if (b == board::kSide && now - s.downSince >= kPowerHoldUs) { s.holdFired = true; showHelpAndPowerOff(); }
             // League: hold down for your rocks; hold up for the columns. Competition and league: hold
-            // up on the columns to move the newest time a column right every 0.5 s (let go where it belongs).
+            // up on the columns to move the newest time a column right every 0.6 s (let go where it belongs).
             const bool rocker = b == board::kUp || b == board::kDown;
             if (mode == GameMode::League && rocker && (b == board::kDown || focus == Focus::Rocks) &&
                 now - s.downSince >= kFocusHoldUs) {
