@@ -28,7 +28,8 @@ def _rock(d, x0, w, yb, xh, asc, band):
     ytop = yb - asc * 0.97
     post_x0 = xc - t / 2
     d.rectangle([post_x0, ytop + t, post_x0 + t, top + t], fill=0)
-    d.rounded_rectangle([post_x0, ytop, xc + w * 0.50, ytop + t], radius=t / 2, fill=0)
+    # the grip reaches forward over the body, ending inside its edge (a real handle never overhangs)
+    d.rounded_rectangle([post_x0, ytop, xc + bw * 0.36, ytop + t], radius=t / 2, fill=0)
     d.pieslice([post_x0, ytop, post_x0 + 2 * t, ytop + 2 * t], 180, 270, fill=0)
 
 
