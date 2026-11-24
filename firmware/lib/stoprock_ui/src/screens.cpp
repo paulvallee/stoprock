@@ -297,7 +297,7 @@ void endRow(Canvas& c, const ShotLog& shots, int end, int cy) {
 
 // A bordered box centred in the times area (top..bottom), lines centred; an empty line is a
 // half-line gap.
-static void tooltip(Canvas& c, const char* const* lines, int n, int top, int bottom) {
+static void tooltip(Canvas& c, const char* const* lines, int n, int top, int bottom, bool headers = true) {
     int longest = 0, height = 0;
     for (int i = 0; i < n; ++i) {
         const int len = static_cast<int>(strlen(lines[i]));
@@ -307,7 +307,7 @@ static void tooltip(Canvas& c, const char* const* lines, int n, int top, int bot
     const int w = 6 * longest + 16, h = height + 14;
     const int x0 = (W - w) / 2;
     int y0 = top + (bottom - top - h) / 2;
-    if (y0 < top + 12) y0 = top;  // it would cut through the column headers: cover them instead
+    if (headers && y0 < top + 12) y0 = top;  // it would cut through the column headers: cover them instead
     const int y1 = y0 + h - 1;
     c.fillRect(x0, y0, x0 + w - 1, y1, false);
     rectOutline(c, x0, y0, x0 + w - 1, y1);
@@ -327,6 +327,12 @@ static const char* const kYouAre[4] = {"You are LEAD", "You are SECOND", "You ar
 static void undoTip(Canvas& c, int top, int bottom) {
     const char* const lines[1] = {"Keep holding to undo"};
     tooltip(c, lines, 1, top, bottom);
+}
+
+// While the rocker is held to move the newest time: over the bottom (top..bottom), clear of the columns.
+static void moveTip(Canvas& c, int top, int bottom) {
+    const char* const lines[1] = {"Keep holding to move time"};
+    tooltip(c, lines, 1, top, bottom, false);
 }
 
 static void switchOnTip(Canvas& c, uint8_t me, bool league, int top, int bottom) {
@@ -412,6 +418,7 @@ void drawCompetition(Canvas& c, const Stone* stones, uint8_t count, uint8_t me, 
         c.text(label, W - 2 - 6 * static_cast<int>(strlen(lines[i])), strip + 1 + 12 * i, lines[i], false);
     if (tip == Tip::SwitchOn) switchOnTip(c, me, false, 49, strip);
     if (tip == Tip::Undo) undoTip(c, 49, strip);
+    if (tip == Tip::Move) moveTip(c, strip, H);  // over the badge strip
 }
 
 void drawLeague(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& shots, uint8_t me, uint8_t activeCol,
@@ -449,6 +456,7 @@ void drawLeague(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& sh
     if (shots.count() > 0) bigPercent(c, shots.percent(), x0, W, y0, H);
     if (tip == Tip::SwitchOn) switchOnTip(c, me, true, 49, top);
     if (tip == Tip::Undo) undoTip(c, 49, top);
+    if (tip == Tip::Move) moveTip(c, top, H);  // over your rocks
 }
 
 void drawCoachTimer(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& shots, Waiting waiting,
@@ -479,6 +487,7 @@ void drawCoachTimer(Canvas& c, const Stone* stones, uint8_t count, const ShotLog
     if (focus == Focus::Players) focusBox(c, 0, 47, W - 1, bottom + 1);
     else focusBox(c, 0, bottom, W - 1, H - 1);
     if (tip == Tip::Undo) undoTip(c, 49, bottom);
+    if (tip == Tip::Move) moveTip(c, bottom, H);  // over the rocks
     if (tip == Tip::SwitchOn) {
         const char* const lines[6] = {"Double click rocker to", "switch page", "", "Hold rocker down: rocks",
                                       "Hold rocker up: move last time", "Hold rocker middle: undo"};
@@ -518,6 +527,7 @@ void drawCoachRocks(Canvas& c, const Stone* stones, uint8_t count, const ShotLog
     if (focus == Focus::Players) focusBox(c, 0, 12, W - 1, 34);
     else focusBox(c, 0, 33, W - 1, 186);
     if (tip == Tip::Undo) undoTip(c, 47, 185);  // over the rocks
+    if (tip == Tip::Move) moveTip(c, 150, H);
 }
 
 void addStone(Stone* list, uint8_t& count, uint8_t capacity, const Stone& s) {

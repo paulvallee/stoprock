@@ -22,7 +22,8 @@ constexpr int64_t kConfirmUs = 15000;          // a timing press must still be h
 constexpr int64_t kEdgeGapUs = 30000;          // ignore further edges of the same button within 30 ms
 constexpr int64_t kStableUs = 20000;           // rocker debounce
 constexpr int64_t kUndoHoldUs = kSec;       // hold the rocker centre 1 s to undo (and 1 s for each more)
-constexpr int64_t kUndoHintUs = kSec / 5;   // ... "Keep holding to undo" shows 0.2 s into each
+constexpr int64_t kUndoHintUs = kSec / 5;   // ... "Keep holding to undo" shows 0.2 s into it (and
+                                            // "Keep holding to move time" 0.2 s into a hold that moves a time)
 constexpr int64_t kPowerHoldUs = 3 * kSec;
 constexpr int64_t kDoublePressUs = 400000;     // two rocker presses within 0.4 s: a double press
 constexpr int64_t kFocusHoldUs = kSec / 2;     // league: hold rocker down (up from your rocks) to move the focus
@@ -184,6 +185,7 @@ constexpr int64_t kTipUs = 5 * kSec;
 int64_t tipUntil = -1;           // the switch-on tip shows until then
 bool tipWaiting = false;         // ... its 5 s start once the screen showing it is up
 bool undoHint = false;           // "Keep holding to undo": the rocker centre is held, the undo not yet due
+bool moveHint = false;           // "Keep holding to move time": rocker up (or down) held to move a time, till let go
 uint8_t stonesSinceClean = 0;
 
 // Sleeping while a stone is timed (setting "sleeptiming", default on). Light sleep stops the
@@ -357,7 +359,7 @@ void syncModel(bool full = false) {
         m.warning = lowBattery;
         m.help = false;
         m.full = m.full || sFull;
-        m.tip = undoHint ? Tip::Undo : tipWaiting || tipUntil >= 0 ? Tip::SwitchOn : Tip::None;
+        m.tip = undoHint ? Tip::Undo : moveHint ? Tip::Move : tipWaiting || tipUntil >= 0 ? Tip::SwitchOn : Tip::None;
         m.focus = focus;
         m.waiting = timing.state() == TimingState::Started     ? (h2hOnly() ? Waiting::HogToHogOnly : Waiting::BackToHog)
                     : timing.state() == TimingState::WaitingHH ? Waiting::HogToHog
@@ -800,7 +802,15 @@ void setFocus(Focus f) {
 
 // A short press of rocker up/down, acted on when it's let go (a long press moves the focus or the
 // newest time instead): made/missed (coach, league on your rocks), or next/previous player.
+void releaseAction(uint8_t b);
 void onRelease(uint8_t b) {
+    const bool hadHint = moveHint && (b == board::kUp || b == board::kDown);
+    if (hadHint) moveHint = false;  // let go: "Keep holding to move time" goes
+    releaseAction(b);
+    if (hadHint) syncModel();  // (an update the action made already took it; this one changes nothing then)
+}
+
+void releaseAction(uint8_t b) {
     if (b == board::kPress && undoHint) {  // let go before the undo: nothing undone
         undoHint = false;
         syncModel();
@@ -880,6 +890,11 @@ void pollButtons(int64_t now) {
             // columns to move the newest time a column right every 0.7 s (let go where it belongs);
             // without a focus (competition, coach), hold down to move it left.
             const bool rocker = b == board::kUp || b == board::kDown;
+            const bool moves = rocker && raw && (b == board::kUp || !rules().focus) && focus == Focus::Players;
+            if (moves && !moveHint && stoneCount > 0 && now - s.downSince >= kUndoHintUs) {
+                moveHint = true;  // a press of up/down is quicker: it never shows for one
+                syncModel();
+            }
             if (rules().focus && rocker && (b == board::kDown || focus == Focus::Rocks) &&
                 now - s.downSince >= kFocusHoldUs) {
                 s.holdFired = true;  // not a short press when it's let go

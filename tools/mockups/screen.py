@@ -330,17 +330,18 @@ YOU_ARE = ("LEAD", "SECOND", "THIRD", "SKIP")
 POSITION_TIP = ("Double click rocker to", "change your position")
 MOVE_TIP = "Hold rocker up: move last time"
 UNDO_LINE = "Hold rocker middle: undo"  # the switch-on tips' last line
-UNDO_TIP = ("Keep holding to undo",)  # tip="undo": while the rocker centre is held, before the undo (1 s)
+UNDO_TIP = ("Keep holding to undo",)
+MOVE_HINT = ("Keep holding to move time",)  # tip="move": rocker held to move the newest time, over the bottom  # tip="undo": while the rocker centre is held, before the undo (1 s)
 LEAGUE_TIP = ("Hold rocker down: your rocks", MOVE_TIP, UNDO_LINE)
 
 
-def tooltip(d, f, lines, top, bottom):
-    """A bordered box centred in the times area (top..bottom), lines centred; an empty line is
-    a half-line gap."""
+def tooltip(d, f, lines, top, bottom, headers=True):
+    """A bordered box centred in top..bottom (the times area, or the bottom of the screen with
+    headers=False), lines centred; an empty line is a half-line gap."""
     w = 6 * max(len(t) for t in lines) + 16
     h = sum(12 if t else 6 for t in lines) + 14
     x0, y0 = (W - w) // 2, top + (bottom - top - h) // 2
-    if y0 < top + 12:  # it would cut through the column headers: cover them instead
+    if headers and y0 < top + 12:  # it would cut through the column headers: cover them instead
         y0 = top
     y1 = y0 + h - 1
     d.rectangle([x0, y0, x0 + w - 1, y1], fill=1, outline=0, width=2)
@@ -371,6 +372,8 @@ def competition_screen(stones, me=0, active=0, low_battery=False, tip=False, wai
         d.text((W - 2 - 6 * len(t), y), t, font=f["label"], fill=1)
     if tip == "undo":
         tooltip(d, f, UNDO_TIP, 49, strip)
+    elif tip == "move":  # over the badge strip, clear of the columns
+        tooltip(d, f, MOVE_HINT, strip, H, headers=False)
     elif tip:
         tooltip(d, f, (f"You are {YOU_ARE[me]}", "") + POSITION_TIP + ("", MOVE_TIP, UNDO_LINE), 49, strip)
     return img
@@ -482,6 +485,8 @@ def league_screen(stones, shots, me=0, active=0, low_battery=False, tip=False, w
         big_percent(d, f["pct"], percent_of(sum(shots), len(shots)), x0, W, y0, H)
     if tip == "undo":
         tooltip(d, f, UNDO_TIP, 49, top)
+    elif tip == "move":  # over your rocks, clear of the columns
+        tooltip(d, f, MOVE_HINT, top, H, headers=False)
     elif tip:
         tooltip(d, f, (f"You are {YOU_ARE[me]}", "") + POSITION_TIP + ("",) + LEAGUE_TIP, 49, top)
     return img
@@ -560,6 +565,8 @@ def coach_timer_screen(stones, shots, waiting=None, active=0, tip=False, focus="
         d.rectangle([0, bottom, W - 1, H - 1], outline=0, width=2)
     if tip == "undo":
         tooltip(d, f, UNDO_TIP, 49, bottom)
+    elif tip == "move":  # over the rocks, clear of the columns
+        tooltip(d, f, MOVE_HINT, bottom, H, headers=False)
     elif tip:
         tooltip(d, f, COACH_TIP, 49, bottom)
     return img
@@ -608,6 +615,8 @@ def coach_rocks_screen(stones, shots, waiting=None, tip=False, focus="players"):
         d.rectangle([0, 33, W - 1, 186], outline=0, width=2)
     if tip == "undo":
         tooltip(d, f, UNDO_TIP, 47, 185)  # over the rocks
+    elif tip == "move":
+        tooltip(d, f, MOVE_HINT, 150, H, headers=False)
     return img
 
 
