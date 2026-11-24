@@ -389,7 +389,7 @@ TIP_FONTS = {"hint": ("hint", 12, 24), "big": ("menu", 16, 32)}  # by size: the 
 
 
 YOU_ARE_TIP = ("You are", "2x to change")  # the switch-on tip's first line and its last (under the position)
-ROCKER_Y = 55  # the rocker's height beside the screen (CoreInk: right side): the switch-on tip points at it
+ROCKER_Y = 59  # the rocker's height beside the screen (CoreInk: right side): the switch-on tip points at it
 
 
 def you_are(me):
