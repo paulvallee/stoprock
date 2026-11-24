@@ -25,6 +25,7 @@ constexpr int64_t kUndoHoldUs = kSec;       // hold the rocker centre 1 s to und
 constexpr int64_t kUndoHintUs = kSec / 5;   // ... "Keep holding to undo" shows 0.2 s into it (and
                                             // "Keep holding to move time" 0.2 s into a hold that moves a time)
 constexpr int64_t kPowerHoldUs = 3 * kSec;
+constexpr int64_t kOffHintUs = kSec / 2;       // "Keep holding to turn off" from then (a timing click is quicker)
 constexpr int64_t kDoublePressUs = 400000;     // two rocker presses within 0.4 s: a double press
 constexpr int64_t kFocusHoldUs = kSec / 2;     // league: hold rocker down (up from your rocks) to move the focus
 constexpr int64_t kMoveStepUs = 700000;        // every mode: holding rocker up (down: left, competition) moves the newest time a column this often
@@ -185,6 +186,7 @@ constexpr int64_t kTipUs = 5 * kSec;
 int64_t tipUntil = -1;           // the switch-on tip shows until then
 bool tipWaiting = false;         // ... its 5 s start once the screen showing it is up
 bool undoHint = false;           // "Keep holding to undo": the rocker centre is held, the undo not yet due
+bool offHint = false;            // "Keep holding to turn off": the side button held, not yet 3 s
 bool moveHint = false;           // "Keep holding to move time": rocker up (or down) held to move a time, till let go
 uint8_t stonesSinceClean = 0;
 
@@ -359,7 +361,7 @@ void syncModel(bool full = false) {
         m.warning = lowBattery;
         m.help = false;
         m.full = m.full || sFull;
-        m.tip = undoHint ? Tip::Undo : moveHint ? Tip::Move : tipWaiting || tipUntil >= 0 ? Tip::SwitchOn : Tip::None;
+        m.tip = offHint ? Tip::PowerOff : undoHint ? Tip::Undo : moveHint ? Tip::Move : tipWaiting || tipUntil >= 0 ? Tip::SwitchOn : Tip::None;
         m.focus = focus;
         m.waiting = timing.state() == TimingState::Started     ? (h2hOnly() ? Waiting::HogToHogOnly : Waiting::BackToHog)
                     : timing.state() == TimingState::WaitingHH ? Waiting::HogToHog
@@ -859,7 +861,13 @@ void pollButtons(int64_t now) {
                 s.pending = false;
                 if (raw) onPress(b, s.pendingT);  // the press time is the edge, not now
             }
-            if (s.down && !raw && stable) s.down = false;
+            if (s.down && !raw && stable) {
+                s.down = false;
+                if (b == board::kSide && offHint) {  // let go before 3 s: stays on
+                    offHint = false;
+                    syncModel();
+                }
+            }
         } else {
             if (stable && raw && !s.down) onPress(b, s.rawSince);
             if (stable && !raw && s.down) {
@@ -885,7 +893,15 @@ void pollButtons(int64_t now) {
                 activity(now);
                 if (!onUndo()) s.holdFired = true;
             }
-            if (b == board::kSide && now - s.downSince >= kPowerHoldUs) { s.holdFired = true; showHelpAndPowerOff(); }
+            if (b == board::kSide && !offHint && now - s.downSince >= kOffHintUs) {
+                offHint = true;
+                syncModel();
+            }
+            if (b == board::kSide && now - s.downSince >= kPowerHoldUs) {
+                s.holdFired = true;
+                offHint = false;
+                showHelpAndPowerOff();
+            }
             // League: hold down for your rocks; hold up for the columns. Every mode: hold up on the
             // columns to move the newest time a column right every 0.7 s (let go where it belongs);
             // without a focus (competition, coach), hold down to move it left.

@@ -86,6 +86,10 @@ int main(int argc, char** argv) {
     drawLeague(c, league, nl, shots, 1, 1, false, Tip::Undo);
     snprintf(path, sizeof path, "%s/league-undo.pbm", dir);
     writePbm(c, path);
+    // the side button held: "Keep holding to turn off"
+    drawLeague(c, league, nl, shots, 1, 1, false, Tip::PowerOff);
+    snprintf(path, sizeof path, "%s/league-off.pbm", dir);
+    writePbm(c, path);
     // the rocker held to move the newest time: "Keep holding to move time" over the bottom
     drawCompetition(c, league, nl, 1, 1, false, Tip::Move);
     snprintf(path, sizeof path, "%s/competition-move.pbm", dir);
@@ -107,6 +111,9 @@ int main(int argc, char** argv) {
         writePbm(c, path);
         drawCoachRocks(c, many, 12, s35, Waiting::None, Tip::Move);
         snprintf(path, sizeof path, "%s/coach2-move.pbm", dir);
+        writePbm(c, path);
+        drawCoachRocks(c, many, 12, s35, Waiting::None, Tip::PowerOff);
+        snprintf(path, sizeof path, "%s/coach2-off.pbm", dir);
         writePbm(c, path);
         drawCoachTimer(c, many, 12, s35, Waiting::None, 0, Tip::None, Focus::Rocks);
         snprintf(path, sizeof path, "%s/coach1-rocks.pbm", dir);

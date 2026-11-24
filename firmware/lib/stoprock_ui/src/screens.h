@@ -27,7 +27,9 @@ enum class Waiting : uint8_t { None, BackToHog, HogToHog, HogToHogOnly };
 // is held, "Keep holding to undo" (every screen, coach page 2 too). Move: while the rocker is held
 // to move the newest time, "Keep holding to move time" over the bottom (the rocks, or competition's
 // badge strip), clear of the columns.
-enum class Tip : uint8_t { None, SwitchOn, Undo, Move };
+// PowerOff: while the side button is held, before it switches off, "Keep holding to turn off" (where
+// the undo one goes).
+enum class Tip : uint8_t { None, SwitchOn, Undo, Move, PowerOff };
 
 // lastGame: e.g. "Last game 21 Nov   9/12". shotPct: shown with a pie, -1 = none.
 // battery: charge at switch-off, -1 = unknown. batteryNote: left of the battery, e.g.
