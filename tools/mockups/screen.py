@@ -464,9 +464,9 @@ def league_screen(stones, shots, me=0, active=0, low_battery=False, tip=False, w
     d.fontmode = "1"
     top = LEAGUE_ROWS_BOTTOM
     four_columns(d, f, stones, me, active, top, LEAGUE_LINES, waiting)
-    d.line([(0, top), (W - 1, top)], fill=0, width=2)
+    d.line([(0, top), (W - 1, top)], fill=0)  # 1 px like the columns: only the focus border is bold
     split = LEAGUE_PCT_X
-    d.line([(split, top), (split, H - 1)], fill=0, width=2)
+    d.line([(split, top), (split, H - 1)], fill=0)
     cursor = len(shots) if len(shots) < LEAGUE_SLOTS else -1
     for end in range(8):
         cx = 12 + end * 18  # spread across the box
