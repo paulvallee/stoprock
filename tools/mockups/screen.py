@@ -390,7 +390,7 @@ def competition_screen(stones, me=0, active=0, low_battery=False, tip=False, wai
 # rocks; logging one goes back to the columns. Hold up on the columns to move the newest time a
 # column right every 0.7 s (as rocker up moves the cursor), put down where it is when let go.
 LEAGUE_ROWS_BOTTOM = 159     # 2 px line under the times
-LEAGUE_PCT_X = 134           # 2 px divider left of the percentage
+LEAGUE_PCT_X = 149           # 2 px divider left of the percentage: in line with the THEM column's
 LEAGUE_SLOTS = 16
 LEAGUE_COLS = [2, 51, 100, 149, 198]  # edges of the four columns
 LEAGUE_TOP = 62              # first line
@@ -467,7 +467,7 @@ def league_screen(stones, shots, me=0, active=0, low_battery=False, tip=False, w
     d.line([(split, top), (split, H - 1)], fill=0, width=2)
     cursor = len(shots) if len(shots) < LEAGUE_SLOTS else -1
     for end in range(8):
-        cx = 10 + end * 16
+        cx = 12 + end * 18  # spread across the box
         f["tiny"].draw(d, str(end + 1), cx - 2, top + 3)
         for r in range(2):
             i = end * 2 + r

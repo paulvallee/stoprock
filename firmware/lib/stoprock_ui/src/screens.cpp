@@ -426,14 +426,14 @@ void drawLeague(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& sh
                 bool lowBattery, Tip tip, Waiting waiting, Focus focus) {
     c.clear();
     const int top = 159;    // 2 px line under the times
-    const int split = 134;  // 2 px divider left of the percentage
+    const int split = 149;  // 2 px divider left of the percentage: in line with the THEM column's
     fourColumns(c, stones, count, me, activeCol, top, kLeagueRows, waiting);
     hline(c, 0, W - 1, top, 2);
     vline(c, split, top, H - 1, 2);
     // your rocks like a scoreboard: ends across, rock 1 over rock 2
     const int cursor = shots.cursor();
     for (int end = 0; end < 8; ++end) {
-        const int cx = 10 + end * 16;
+        const int cx = 12 + end * 18;  // spread across the box
         char n[3];
         snprintf(n, sizeof n, "%d", end + 1);
         kEndFont.draw(c, n, cx - 2, top + 3);

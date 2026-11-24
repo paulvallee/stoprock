@@ -126,8 +126,8 @@ A stone gives at most one **B2H** (back line, or tee line, to hog line) followed
 | Column labels | y 0–12 | `Back2Hog`, `Hog2Hog` in Spleen 6×12, split at x 92 |
 | Newest result | y 13–47 | DSEG7 Classic Bold 25 px, square decimal point. Blank cell if that split wasn't timed. |
 | Times by player | y 49–158 | Four columns, 49 px wide: your three teammates in throwing order, headed with their position (a 2nd sees `Lead`, `3rd`, `Skip`), then `THEM`, the other team. The player about to throw has the highlighted (inverted) header. Each column lists its stones newest first, a time a line, 7 lines of 14 px, in drawn 7-segment digits (12 px high, 7 px wide): Back2Hog black on white, Hog2Hog **white on black**, so a stone timed both ways takes two lines and a column shows its last 3–4 stones |
-| Your rocks | x 0–135, y 159–199 | Like a scoreboard: ends 1–8 across (drawn digits, 9 px), rock 1 over rock 2 (radius 5); ✓ made, ✗ missed, empty circle not thrown; bold ring = cursor on your next rock |
-| Percentage | x 136–199, y 161–199 | Your shots made, DSEG7 16 px digits, % sign drawn to match. A low battery puts a white-on-black `Batt low` bar above it until charged. |
+| Your rocks | x 0–150, y 159–199 (the divider in line with the THEM column's) | Like a scoreboard: ends 1–8 across (drawn digits, 9 px), rock 1 over rock 2 (radius 5); ✓ made, ✗ missed, empty circle not thrown; bold ring = cursor on your next rock |
+| Percentage | x 151–199, y 161–199 | Your shots made, DSEG7 16 px digits, % sign drawn to match. A low battery puts a white-on-black `Batt low` bar above it until charged. |
 
 **The player cursor.** Each timed stone is filed under the highlighted column. The cursor follows the throw order by itself (`firmware/lib/stoprock_core/src/throw_order.cpp`): an end is 16 throws, the teams alternating, each team's lead throwing two, then the second, third and skip. The device keeps track of where in the end the game is and puts the cursor on whoever throws next, skipping your own throws (you're throwing them):
 
