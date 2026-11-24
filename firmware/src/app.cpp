@@ -372,7 +372,7 @@ struct Model {
     int offGamesLeft = -1;
     bool menu = false;      // the mode menu at switch-on
     StartupMenuSelection menuSelection;
-    bool full = false;      // next update is a ghost-clearing full refresh
+    board::Refresh refresh = board::Refresh::Partial;
     Tip tip = Tip::None;    // a box over the times: the switch-on tip, or "Keep holding to undo"
     Waiting waiting = Waiting::None;  // a stone being timed: the stopwatch shows where its time will go
     Focus focus = Focus::Players;     // league: what the rocker works on
@@ -405,7 +405,7 @@ void displayTask(void*) {
         xSemaphoreTake(modelLock, portMAX_DELAY);
         m = model;
         const uint32_t seq = modelSeq;
-        model.full = false;
+        model.refresh = board::Refresh::Partial;
         xSemaphoreGive(modelLock);
 
         if (m.off) {
@@ -424,13 +424,11 @@ void displayTask(void*) {
             drawLeague(next, m.stones, m.stoneCount, m.shots, m.me, m.activeCol, m.warning, m.tip, m.waiting, m.focus);
         }
         const int64_t t0 = esp_timer_get_time();
-        if (m.full) {
-            board::show(next, Rect{0, 0, Canvas::W, Canvas::H}, true);
-        } else {
-            Rect r = next.diff(shown);
-            if (!r.empty()) board::show(next, r, false);
-        }
-        Serial.printf("display: %s %lld ms\n", m.full ? "full" : "partial", (esp_timer_get_time() - t0) / 1000);
+        const Rect update = m.refresh == board::Refresh::Partial ? next.diff(shown) : Rect{0, 0, Canvas::W, Canvas::H};
+        if (!update.empty()) board::show(next, update, m.refresh);
+        const char* refreshName = m.refresh == board::Refresh::ModeEntry ? "mode entry" :
+                                  m.refresh == board::Refresh::Full ? "full" : "partial";
+        Serial.printf("display: %s %lld ms\n", refreshName, (esp_timer_get_time() - t0) / 1000);
         shown = next;
         xSemaphoreTake(modelLock, portMAX_DELAY);
         const bool more = modelSeq != seq;  // changed while drawing: another pass (publish() notified)
@@ -440,9 +438,9 @@ void displayTask(void*) {
 }
 
 // Copy the app's state into the screen model. Shots are held back while a stone is timed.
-void syncModel(bool full = false) {
-    static bool sFull;
-    sFull = full;
+void syncModel(board::Refresh refresh = board::Refresh::Partial) {
+    static board::Refresh requestedRefresh;
+    requestedRefresh = refresh;
     {  // basic: never scrolled past the end (an undo can take a row away)
         const int most = stoneCount + (timing.state() == TimingState::Started ? 1 : 0) - 4;
         if (basicScroll > (most > 0 ? most : 0)) basicScroll = most > 0 ? most : 0;
@@ -459,7 +457,9 @@ void syncModel(bool full = false) {
         m.warning = lowBattery;
         m.off = false;
         m.menu = false;
-        m.full = m.full || sFull;
+        // Timing may update the queued frame before the display task takes it.
+        if (requestedRefresh != board::Refresh::Partial && m.refresh != board::Refresh::ModeEntry)
+            m.refresh = requestedRefresh;
         const Tip switchOn = mode == GameMode::Basic ? Tip::BasicIntro : Tip::SwitchOn;
         m.tip = offHint ? Tip::PowerOff : undoHint ? Tip::Undo : moveHint ? Tip::Move :
                 pageTipUntil >= 0 ? Tip::Page : tipWaiting || tipUntil >= 0 ? switchOn : Tip::None;
@@ -723,7 +723,7 @@ void showOffPageAndPowerOff() {
         m.off = true;
         m.offBattery = battery;
         m.offGamesLeft = gamesLeft;
-        m.full = true;
+        m.refresh = board::Refresh::Full;
     });
     while (displayBusy) delay(10);
     board::led(false);
@@ -761,7 +761,7 @@ GameMode chooseMode() {
             m.menu = true;
             m.menuSelection = selection;
             m.off = false;
-            m.full = m.full || full;
+            if (full) m.refresh = board::Refresh::Full;
         });
     };
     show(true);
@@ -1237,7 +1237,7 @@ void runCommand(const char* buf) {
         else { Serial.println("modes: basic | competition | league | coach"); return; }
         coachPage = 0;
         newGame();
-        syncModel(true);
+        syncModel(board::Refresh::ModeEntry);
     } else if (!strcmp(buf, "page")) {  // testing: coach page switch, as a double press
         if (rules().pages) { switchPage(); syncModel(); }
     } else if (!strcmp(buf, "o")) {
@@ -1320,7 +1320,7 @@ void setup() {
 
     const int64_t now = esp_timer_get_time();
     activity(now);
-    syncModel(true);
+    syncModel(board::Refresh::ModeEntry);
     auditStart(esp_timer_get_time());  // first clock audit sample
     nextAuditAt = esp_timer_get_time() + kAuditEveryUs;
     Serial.printf("stoprock ready (%s, %s mode)\n", board::name(), modeName(mode));
@@ -1340,7 +1340,7 @@ void loop() {
         refreshAt = -1;
         if (!timing.active()) {
             stonesSinceClean = 0;
-            syncModel(true);
+            syncModel(board::Refresh::Full);
         }
     }
 

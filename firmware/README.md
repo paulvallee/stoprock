@@ -72,7 +72,7 @@ button starts the stopwatch, logs B2H and H2H and wakes the chip from light slee
 nothing on USB: see `board_coreink.cpp`.)
 
 Still to check: battery power beyond a reported switch-off and on, the LED's polarity, the buzzer, battery readings, and
-why the first partial update after a full refresh takes about 520 ms instead of 260 (docs/SPEC.md open items). Also the
+whether moving the two-pass fast refresh into mode entry eliminates the first-click flash. Also the
 USB port dropping with the cable in: seen once, about 30 s into idle with no `power: off` in the log. The board carried
 on, and replugging brought the port back. Cause not known.
 

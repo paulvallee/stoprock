@@ -19,9 +19,11 @@ bool heldAtStart(Button b);
 // GPIO number of a button, for interrupts and wake-up.
 int pin(Button b);
 
-// Push the region r of c to the screen and wait until it is visible.
-// full = ghost-clearing refresh of the whole screen.
-void show(const stoprock::Canvas& c, stoprock::Rect r, bool full);
+// A mode entry clears the panel and prepares it for fast timing updates.
+enum class Refresh : uint8_t { Partial, Full, ModeEntry };
+
+// Push the region r of c to the screen and wait for its refresh to finish.
+void show(const stoprock::Canvas& c, stoprock::Rect r, Refresh refresh);
 
 void tone(uint16_t hz);  // 0 = silent
 void led(bool on);

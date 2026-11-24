@@ -8,9 +8,10 @@ esp-emulator doesn't emulate the original ESP32 in the CoreInk, so the simulator
 **ESP32-S3**, which it does emulate. The application code is the same; only the board layer differs
 ([`firmware/src/board_emu.cpp`](../firmware/src/board_emu.cpp)). The emulated firmware sends its screen
 updates, beeps and LED over the serial console, and `run.py` turns them into the web page. Screen updates take as
-long as on the CoreInk's e-ink: the firmware's display task is busy for 0.26 s per partial update and 2 s per
-full refresh, and the page shows each new image only when the panel would have finished it, with a full
-refresh flashing for its whole 2 s. The delays run on the emulated chip's clock, so if the emulator runs
+long as on the CoreInk's e-ink. The display task is busy for 0.26 s per partial update, 2 s per
+full refresh, and about 2.5 s when entering a mode and preparing the panel for fast refreshes.
+The page flashes during a full refresh and shows the new image when the update finishes.
+The delays run on the emulated chip's clock, so if the emulator runs
 slower than real time on your computer, everything on the page slows down with it.
 
 ## Setup (macOS Apple Silicon or Linux, once)
