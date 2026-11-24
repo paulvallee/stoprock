@@ -19,6 +19,9 @@ constexpr int kPins[kButtonCount] = {
     39,  // rocker down
 };
 constexpr int kLedPin = 10;      // green LED, active low (to confirm)
+// The board's power latch: high keeps the CoreInk on once the side button is let go. Light sleep
+// lets go of the pins unless they're held, which switched the device off at its first sleep.
+constexpr gpio_num_t kPowerHoldPin = GPIO_NUM_12;
 constexpr int kBuzzerPin = 2;
 constexpr int kBuzzerChannel = 0;
 
@@ -31,6 +34,8 @@ void begin() {
     cfg.clear_display = false;
     M5.begin(cfg);
     setCpuFrequencyMhz(80);  // plenty for this app; roughly halves the current while awake
+    pinMode(kPowerHoldPin, OUTPUT);  // M5Unified sets it too; make sure: the device stays on
+    digitalWrite(kPowerHoldPin, HIGH);
     M5.Display.setAutoDisplay(false);
     M5.Display.setRotation(0);
 
@@ -122,13 +127,16 @@ bool lightSleep(int64_t wakeAtUs) {
         esp_sleep_enable_timer_wakeup(wakeAtUs > now ? wakeAtUs - now : 1000);
     }
     Serial.flush();
+    gpio_hold_en(kPowerHoldPin);  // keep the power latch on through the sleep (or the board switches off)
     esp_light_sleep_start();
+    gpio_hold_dis(kPowerHoldPin);
     esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_ALL);
     for (int p : kPins) gpio_wakeup_disable(static_cast<gpio_num_t>(p));
     return true;
 }
 
 void powerOff() {
+    gpio_hold_dis(kPowerHoldPin);  // free, so the power-off can drop it
     M5.Display.waitDisplay();
     M5.Display.sleep();
     M5.Power.powerOff();  // on battery this cuts power; on USB it may return
