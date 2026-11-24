@@ -59,7 +59,8 @@ const Note kClick[] = {{2400, 30}};
 const Note kMade[] = {{3000, 70}};
 const Note kMissed[] = {{1000, 110}};
 const Note kUndo[] = {{1800, 60}, {0, 25}, {1200, 80}};
-const Note kError[] = {{300, 180, 50}};
+constexpr Note kError[] = {{300, 180, 50}};
+constexpr Note kBasicError[] = {{kError[0].hz, kError[0].ms, kError[0].volume / 2}};
 
 struct Sound {
     const Note* notes = nullptr;
@@ -118,6 +119,8 @@ bool isTimingButton(uint8_t b) { return b == board::kTop || b == board::kSide; }
 GameMode mode = GameMode::Competition;
 uint8_t coachPage = 0;          // coach: 0 timer priority, 1 rock priority
 uint8_t myPosition = 0;         // 0 lead .. 3 skip (double press of the rocker centre; kept)
+
+void playError() { sound.play(mode == GameMode::Basic ? kBasicError : kError); }
 
 // What differs between the modes, all in one place: everything else is the same code for all four.
 struct ModeRules {
@@ -821,7 +824,7 @@ Outcome sideClick;
 void onTimingPress(int64_t t, uint8_t b) {
     const Outcome o = timing.click(t);
     if (b == board::kSide) sideClick = o;
-    if (o.event == TimingEvent::IgnoredTooSoon) sound.play(kError);
+    if (o.event == TimingEvent::IgnoredTooSoon) playError();
     else sound.play(kClick);
     handleOutcome(o, t);
     // Nothing to wait for between clicks: sleep as soon as the beep and screen are done.
@@ -829,7 +832,7 @@ void onTimingPress(int64_t t, uint8_t b) {
 }
 
 void onShot(bool made) {
-    if (!shots.add(made)) { sound.play(kError); return; }
+    if (!shots.add(made)) { playError(); return; }
     addEntry(Entry::Shot);
     if (made) sound.play(kMade); else sound.play(kMissed);
     Serial.printf("shots: %s, %d/%d\n", made ? "made" : "missed", shots.madeCount(), shots.count());
@@ -895,7 +898,7 @@ bool onUndo() {
         return true;
     }
     if (entryCount == 0) {
-        sound.play(kError);
+        playError();
         syncModel();  // clears "Keep holding to undo"
         return false;
     }
@@ -970,7 +973,7 @@ void scrollBasic(int dir) {
     const bool fresh = timing.state() == TimingState::Started;  // a stone under way, no time yet: a row of its own
     const int most = stoneCount + (fresh ? 1 : 0) - 4;
     const int to = basicScroll + dir;
-    if (to < 0 || to > (most > 0 ? most : 0)) { sound.play(kError); return; }
+    if (to < 0 || to > (most > 0 ? most : 0)) { playError(); return; }
     basicScroll = to;
     sound.play(kClick);
     Serial.printf("basic: scrolled %d\n", basicScroll);
@@ -988,7 +991,7 @@ void stepCompetitionHistory(ButtonState& s, int64_t now) {
         ++competitionScroll;
         if (competitionScroll < limit) s.nextRepeat = now + kHistoryStepUs;
     } else {
-        sound.play(kError);
+        playError();
         return;
     }
     activity(now);
@@ -1012,7 +1015,7 @@ void movePlayer(int dir) {
 // Returns false when there's no time to move.
 bool stepMove() {
     const int col = stoneCount > 0 ? playerColumn(seat(), stones[0].player) : -1;
-    if (col < 0) { sound.play(kError); return false; }
+    if (col < 0) { playError(); return false; }
     const uint8_t to = static_cast<uint8_t>((col + 1) % columns());
     stones[0].player = columnPlayer(seat(), to);
     activeCol = to;
