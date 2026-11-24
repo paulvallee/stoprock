@@ -9,7 +9,7 @@ A pocket curling stopwatch and shot-percentage tracker.
 
 ## Status
 
-Design agreed. Firmware written and building for the CoreInk and for the simulator; not yet run on hardware. Prototype hardware is an M5Stack CoreInk (ESP32, 1.54" 200 × 200 e-ink), with a custom enclosure planned.
+Design agreed. Firmware written and building for the CoreInk and for the simulator; first runs on a real CoreInk done (still to check: see `firmware/README.md`). Prototype hardware is an M5Stack CoreInk (ESP32, 1.54" 200 × 200 e-ink), with a custom enclosure planned.
 
 ## Contents
 
