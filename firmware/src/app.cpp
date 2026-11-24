@@ -644,8 +644,12 @@ void activity(int64_t now) {
     if (sleepAt < now + kAwakeAfterPressUs) sleepAt = now + kAwakeAfterPressUs;
 }
 
-void onTimingPress(int64_t t) {
+// The side button's last click, for taking it back when that press turns out to be a power-off hold.
+Outcome sideClick;
+
+void onTimingPress(int64_t t, uint8_t b) {
     const Outcome o = timing.click(t);
+    if (b == board::kSide) sideClick = o;
     if (o.event == TimingEvent::IgnoredTooSoon) sound.play(kError);
     else sound.play(kClick);
     handleOutcome(o, t);
@@ -677,29 +681,20 @@ void onShot(bool made) {
 // Hold the rocker centre: undo the newest entry, a time or a shot, whichever came last (again every
 // 0.5 s while held). A stone being timed is cancelled first: if it has its B2H, that time goes too.
 // The throw order steps back with it. Returns false when there was nothing to undo.
-bool onUndo() {
-    const int64_t now = esp_timer_get_time();
-    undoHint = false;  // the screen update below clears it
-    if (timing.active()) {
-        // its B2H is an entry already: undone below, if nothing (a coach's shot) was logged since
-        const bool newestIsIt = timing.state() == TimingState::WaitingHH && entryCount > 0 &&
-                                entries[entryCount - 1] == Entry::Stone;
-        timing.reset();
-        h2hSwitchAt = -1;
-        closeStone(now);
-        Serial.println("timing: cancelled");
-        if (!newestIsIt) {
-            sound.play(kUndo);
-            reaim(now);
-            syncModel();
-            return true;
-        }
-    }
-    if (entryCount == 0) {
-        sound.play(kError);
-        syncModel();  // clears "Keep holding to undo"
-        return false;
-    }
+// Cancel the stone being timed. Returns true if its B2H is the newest entry, to be undone too
+// (not if something, a coach's shot, was logged since).
+bool cancelTiming(int64_t now) {
+    const bool newestIsIt = timing.state() == TimingState::WaitingHH && entryCount > 0 &&
+                            entries[entryCount - 1] == Entry::Stone;
+    timing.reset();
+    h2hSwitchAt = -1;
+    closeStone(now);
+    Serial.println("timing: cancelled");
+    return newestIsIt;
+}
+
+// Take back the newest entry, a shot or a stone, and the throw order's step with it.
+void undoEntry(int64_t now) {
     const Entry e = entries[--entryCount];
     if (e == Entry::Shot) {
         shots.undo();
@@ -717,9 +712,53 @@ bool onUndo() {
     manualCursor = false;
     reaim(now);
     if (rules().focus) planRocksFocus();
+}
+
+bool onUndo() {
+    const int64_t now = esp_timer_get_time();
+    undoHint = false;  // the screen update below clears it
+    if (timing.active() && !cancelTiming(now)) {
+        sound.play(kUndo);
+        reaim(now);
+        syncModel();
+        return true;
+    }
+    if (entryCount == 0) {
+        sound.play(kError);
+        syncModel();  // clears "Keep holding to undo"
+        return false;
+    }
+    undoEntry(now);
     sound.play(kUndo);
     syncModel();
     return true;
+}
+
+// The side button was let go after "Keep holding to turn off" showed: that press was the start of a
+// power-off, not a timing click, so what its click did is taken back. A stone it started (or
+// restarted) is cancelled; a B2H it logged goes with its stone; an H2H it logged goes, the stone
+// keeping its B2H if it had one.
+void takeBackSideClick() {
+    const int64_t now = esp_timer_get_time();
+    const TimingEvent e = sideClick.event;
+    const bool hadBh = sideClick.hadBh;
+    sideClick = Outcome();
+    if (e == TimingEvent::Started || e == TimingEvent::Restarted || e == TimingEvent::BH) {
+        if (timing.active() && cancelTiming(now) && e == TimingEvent::BH) undoEntry(now);
+        reaim(now);
+    } else if (e == TimingEvent::HH) {
+        if (hadBh) {  // the stone goes back to its B2H only
+            if (stoneCount > 0) stones[0].hh = -1;
+            bank.setLastHogToHog(StoneTimes::kNoTime, board::clockNow());
+        } else if (entryCount > 0 && entries[entryCount - 1] == Entry::Stone) {
+            undoEntry(now);  // an H2H-only stone: it goes
+        }
+        reaim(now);
+    } else {
+        return;
+    }
+    sound.play(kUndo);
+    Serial.println("timing: side click taken back (it was the start of a power-off hold)");
 }
 
 // A second short rocker press within 0.4 s (not an undo): changes your position (lead, 2nd, 3rd,
@@ -837,7 +876,7 @@ void onPress(uint8_t b, int64_t t) {
     if (b == board::kUp || b == board::kDown) return;
     switch (b) {
     case board::kTop:
-    case board::kSide: onTimingPress(t); break;
+    case board::kSide: onTimingPress(t, b); break;
     case board::kPress: onRockerPress(s, t); break;  // otherwise it acts on hold only
     default: break;
     }
@@ -863,8 +902,9 @@ void pollButtons(int64_t now) {
             }
             if (s.down && !raw && stable) {
                 s.down = false;
-                if (b == board::kSide && offHint) {  // let go before 3 s: stays on
+                if (b == board::kSide && offHint) {  // let go before 3 s: stays on, the click taken back
                     offHint = false;
+                    takeBackSideClick();
                     syncModel();
                 }
             }

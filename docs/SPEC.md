@@ -38,7 +38,7 @@ Graphics library: **M5GFX / M5Unified** (has a driver for this screen, `Panel_GD
 | Input | Action |
 |---|---|
 | Top button **or** side button (short press) | Timing click. Either works; the user picks whichever is comfortable. |
-| Side button, held | Power on (from off), in the mode the rocker picks (below). Power off when held 3 s while on (to confirm against the hardware's own power-button behaviour); from 0.5 s into the hold a box reads "Keep holding to turn off" (where the undo one goes), gone if you let go first. |
+| Side button, held | Power on (from off), in the mode the rocker picks (below). Power off when held 3 s while on (to confirm against the hardware's own power-button behaviour); from 0.5 s into the hold a box reads "Keep holding to turn off" (where the undo one goes). Let go after it shows and the device stays on, and that press's timing click is taken back: a stone it started is cancelled, a B2H it logged goes with its stone, an H2H it logged goes (the stone keeps its B2H if it had one). |
 | Rocker up | Log a **made** shot at the cursor |
 | Rocker down | Log a **missed** shot at the cursor |
 | Rocker press, held 1 s | **Undo** the newest entry, a time or a shot, whichever came last (like backspace), in every mode; a stone being timed is cancelled first (with its B2H, if it has one). The throw order steps back with it. From 0.2 s into the hold a box reads "Keep holding to undo"; it goes with the undo, or when you let go. Keep holding to undo another entry every 1 s; stops after one error buzz when nothing is left. |
