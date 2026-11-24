@@ -483,16 +483,45 @@ void drawBasic(Canvas& c, const Stone* stones, uint8_t count, bool lowBattery, T
     if (tip == Tip::Undo || tip == Tip::PowerOff) undoTip(c, kHintTop, strip, tip);
 }
 
-static void competitionHistory(Canvas& c, const Stone* stones, int count, uint8_t me,
-                               uint8_t active, uint8_t first, int bottom) {
+constexpr int kCompetitionSplits = 4;
+
+static int competitionColumnLimit(const Stone* stones, int count, uint8_t player) {
+    int splits = 0;
+    for (int i = 0; i < count; ++i) {
+        if (stones[i].player == player) splits += (stones[i].bh >= 0) + (stones[i].hh >= 0);
+    }
+    return splits > kCompetitionSplits ? splits - kCompetitionSplits : 0;
+}
+
+int competitionHistoryLimit(const Stone* stones, uint8_t count, uint8_t me, uint8_t firstColumn) {
+    int limit = 0;
+    for (uint8_t slot = 0; slot < kCompetitionVisibleColumns; ++slot) {
+        const int columnLimit = competitionColumnLimit(stones, count, columnPlayer(me, firstColumn + slot));
+        if (columnLimit > limit) limit = columnLimit;
+    }
+    return limit;
+}
+
+static void competitionHistory(Canvas& c, const Stone* stones, uint8_t count, uint8_t me,
+                               uint8_t active, uint8_t first, int bottom, int scroll) {
     constexpr int edgeWidth = 8;
     constexpr int columnWidth = (W - edgeWidth) / kCompetitionVisibleColumns;
-    constexpr int splits = 4;
-    const int pitch = (bottom - kLinesTop) / splits;
+    const int pitch = (bottom - kLinesTop) / kCompetitionSplits;
     const int x0 = first ? edgeWidth : 0;
     const int marker = first ? 0 : W - edgeWidth;
     c.fillRect(marker + 2, GRID_LABEL_Y0, marker + 5, GRID_LABEL_Y1);
     vline(c, first ? edgeWidth - 1 : W - edgeWidth, GRID_LABEL_Y0, bottom - 1);
+    if (scroll > 0) {
+        const int limit = competitionHistoryLimit(stones, count, me, first);
+        if (scroll > limit) scroll = limit;
+        if (limit > 0) {
+            constexpr int thumbHeight = 10;
+            const int trackTop = kLinesTop + 2, trackBottom = bottom - 4;
+            const int thumbTop = trackTop + scroll * (trackBottom - trackTop + 1 - thumbHeight) / limit;
+            vline(c, marker + 4, trackTop, trackBottom);
+            c.fillRect(marker + 2, thumbTop, marker + 5, thumbTop + thumbHeight - 1);
+        }
+    }
 
     for (int slot = 0; slot < kCompetitionVisibleColumns; ++slot) {
         const int column = first + slot;
@@ -506,13 +535,16 @@ static void competitionHistory(Canvas& c, const Stone* stones, int count, uint8_
                GRID_LABEL_Y0, name, !focused);
         if (slot > 0) vline(c, left, GRID_LABEL_Y0, bottom - 1);
 
+        const int limit = scroll > 0 ? competitionColumnLimit(stones, count, player) : 0;
+        int skip = scroll < limit ? scroll : limit;
         int row = 0;
-        for (int i = 0; i < count && row < splits; ++i) {
+        for (int i = 0; i < count && row < kCompetitionSplits; ++i) {
             if (stones[i].player != player) continue;
             const int32_t values[] = {stones[i].bh, stones[i].hh};
-            for (int half = 0; half < 2 && row < splits; ++half) {
+            for (int half = 0; half < 2 && row < kCompetitionSplits; ++half) {
                 const int32_t value = values[half];
                 if (value < 0) continue;
+                if (skip > 0) { --skip; continue; }
                 const int y = kLinesTop + row++ * pitch;
                 if (half == 1) c.fillRect(left + 2, y, right - 2, y + pitch - 2);
                 char label[12];
@@ -526,11 +558,11 @@ static void competitionHistory(Canvas& c, const Stone* stones, int count, uint8_
 }
 
 void drawCompetition(Canvas& c, const Stone* stones, uint8_t count, uint8_t me, uint8_t activeCol,
-                     bool lowBattery, Tip tip, Waiting waiting, uint8_t firstColumn) {
+                     bool lowBattery, Tip tip, Waiting waiting, uint8_t firstColumn, int scroll) {
     c.clear();
     const int strip = H - TIP_H;
     timesTop(c, stones, count, waiting, COMP_MID);
-    competitionHistory(c, stones, count, me, activeCol, competitionFirstColumn(firstColumn, activeCol), strip);
+    competitionHistory(c, stones, count, me, activeCol, competitionFirstColumn(firstColumn, activeCol), strip, scroll);
     badgeStrip(c, "COMPETITION", lowBattery);
     if (tip == Tip::SwitchOn) switchOnTip(c, me);
     if (tip == Tip::Undo || tip == Tip::PowerOff) undoTip(c, kHintTop, strip, tip);

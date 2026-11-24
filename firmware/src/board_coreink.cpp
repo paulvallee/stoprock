@@ -25,6 +25,8 @@ constexpr int kLedPin = 10;      // green LED, active low (to confirm)
 constexpr gpio_num_t kPowerHoldPin = GPIO_NUM_12;
 constexpr int kBuzzerPin = 2;
 constexpr int kBuzzerChannel = 0;
+constexpr int kBuzzerPwmBits = 10;
+constexpr int kOriginalBuzzerDuty = 128;  // original beeps used 128 out of 1024 PWM counts
 
 uint8_t region[(stoprock::Canvas::W / 8) * stoprock::Canvas::H];
 
@@ -50,7 +52,7 @@ void begin() {
                   digitalRead(kPins[kPress]), digitalRead(kPins[kDown]));
     pinMode(kLedPin, OUTPUT);
     digitalWrite(kLedPin, HIGH);
-    ledcSetup(kBuzzerChannel, 2000, 8);
+    ledcSetup(kBuzzerChannel, 2000, kBuzzerPwmBits);
     ledcAttachPin(kBuzzerPin, kBuzzerChannel);
     ledcWrite(kBuzzerChannel, 0);
 }
@@ -74,10 +76,12 @@ void show(const stoprock::Canvas& c, stoprock::Rect r, Refresh refresh) {
     M5.Display.waitDisplay();
 }
 
-void tone(uint16_t hz) {
-    if (hz == 0) { ledcWrite(kBuzzerChannel, 0); return; }
-    ledcWriteTone(kBuzzerChannel, hz);
-    ledcWrite(kBuzzerChannel, 128);
+void tone(uint16_t hz, uint8_t volume) {
+    if (hz == 0 || volume == 0 || !ledcChangeFrequency(kBuzzerChannel, hz, kBuzzerPwmBits)) {
+        ledcWrite(kBuzzerChannel, 0);
+        return;
+    }
+    ledcWrite(kBuzzerChannel, kOriginalBuzzerDuty * volume / 100);
 }
 
 void led(bool on) { digitalWrite(kLedPin, on ? LOW : HIGH); }

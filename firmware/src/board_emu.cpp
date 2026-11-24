@@ -5,7 +5,7 @@
 //   @FLASH ms                a full refresh has started; it flashes for ms milliseconds
 //   @FB x y w h full HEX     a screen region, sent when the panel would have finished drawing it
 //                            (x, w multiples of 8; HEX = rows of w/8 bytes, 1 = black)
-//   @TONE hz                 buzzer frequency, 0 = silent
+//   @TONE hz volume          buzzer frequency (0 = silent) and drive as a percentage
 //   @LED 0|1                 green LED
 //
 // Buttons are esp-emulator push-button parts on the pins below (simulator/board.json).
@@ -137,7 +137,7 @@ void show(const stoprock::Canvas& c, stoprock::Rect r, Refresh refresh) {
     Serial.write(reinterpret_cast<const uint8_t*>(buf), n);
 }
 
-void tone(uint16_t hz) { Serial.printf("@TONE %u\n", hz); }
+void tone(uint16_t hz, uint8_t volume) { Serial.printf("@TONE %u %u\n", hz, volume); }
 void led(bool on) { Serial.printf("@LED %d\n", on ? 1 : 0); }
 
 int batteryPercent() {

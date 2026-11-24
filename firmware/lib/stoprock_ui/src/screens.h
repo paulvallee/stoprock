@@ -53,9 +53,12 @@ constexpr uint8_t competitionFirstColumn(uint8_t first, uint8_t active) {
 // Competition: times only, and a badge strip an umpire can read. activeCol is the logical
 // column (0–3), firstColumn is the start of the visible window (0 or 1).
 constexpr uint8_t kGridRows = 8;  // stones kept per player (addStone)
+// Maximum offset, in split rows, among the three visible columns.
+int competitionHistoryLimit(const Stone* stones, uint8_t count, uint8_t me, uint8_t firstColumn);
 // tip: the switch-on tip (your position, double click to change it, hold up to move) over the times.
 void drawCompetition(Canvas& c, const Stone* stones, uint8_t count, uint8_t me, uint8_t activeCol,
-                     bool lowBattery, Tip tip = Tip::None, Waiting waiting = Waiting::None, uint8_t firstColumn = 0);
+                     bool lowBattery, Tip tip = Tip::None, Waiting waiting = Waiting::None,
+                     uint8_t firstColumn = 0, int scroll = 0);
 
 // League (side button + rocker down): the newest stone large, then four columns: your three
 // teammates in throwing order and the other team (THEM), each listing its stones newest first, a

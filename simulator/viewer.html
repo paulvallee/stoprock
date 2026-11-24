@@ -109,14 +109,14 @@ function flash(ms) {               // a full e-ink refresh: black, white, black,
 
 // sound
 let audio = null, osc = null;
-function tone(hz) {
+function tone(hz, volume = 100) {
   if (!document.getElementById("sound").checked) hz = 0;
   if (!audio) return;
   if (osc) { osc.stop(); osc = null; }
   if (hz > 0) {
     osc = audio.createOscillator();
     const gain = audio.createGain();
-    gain.gain.value = 0.05;
+    gain.gain.value = 0.05 * volume / 100;
     osc.type = "square";
     osc.frequency.value = hz;
     osc.connect(gain).connect(audio.destination);
@@ -139,7 +139,7 @@ events.onmessage = (m) => {
   const e = JSON.parse(m.data);
   if (e.type === "fb") draw(e.data);
   else if (e.type === "flash") flash(e.ms);
-  else if (e.type === "tone") tone(e.hz);
+  else if (e.type === "tone") tone(e.hz, e.volume);
   else if (e.type === "led") document.getElementById("led").classList.toggle("on", e.on);
   else if (e.type === "log") addLog(e.text);
   else if (e.type === "export") document.getElementById("export-status").textContent = `saved to ${e.path}`;

@@ -31,7 +31,8 @@ constexpr int64_t kPowerHoldUs = 3 * kSec;
 constexpr int64_t kOffHintUs = kSec / 2;       // "Keep holding to turn off" from then (a timing click is quicker)
 constexpr int64_t kDoublePressUs = 400000;     // two rocker presses within 0.4 s: a double press
 constexpr int64_t kFocusHoldUs = kSec / 2;     // league: hold rocker down (up from your rocks) to move the focus
-constexpr int64_t kMoveStepUs = 700000;        // every mode: holding rocker up (down: left, competition) moves the newest time a column this often
+constexpr int64_t kMoveStepUs = 700000;        // holding up moves the newest time this often
+constexpr int64_t kHistoryStepUs = 700000;     // Competition: holding down scrolls one split row this often
 constexpr int64_t kAwakeAfterPressUs = 2 * kSec;    // stay awake this long after a rocker press
 constexpr int64_t kAwakeAfterWakeUs = 40000;        // time to confirm the button that woke us
 constexpr int64_t kAuditEveryUs = 10 * 60 * kSec;   // clock audit sample interval
@@ -53,12 +54,12 @@ constexpr int kMaxStones = 32;  // kept for the screen: at least a screenful of 
 const char* const kPositionNames[4] = {"lead", "second", "third", "skip"};
 
 // ------------------------------------------------------------------ sounds
-struct Note { uint16_t hz, ms; };
+struct Note { uint16_t hz, ms; uint8_t volume = 67; };
 const Note kClick[] = {{2400, 30}};
 const Note kMade[] = {{3000, 70}};
 const Note kMissed[] = {{1000, 110}};
 const Note kUndo[] = {{1800, 60}, {0, 25}, {1200, 80}};
-const Note kError[] = {{300, 180}};
+const Note kError[] = {{300, 180, 50}};
 
 struct Sound {
     const Note* notes = nullptr;
@@ -69,14 +70,14 @@ struct Sound {
         notes = n;
         count = N;
         index = 0;
-        board::tone(n[0].hz);
+        board::tone(n[0].hz, n[0].volume);
         until = esp_timer_get_time() + n[0].ms * 1000LL;
     }
     bool playing() const { return notes != nullptr; }
     void update(int64_t now) {
         if (!notes || now < until) return;
-        if (++index >= count) { notes = nullptr; board::tone(0); return; }
-        board::tone(notes[index].hz);
+        if (++index >= count) { notes = nullptr; board::tone(0, 0); return; }
+        board::tone(notes[index].hz, notes[index].volume);
         until = now + notes[index].ms * 1000LL;
     }
 } sound;
@@ -88,7 +89,7 @@ struct ButtonState {
     int64_t rawSince = 0;
     int64_t downSince = 0;
     bool holdFired = false;
-    int64_t nextRepeat = 0;   // rocker press: when the next undo fires while held
+    int64_t nextRepeat = 0;   // when a held rocker repeats an undo or a history step
     bool pending = false;     // timing buttons: edge seen, waiting to confirm
     int64_t pendingT = 0;
 };
@@ -147,6 +148,7 @@ uint8_t columns() { return columnCount(seat()); }
 // throws next, and the rocker moves it too (or moves a time afterwards).
 uint8_t activeCol = 0;          // the column with the cursor
 uint8_t competitionFirst = 0;   // first visible column in Competition
+int competitionScroll = 0;      // split rows skipped in Competition history
 int basicScroll = 0;             // basic: rows scrolled down, to older stones (the rocker; a new stone resets it)
 // League: what rocker up/down work on, the focus (bold border): the players' columns (up = next,
 // down = previous) or your rocks (made/missed). Hold down 0.5 s for your rocks; logging a shot (or
@@ -339,6 +341,7 @@ void newGame() {
     stoneCount = 0;
     basicScroll = 0;
     competitionFirst = 0;
+    competitionScroll = 0;
     Serial.printf("game: new, %s mode\n", modeName(mode));
 }
 
@@ -365,7 +368,7 @@ struct Model {
     uint8_t me = 0;         // competition: your position
     uint8_t activeCol = 0;  // competition and league: the column with the cursor
     uint8_t competitionFirst = 0;
-    int scroll = 0;         // basic: rows scrolled down
+    int scroll = 0;         // history offset in Basic or Competition
     Stone stones[kMaxStones];
     uint8_t stoneCount = 0;
     ShotLog shots;          // the shots on screen (deferred while a stone is timed)
@@ -419,7 +422,7 @@ void displayTask(void*) {
             drawBasic(next, m.stones, m.stoneCount, m.warning, m.tip, m.waiting, m.scroll);
         } else if (m.mode == GameMode::Competition) {
             drawCompetition(next, m.stones, m.stoneCount, m.me, m.activeCol, m.warning, m.tip, m.waiting,
-                            m.competitionFirst);
+                            m.competitionFirst, m.scroll);
         } else if (m.mode == GameMode::Coach) {
             if (m.page == 0)
                 drawCoachTimer(next, m.stones, m.stoneCount, m.shots, m.waiting, m.activeCol, m.tip, m.focus);
@@ -445,8 +448,13 @@ void displayTask(void*) {
 void syncModel(board::Refresh refresh = board::Refresh::Partial) {
     static board::Refresh requestedRefresh;
     requestedRefresh = refresh;
-    if (mode == GameMode::Competition)
+    if (mode == GameMode::Competition) {
         competitionFirst = competitionFirstColumn(competitionFirst, activeCol);
+        if (competitionScroll > 0) {
+            const int limit = competitionHistoryLimit(stones, stoneCount, myPosition, competitionFirst);
+            if (competitionScroll > limit) competitionScroll = limit;
+        }
+    }
     {  // basic: never scrolled past the end (an undo can take a row away)
         const int most = stoneCount + (timing.state() == TimingState::Started ? 1 : 0) - 4;
         if (basicScroll > (most > 0 ? most : 0)) basicScroll = most > 0 ? most : 0;
@@ -457,7 +465,7 @@ void syncModel(board::Refresh refresh = board::Refresh::Partial) {
         m.me = myPosition;
         m.activeCol = activeCol;
         m.competitionFirst = competitionFirst;
-        m.scroll = basicScroll;
+        m.scroll = mode == GameMode::Competition ? competitionScroll : basicScroll;
         memcpy(m.stones, stones, sizeof stones);
         m.stoneCount = stoneCount;
         if (!timing.active()) m.shots = shots;
@@ -583,6 +591,7 @@ void handleOutcome(const Outcome& o, int64_t now) {
             Serial.println("focus: players (timing)");
         }
         basicScroll = 0;  // basic: back to the top, where the stone under way shows
+        competitionScroll = 0;
         // tips go: timing has the screen (the hold hints stay while their hold lasts)
         tipWaiting = false;
         tipUntil = -1;
@@ -596,6 +605,7 @@ void handleOutcome(const Outcome& o, int64_t now) {
         sleptAtAnchor = sleptUs;
         stoneStart = now;
         h2hSwitchAt = now + timing.config().bhMaxUs;
+        competitionScroll = 0;
         cursorToNext(now);
         Serial.println("timing: double press, restart");
         syncModel();  // back to awaiting the B2H, if it had moved on
@@ -733,7 +743,7 @@ void showOffPageAndPowerOff() {
     });
     while (displayBusy) delay(10);
     board::led(false);
-    board::tone(0);
+    board::tone(0, 0);
     board::powerOff();
     ESP.restart();  // only reached where power-off isn't possible (USB, simulator)
 }
@@ -975,6 +985,26 @@ void scrollBasic(int dir) {
     syncModel();
 }
 
+void stepCompetitionHistory(ButtonState& s, int64_t now) {
+    const int limit = competitionHistoryLimit(stones, stoneCount, myPosition, competitionFirst);
+    const bool returnToLatest = !s.holdFired && limit > 0 && competitionScroll == limit;
+    s.holdFired = true;  // releasing a long press never moves the player cursor
+    s.nextRepeat = 0;
+    if (returnToLatest) {
+        competitionScroll = 0;
+    } else if (competitionScroll < limit) {
+        ++competitionScroll;
+        if (competitionScroll < limit) s.nextRepeat = now + kHistoryStepUs;
+    } else {
+        sound.play(kError);
+        return;
+    }
+    activity(now);
+    sound.play(kClick);
+    Serial.printf("competition: history offset %d\n", competitionScroll);
+    syncModel();
+}
+
 // The player cursor one column left (-1) or right (+1), round and round.
 void movePlayer(int dir) {
     activeCol = (activeCol + (dir < 0 ? columns() - 1 : 1)) % columns();
@@ -986,15 +1016,15 @@ void movePlayer(int dir) {
     syncModel();
 }
 
-// Rocker up held on the columns: the newest time moves a column right every 0.7 s (round and
-// round), shown where it is; rocker down held (where it doesn't move the focus: competition, coach)
-// moves it left. Returns false when there's no time to move.
-bool stepMove(int dir) {
+// Rocker up held on the columns: the newest time moves a column right every 0.7 s, wrapping.
+// Returns false when there's no time to move.
+bool stepMove() {
     const int col = stoneCount > 0 ? playerColumn(seat(), stones[0].player) : -1;
     if (col < 0) { sound.play(kError); return false; }
-    const uint8_t to = static_cast<uint8_t>((col + (dir < 0 ? columns() - 1 : 1)) % columns());  // as a press moves the cursor
+    const uint8_t to = static_cast<uint8_t>((col + 1) % columns());
     stones[0].player = columnPlayer(seat(), to);
     activeCol = to;
+    competitionScroll = 0;
     ++moveSteps;
     sound.play(kClick);
     syncModel();
@@ -1032,8 +1062,8 @@ void setFocus(Focus f) {
     syncModel();
 }
 
-// A short press of rocker up/down, acted on when it's let go (a long press moves the focus or the
-// newest time instead): made/missed (coach, league on your rocks), or next/previous player.
+// A short press of rocker up/down acts on release: made/missed (coach, league on your rocks),
+// next/previous player, or an older/newer row in Basic.
 void releaseAction(uint8_t b);
 void onRelease(uint8_t b) {
     // Coach: a quick click of the centre that wasn't the second of a double click (that one is
@@ -1043,7 +1073,7 @@ void onRelease(uint8_t b) {
         singleClickPress = lastRockerPress;
         singleClickAt = lastRockerPress + kDoublePressUs;
     }
-    const bool hadHint = moveHint && (b == board::kUp || b == board::kDown);
+    const bool hadHint = moveHint && b == board::kUp;
     if (hadHint) moveHint = false;  // let go: "Keep holding to move time" goes
     releaseAction(b);
     if (hadHint) syncModel();  // (an update the action made already took it; this one changes nothing then)
@@ -1055,7 +1085,7 @@ void releaseAction(uint8_t b) {
         syncModel();
     }
     if (b != board::kUp && b != board::kDown) return;
-    if (moveSteps > 0) { finishMove(); return; }  // a held up (or down) moved the newest time
+    if (b == board::kUp && moveSteps > 0) { finishMove(); return; }
     if (buttons[b].holdFired) return;
     if (rules().shotsPerEnd && (!rules().focus || focus == Focus::Rocks)) onShot(b == board::kUp);
     else if (rules().columns) movePlayer(b == board::kUp ? 1 : -1);  // up = next player, down = previous
@@ -1078,8 +1108,9 @@ void onPress(uint8_t b, int64_t t) {
     s.down = true;
     s.downSince = t;
     s.holdFired = false;
-    s.nextRepeat = t + kUndoHoldUs;
-    if (b == board::kUp || b == board::kDown) moveSteps = 0;
+    const bool history = b == board::kDown && mode == GameMode::Competition;
+    s.nextRepeat = t + (history ? kHistoryStepUs : kUndoHoldUs);
+    if (b == board::kUp) moveSteps = 0;
     activity(t);
     if (mode == GameMode::Basic && (tipWaiting || tipUntil >= 0 || basicIntroClearing)) {
         s.holdFired = true;  // ignore the rest of this press, including a hold or release action
@@ -1161,12 +1192,10 @@ void pollButtons(int64_t now) {
                 offHint = false;
                 showOffPageAndPowerOff();
             }
-            // League: hold down for your rocks; hold up for the columns. Every mode: hold up on the
-            // columns to move the newest time a column right every 0.7 s (let go where it belongs);
-            // without a focus (competition, coach), hold down to move it left.
+            // In League and Coach, hold down for your rocks and up for the columns.
+            // Holding up on the columns moves the newest time right.
             const bool rocker = b == board::kUp || b == board::kDown;
-            const bool moves = rules().columns && rocker && raw && (b == board::kUp || !rules().focus) &&
-                               focus == Focus::Players;
+            const bool moves = rules().columns && b == board::kUp && raw && focus == Focus::Players;
             if (moves && !moveHint && stoneCount > 0 && now - s.downSince >= kUndoHintUs) {
                 moveHint = true;  // a press of up/down is quicker: it never shows for one
                 syncModel();
@@ -1178,9 +1207,13 @@ void pollButtons(int64_t now) {
                 setFocus(b == board::kUp ? Focus::Players : Focus::Rocks);
             } else if (moves && now - s.downSince >= kMoveStepUs * (moveSteps + 1)) {
                 // raw: no step once it's let go (it counts as released only after 20 ms up)
-                activity(now);  // up moves the newest time right; down (no focus to move) left
-                if (!stepMove(b == board::kUp ? 1 : -1)) s.holdFired = true;
+                activity(now);
+                if (!stepMove()) s.holdFired = true;
             }
+        }
+        if (mode == GameMode::Competition && b == board::kDown && s.down && raw &&
+            s.nextRepeat > 0 && now >= s.nextRepeat) {
+            stepCompetitionHistory(s, now);
         }
     }
 }

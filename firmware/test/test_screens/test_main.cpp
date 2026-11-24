@@ -102,6 +102,14 @@ static void test_competition_window_moves_only_at_hidden_edges() {
     TEST_ASSERT_EQUAL_UINT8(1, competitionFirstColumn(0, 3));
 }
 
+static void test_competition_history_counts_only_visible_recorded_splits() {
+    const Stone stones[] = {{345, 1390, kThem}, {334, -1, kThem}, {-1, 1412, kThem},
+                            {356, 1401, kThem}, {352, 1378, 1}};
+    const uint8_t count = sizeof stones / sizeof stones[0];
+    TEST_ASSERT_EQUAL_INT(0, competitionHistoryLimit(stones, count, 0, 0));
+    TEST_ASSERT_EQUAL_INT(2, competitionHistoryLimit(stones, count, 0, 1));
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_no_players_drops_oldest);
@@ -110,5 +118,6 @@ int main() {
     RUN_TEST(test_teammates);
     RUN_TEST(test_startup_menu_scrolls_and_wraps_with_more_entries);
     RUN_TEST(test_competition_window_moves_only_at_hidden_edges);
+    RUN_TEST(test_competition_history_counts_only_visible_recorded_splits);
     return UNITY_END();
 }

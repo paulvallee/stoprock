@@ -25,7 +25,7 @@ enum class Refresh : uint8_t { Partial, FastScreen, Full };
 // Push the region r of c to the screen and wait for its refresh to finish.
 void show(const stoprock::Canvas& c, stoprock::Rect r, Refresh refresh);
 
-void tone(uint16_t hz);  // 0 = silent
+void tone(uint16_t hz, uint8_t volume);  // volume is a percentage of the original buzzer drive
 void led(bool on);
 
 // Battery charge 0-100, or -1 if unknown.

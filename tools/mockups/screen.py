@@ -529,7 +529,7 @@ def basic_screen(stones, low_battery=False, tip=False, waiting=None, scroll=0):
     return img
 
 
-def competition_screen(stones, me=0, active=0, low_battery=False, tip=False, waiting=None, first_column=0):
+def competition_screen(stones, me=0, active=0, low_battery=False, tip=False, waiting=None, first_column=0, scroll=0):
     """Three player columns with large splits and a marker at the hidden edge."""
     f = fonts()
     img = Image.new("1", (W, H), 1)
@@ -544,22 +544,29 @@ def competition_screen(stones, me=0, active=0, low_battery=False, tip=False, wai
     d.rectangle((marker + 2, GRID_LABEL[0], marker + 5, GRID_LABEL[1]), fill=0)
     edge = edge_width - 1 if first else W - edge_width
     d.line((edge, GRID_LABEL[0], edge, strip - 1), fill=0)
-    players = league_columns(me)
+    players = league_columns(me)[first:first + 3]
+    columns = [[(value, half) for bh, hh, owner in stones if owner == player
+                for half, value in enumerate((bh, hh)) if value is not None] for player in players]
+    limit = max(0, max(map(len, columns)) - 4)
+    scroll = min(scroll, limit)
+    if scroll > 0:
+        top, bottom, thumb_height = LEAGUE_TOP + 2, strip - 4, 10
+        thumb = top + scroll * (bottom - top + 1 - thumb_height) // limit
+        d.line((marker + 4, top, marker + 4, bottom), fill=0)
+        d.rectangle((marker + 2, thumb, marker + 5, thumb + thumb_height - 1), fill=0)
     pitch = (strip - LEAGUE_TOP) // 4
-    for slot, column in enumerate(range(first, first + 3)):
+    for slot, (player, splits) in enumerate(zip(players, columns)):
         left = x0 + slot * column_width
         right = left + column_width
-        player = players[column]
         name = "THEM" if player == THEM else POSITION_NAMES[player]
-        focused = column == active
+        focused = first + slot == active
         if focused:
             d.rectangle((left, GRID_LABEL[0], right - 1, GRID_LABEL[1]), fill=0)
         d.text(((left + right - 6 * len(name)) // 2, GRID_LABEL[0]), name, font=f["label"], fill=int(focused))
         if slot:
             d.line((left, GRID_LABEL[0], left, strip - 1), fill=0)
-        splits = [(value, half) for bh, hh, owner in stones if owner == player
-                  for half, value in enumerate((bh, hh)) if value is not None]
-        for row, (value, half) in enumerate(splits[:4]):
+        skip = min(scroll, max(0, len(splits) - 4))
+        for row, (value, half) in enumerate(splits[skip:skip + 4]):
             y = LEAGUE_TOP + row * pitch
             if half:
                 d.rectangle((left + 2, y, right - 2, y + pitch - 2), fill=0)

@@ -89,7 +89,8 @@ class Device:
             elif line.startswith("@FLASH "):
                 self.emit({"type": "flash", "ms": int(line.split()[1])})
             elif line.startswith("@TONE "):
-                self.emit({"type": "tone", "hz": int(line.split()[1])})
+                _, hz, *volume = line.split()
+                self.emit({"type": "tone", "hz": int(hz), "volume": int(volume[0]) if volume else 100})
             elif line.startswith("@LED "):
                 self.emit({"type": "led", "on": line.split()[1] == "1"})
             else:
