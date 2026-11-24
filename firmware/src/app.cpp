@@ -734,8 +734,9 @@ bool onUndo() {
     return true;
 }
 
-// The side button was let go after "Keep holding to turn off" showed: that press was the start of a
-// power-off, not a timing click, so what its click did is taken back. A stone it started (or
+// The side button has been held long enough for "Keep holding to turn off": that press is the start
+// of a power-off, not a timing click, so what its click did is taken back (at once: let go or not,
+// that timing would never give a time). A stone it started (or
 // restarted) is cancelled; a B2H it logged goes with its stone; an H2H it logged goes, the stone
 // keeping its B2H if it had one.
 void takeBackSideClick() {
@@ -902,9 +903,8 @@ void pollButtons(int64_t now) {
             }
             if (s.down && !raw && stable) {
                 s.down = false;
-                if (b == board::kSide && offHint) {  // let go before 3 s: stays on, the click taken back
+                if (b == board::kSide && offHint) {  // let go before 3 s: stays on (the click was taken back)
                     offHint = false;
-                    takeBackSideClick();
                     syncModel();
                 }
             }
@@ -935,6 +935,7 @@ void pollButtons(int64_t now) {
             }
             if (b == board::kSide && !offHint && now - s.downSince >= kOffHintUs) {
                 offHint = true;
+                takeBackSideClick();  // a power-off hold, not a timing click: the stopwatch goes now
                 syncModel();
             }
             if (b == board::kSide && now - s.downSince >= kPowerHoldUs) {
