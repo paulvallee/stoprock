@@ -195,6 +195,16 @@ int main(int argc, char** argv) {
         writePbm(c, path);
     }
 
+    drawBasic(c, nullptr, 0, false, Tip::BasicIntro);
+    snprintf(path, sizeof path, "%s/basic-intro.pbm", dir);
+    writePbm(c, path);
+    drawBasic(c, nullptr, 0, false);
+    snprintf(path, sizeof path, "%s/basic-empty.pbm", dir);
+    writePbm(c, path);
+    drawBasic(c, nullptr, 0, false, Tip::None, Waiting::BackToHog);
+    snprintf(path, sizeof path, "%s/basic-started.pbm", dir);
+    writePbm(c, path);
+
     {  // basic: a row a stone; timing; a 20.00 H2H with a low battery and the undo hint
         drawBasic(c, league, nl, false);
         snprintf(path, sizeof path, "%s/basic.pbm", dir);

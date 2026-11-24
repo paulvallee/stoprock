@@ -124,6 +124,7 @@ def main():
         if off_page.mode != "1" or off_page.size != (screen.W, screen.H):
             raise ValueError("The off page must be a 200 x 200, 1-bit image")
         emit_bitmap("kOffPage", off_page, out)
+    emit_bitmap("kBasicIntro", screen.basic_intro(), out)
     with Image.open(logo.NATIVE_LOGO) as native_logo:
         if native_logo.mode != "1" or native_logo.size != (176, 39):
             raise ValueError("The startup logo must be a 176 x 39, 1-bit image")

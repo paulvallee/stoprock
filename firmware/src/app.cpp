@@ -192,8 +192,10 @@ int64_t lastActivity = 0;
 int64_t sleepAt = 0;
 int64_t refreshAt = -1;          // after every 4th stone: a ghost-clearing full refresh
 constexpr int64_t kTipUs = 5 * kSec;
+constexpr int64_t kBasicIntroUs = 20 * kSec;
 int64_t tipUntil = -1;           // the switch-on tip shows until then
-bool tipWaiting = false;         // ... its 5 s start once the screen showing it is up
+bool tipWaiting = false;         // start the timer when the tip is actually on screen
+bool basicIntroClearing = false; // presses still dismiss only while the display clears it
 bool undoHint = false;           // "Keep holding to undo": the rocker centre is held, the undo not yet due
 // Coach: a single click of the rocker centre (switching page takes two): "Double click rocker middle
 // to change pages", once the double-click window has passed, for 3 s or till the next press.
@@ -329,8 +331,9 @@ void newGame() {
     gameStartUs = esp_timer_get_time();
     entryCount = 0;
     restartOrder();
-    // the switch-on tip for 5 s: your position (a coach has none: no tip)
-    tipWaiting = rules().positions;
+    // Basic shows the tutorial; position modes show the switch-on tip.
+    tipWaiting = mode == GameMode::Basic || rules().positions;
+    basicIntroClearing = false;
     tipUntil = -1;
     stoneCount = 0;
     basicScroll = 0;
@@ -457,8 +460,9 @@ void syncModel(bool full = false) {
         m.off = false;
         m.menu = false;
         m.full = m.full || sFull;
+        const Tip switchOn = mode == GameMode::Basic ? Tip::BasicIntro : Tip::SwitchOn;
         m.tip = offHint ? Tip::PowerOff : undoHint ? Tip::Undo : moveHint ? Tip::Move :
-                pageTipUntil >= 0 ? Tip::Page : tipWaiting || tipUntil >= 0 ? Tip::SwitchOn : Tip::None;
+                pageTipUntil >= 0 ? Tip::Page : tipWaiting || tipUntil >= 0 ? switchOn : Tip::None;
         m.focus = focus;
         m.waiting = timing.state() == TimingState::Started     ? (h2hOnly() ? Waiting::HogToHogOnly : Waiting::BackToHog)
                     : timing.state() == TimingState::WaitingHH ? Waiting::HogToHog
@@ -1052,6 +1056,13 @@ void releaseAction(uint8_t b) {
     else scrollBasic(b == board::kDown ? 1 : -1);  // basic: down = older stones, up = newer
 }
 
+void dismissBasicIntro() {
+    tipWaiting = false;
+    tipUntil = -1;
+    basicIntroClearing = true;
+    syncModel();
+}
+
 void onPress(uint8_t b, int64_t t) {
     ButtonState& s = buttons[b];
     if (pageTipUntil >= 0) {  // any press: the page tip goes
@@ -1064,6 +1075,11 @@ void onPress(uint8_t b, int64_t t) {
     s.nextRepeat = t + kUndoHoldUs;
     if (b == board::kUp || b == board::kDown) moveSteps = 0;
     activity(t);
+    if (mode == GameMode::Basic && (tipWaiting || tipUntil >= 0 || basicIntroClearing)) {
+        s.holdFired = true;  // ignore the rest of this press, including a hold or release action
+        if (!basicIntroClearing) dismissBasicIntro();
+        return;
+    }
     // Rocker up/down act when let go (next/previous player, or made/missed), or move the focus or
     // the newest time when held (pollButtons).
     if (b == board::kUp || b == board::kDown) return;
@@ -1312,6 +1328,7 @@ void setup() {
 
 void loop() {
     int64_t now = esp_timer_get_time();
+    if (basicIntroClearing && !displayBusy) basicIntroClearing = false;
     pollButtons(now);
     handleOutcome(timing.poll(now), now);
     sound.update(now);
@@ -1327,15 +1344,17 @@ void loop() {
         }
     }
 
-    // the switch-on tip goes after 5 s. If a stone is being timed, it goes with that stone's
-    // next screen update instead, so the screen isn't redrawn mid-stone just for it.
-    if (tipWaiting && !displayBusy) {  // on screen now (the switch-on refresh takes ~2 s)
+    // Start the tutorial or position tip's timer once its frame has finished refreshing.
+    if (tipWaiting && !displayBusy) {
         tipWaiting = false;
-        tipUntil = now + kTipUs;
+        tipUntil = now + (mode == GameMode::Basic ? kBasicIntroUs : kTipUs);
     }
     if (tipUntil >= 0 && now >= tipUntil) {
-        tipUntil = -1;
-        if (!timing.active()) syncModel();
+        if (mode == GameMode::Basic) dismissBasicIntro();
+        else {
+            tipUntil = -1;
+            if (!timing.active()) syncModel();
+        }
     }
     if (h2hSwitchAt >= 0 && now >= h2hSwitchAt) {  // no B2H in time: it's an H2H under way
         h2hSwitchAt = -1;

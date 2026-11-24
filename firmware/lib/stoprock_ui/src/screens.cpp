@@ -477,6 +477,10 @@ static void badgeStrip(Canvas& c, const char* name, bool lowBattery, const char*
 void drawBasic(Canvas& c, const Stone* stones, uint8_t count, bool lowBattery, Tip tip, Waiting waiting,
                int scroll) {
     c.clear();
+    if (tip == Tip::BasicIntro) {
+        c.blit(kBasicIntro, 0, 0);
+        return;
+    }
     const int strip = H - TIP_H, rowH = (H - TIP_H) / 4, kRows = 4;
     c.fillRect(COMP_MID, 0, W - 1, strip - 1);
     const bool fresh = waiting == Waiting::BackToHog || waiting == Waiting::HogToHogOnly;  // a row of its own

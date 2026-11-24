@@ -276,6 +276,54 @@ def mode_menu(selected, first_visible=0):
     return img
 
 
+def basic_intro():
+    """The Basic tutorial, with arrows aimed at the physical timing buttons."""
+    import json
+    from math import hypot
+    from logo import NUNITO
+
+    dimensions = json.loads((ROOT / "hardware" / "coreink" / "coreink.json").read_text())
+    cx, cy = dimensions["front"]["screen_window_centre"]
+    visible_mm = 27.6
+    scale = W / visible_mm
+    left, top = cx - visible_mm / 2, cy + visible_mm / 2
+    top_x = round((dimensions["top"]["button"]["centre"][0] - left) * scale)
+    side_x = (dimensions["body"]["width"] - left) * scale
+    side_y = (top - dimensions["right"]["power_button"]["centre"][0]) * scale
+
+    img = Image.new("1", (W, H), 1)
+    d = ImageDraw.Draw(img)
+
+    def arrow(start, bend, tip, target):
+        dx, dy = target[0] - tip[0], target[1] - tip[1]
+        length = hypot(dx, dy)
+        ux, uy = dx / length, dy / length
+        base_x, base_y = tip[0] - 17 * ux, tip[1] - 17 * uy
+        points = []
+        for i in range(25):
+            t = i / 24
+            points.append((
+                round((1 - t)**2 * start[0] + 2 * (1 - t) * t * bend[0] + t**2 * base_x),
+                round((1 - t)**2 * start[1] + 2 * (1 - t) * t * bend[1] + t**2 * base_y),
+            ))
+        d.line(points, fill=0, width=5, joint="curve")
+        d.polygon((tip, (round(base_x + 9 * uy), round(base_y - 9 * ux)),
+                   (round(base_x - 9 * uy), round(base_y + 9 * ux))), fill=0)
+
+    arrow((109, 55), (top_x - 2, 44), (top_x, 5), (top_x, 0))
+    arrow((99, 145), (112, 171), (195, 195), (side_x, side_y))
+    d.rounded_rectangle((11, 51, 188, 148), radius=15, fill=1, outline=0, width=2)
+    d.fontmode = "1"
+    title = ImageFont.truetype(str(NUNITO), 20)
+    title.set_variation_by_name("ExtraBold")
+    emphasis = ImageFont.truetype(str(NUNITO), 25)
+    emphasis.set_variation_by_name("ExtraBold")
+    for text, font, y in (("click any button", title, 74), ("to start the", title, 99),
+                          ("stopwatch!", emphasis, 124)):
+        text_in_box(d, text, font, 0, W, y, y, align="center")
+    return img
+
+
 def off_page(battery=-1, games_left=-1):
     with Image.open(OFF_PAGE_PATH) as image:
         img = image.copy()

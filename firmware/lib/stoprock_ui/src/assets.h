@@ -40,6 +40,7 @@ extern const Font kFontMenuTitle;  // Nunito ExtraBold, 18 px
 extern const Font kFontMenuDetail; // Nunito Bold, 13 px
 extern const Bitmap kLogo;         // 176 px wordmark
 extern const Bitmap kOffPage;       // 200 x 200 wake screen
+extern const Bitmap kBasicIntro;    // 200 x 200 tutorial pointing at the timing buttons
 extern const Bitmap kLogoStrip;     // 106 x 22 wordmark for competition's badge strip
 extern const Sprite kRockSmall;     // a rock slot (radius 5)
 extern const Sprite kCursorSmall;   // cursor: the slot drawn bold

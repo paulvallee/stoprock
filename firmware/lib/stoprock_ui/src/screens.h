@@ -30,7 +30,8 @@ enum class Waiting : uint8_t { None, BackToHog, HogToHog, HogToHogOnly };
 // PowerOff: while the side button is held, before it switches off, "Keep holding to turn off" (where
 // the undo one goes).
 // Page: coach, after a single click of the rocker centre, "Double click rocker middle / to change pages".
-enum class Tip : uint8_t { None, SwitchOn, Undo, Move, PowerOff, Page };
+// BasicIntro: full-screen introduction showing the two physical timing buttons.
+enum class Tip : uint8_t { None, SwitchOn, Undo, Move, PowerOff, Page, BasicIntro };
 
 // The wake screen shows games left when known, or charge percentage. -1 means unavailable.
 void drawOffPage(Canvas& c, int battery = -1, int gamesLeft = -1);
