@@ -26,7 +26,7 @@ constexpr int64_t kUndoHintUs = kSec / 5;   // ... "Keep holding to undo" shows 
 constexpr int64_t kPowerHoldUs = 3 * kSec;
 constexpr int64_t kDoublePressUs = 400000;     // two rocker presses within 0.4 s: a double press
 constexpr int64_t kFocusHoldUs = kSec / 2;     // league: hold rocker down (up from your rocks) to move the focus
-constexpr int64_t kMoveStepUs = 600000;        // competition and league: holding rocker up moves the newest time a column right this often
+constexpr int64_t kMoveStepUs = 700000;        // every mode: holding rocker up (down: left, competition) moves the newest time a column this often
 constexpr int64_t kAwakeAfterPressUs = 2 * kSec;    // stay awake this long after a rocker press
 constexpr int64_t kAwakeAfterWakeUs = 40000;        // time to confirm the button that woke us
 constexpr int64_t kAuditEveryUs = 10 * 60 * kSec;   // clock audit sample interval
@@ -754,7 +754,7 @@ void movePlayer(int dir) {
     syncModel();
 }
 
-// Rocker up held on the columns: the newest time moves a column right every 0.6 s (round and
+// Rocker up held on the columns: the newest time moves a column right every 0.7 s (round and
 // round), shown where it is; rocker down held (where it doesn't move the focus: competition, coach)
 // moves it left. Returns false when there's no time to move.
 bool stepMove(int dir) {
@@ -877,7 +877,7 @@ void pollButtons(int64_t now) {
             }
             if (b == board::kSide && now - s.downSince >= kPowerHoldUs) { s.holdFired = true; showHelpAndPowerOff(); }
             // League: hold down for your rocks; hold up for the columns. Every mode: hold up on the
-            // columns to move the newest time a column right every 0.6 s (let go where it belongs);
+            // columns to move the newest time a column right every 0.7 s (let go where it belongs);
             // without a focus (competition, coach), hold down to move it left.
             const bool rocker = b == board::kUp || b == board::kDown;
             if (rules().focus && rocker && (b == board::kDown || focus == Focus::Rocks) &&

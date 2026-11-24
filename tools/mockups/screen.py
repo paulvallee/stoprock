@@ -384,7 +384,7 @@ def competition_screen(stones, me=0, active=0, low_battery=False, tip=False, wai
 # next column, down = previous: the cursor, the highlighted header, goes on whoever is about to
 # throw; it also moves there by itself) or your rocks (up/down = made/missed). Hold down to log your
 # rocks; logging one goes back to the columns. Hold up on the columns to move the newest time a
-# column right every 0.6 s (as rocker up moves the cursor), put down where it is when let go.
+# column right every 0.7 s (as rocker up moves the cursor), put down where it is when let go.
 LEAGUE_ROWS_BOTTOM = 159     # 2 px line under the times
 LEAGUE_PCT_X = 134           # 2 px divider left of the percentage
 LEAGUE_SLOTS = 16
