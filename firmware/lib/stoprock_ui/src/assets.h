@@ -34,13 +34,14 @@ extern const Font kFontDseg33;      // ... an H2H of 20.00 s, too wide at 37
 extern const Font kFontDseg24;      // coach page 2's newest result
 extern const Font kFontDseg16;      // percentage
 extern const Font kFontSpleen6x12;  // labels and tips
-extern const Font kFontSpleen16x32; // the switch-on tip (only its letters)
 extern const Font kFontSpleen12x24; // the hold hints (only their letters)
 extern const Font kFontMenuTitle;  // Nunito ExtraBold, 18 px
 extern const Font kFontMenuDetail; // Nunito Bold, 13 px
 extern const Bitmap kLogo;         // 176 px wordmark
 extern const Bitmap kOffPage;       // 200 x 200 wake screen
 extern const Bitmap kBasicIntro;    // 200 x 200 tutorial pointing at the timing buttons
+extern const Bitmap kPositionCard;  // position tip frame, arrow and instructions
+extern const Bitmap kPositionTitles[];
 extern const Bitmap kLogoStrip;     // 106 x 22 wordmark for competition's badge strip
 extern const Sprite kRockSmall;     // a rock slot (radius 5)
 extern const Sprite kCursorSmall;   // cursor: the slot drawn bold

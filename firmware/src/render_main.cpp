@@ -54,6 +54,9 @@ int main(int argc, char** argv) {
     drawCompetition(c, league, nl, 1, 1, true);
     snprintf(path, sizeof path, "%s/competition-battery.pbm", dir);
     writePbm(c, path);
+    drawCompetition(c, league, nl, 1, 1, false, Tip::None, Waiting::None, 1);
+    snprintf(path, sizeof path, "%s/competition-window-right.pbm", dir);
+    writePbm(c, path);
     for (uint8_t me = 0; me < 4; ++me) {  // each position as yours, the cursor on each column
         drawCompetition(c, league, nl, me, (me + 1) % 4, false);
         snprintf(path, sizeof path, "%s/competition-me%d.pbm", dir, me);

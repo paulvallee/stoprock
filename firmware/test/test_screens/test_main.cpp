@@ -1,5 +1,6 @@
 // Unit tests for the screen-side stone list (run with: pio test -e native)
 #include <unity.h>
+#include <initializer_list>
 
 #include "screens.h"
 #include "startup_menu.h"
@@ -85,6 +86,22 @@ static void test_startup_menu_scrolls_and_wraps_with_more_entries() {
     TEST_ASSERT_EQUAL_INT(3, selection.firstVisible);
 }
 
+static void test_competition_window_moves_only_at_hidden_edges() {
+    uint8_t first = 0;
+    for (uint8_t focus : {0, 1, 2}) {
+        first = competitionFirstColumn(first, focus);
+        TEST_ASSERT_EQUAL_UINT8(0, first);
+    }
+    first = competitionFirstColumn(first, 3);
+    TEST_ASSERT_EQUAL_UINT8(1, first);
+    for (uint8_t focus : {2, 1, 3}) {
+        first = competitionFirstColumn(first, focus);
+        TEST_ASSERT_EQUAL_UINT8(1, first);
+    }
+    TEST_ASSERT_EQUAL_UINT8(0, competitionFirstColumn(first, 0));
+    TEST_ASSERT_EQUAL_UINT8(1, competitionFirstColumn(0, 3));
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_no_players_drops_oldest);
@@ -92,5 +109,6 @@ int main() {
     RUN_TEST(test_every_player_keeps_a_screenful);
     RUN_TEST(test_teammates);
     RUN_TEST(test_startup_menu_scrolls_and_wraps_with_more_entries);
+    RUN_TEST(test_competition_window_moves_only_at_hidden_edges);
     return UNITY_END();
 }

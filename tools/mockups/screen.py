@@ -162,7 +162,6 @@ def _make_fonts():
         menu_title=menu_title,
         menu_detail=menu_detail,
         label=bdf("spleen-6x12"),
-        menu=bdf("spleen-16x32"),  # the switch-on tip
         hint=bdf("spleen-12x24"),  # the hold hints
         big=ImageFont.truetype(str(DSEG), 37),  # the newest stone, at the top
         big_long=ImageFont.truetype(str(DSEG), 33),  # ... an H2H of 20.00 s, too wide at 37
@@ -175,8 +174,8 @@ def _make_fonts():
         # them), a narrow solid "1"; "_long": narrower, for 20.00, the one time with no "1" to spare.
         zoom_league=SegFont(h=22, w=13, t=3, gap=2, dot=3, prop=True, solid_one=True),
         zoom_league_long=SegFont(h=22, w=11, t=3, gap=2, dot=3, prop=True, solid_one=True),
-        zoom_comp=SegFont(h=24, w=14, t=3, gap=2, dot=3, prop=True, solid_one=True),
-        zoom_comp_long=SegFont(h=24, w=11, t=3, gap=2, dot=3, prop=True, solid_one=True),
+        competition=SegFont(h=24, w=14, t=3, gap=2, dot=3, prop=True, solid_one=True),
+        competition_long=SegFont(h=24, w=11, t=3, gap=2, dot=3, prop=True, solid_one=True),
         zoom_coach=SegFont(h=18, w=11, t=2, gap=2, dot=2, prop=True, solid_one=True),
         zoom_coach_long=SegFont(h=18, w=8, t=2, gap=2, dot=2, prop=True, solid_one=True),
         pct=ImageFont.truetype(str(DSEG), 16),
@@ -406,58 +405,52 @@ def newest_row(d, f, stones, waiting, mid, fonts_, y0, y1, r, cy):
             stopwatch(d, (x0 + x1) // 2, cy, r, fill)
 
 
-# Tips, big: the switch-on tip (competition and league) says only your position, also shown when you
-# change it. The hold hints say what holding does.
-YOU_ARE = ("LEAD", "SECOND", "THIRD", "SKIP")
-HINT_TOP = TIMES_Y1 + 2       # the hold hints: over the times
-UNDO_TIP = ("Keep holding", "to undo")       # tip="undo": the rocker centre held, before the undo (1 s)
-OFF_TIP = ("Keep holding", "to turn off")    # tip="off": the side button held, before it switches off (3 s)
-PAGE_TIP = ("Double click", "to change page")  # tip="page": coach, the centre clicked once
-MOVE_HINT = ("Moving time",)  # tip="move": the rocker held to move the newest time; one line, over the bottom
-TIP_FONTS = {"hint": ("hint", 12, 24), "big": ("menu", 16, 32)}  # by size: the font, its advance and line height
+# The position card is shown in Competition and League. The hold hints remain separate.
+HINT_TOP = TIMES_Y1 + 2
+UNDO_TIP = ("Keep holding", "to undo")
+OFF_TIP = ("Keep holding", "to turn off")
+PAGE_TIP = ("Double click", "to change page")
+MOVE_HINT = ("Moving time",)
+POSITION_TITLES = ("Lead", "Second", "Third", "Skip")
+POSITION_TITLE_ORIGIN = (8, 28)
 
 
-YOU_ARE_TIP = ("You are", "2x to change")  # the switch-on tip's first line and its last (under the position)
-ROCKER_Y = 59  # the rocker's height beside the screen (CoreInk: right side): the switch-on tip points at it
+def position_card():
+    img = Image.new("1", (W, 105), 1)
+    d = ImageDraw.Draw(img)
+    d.line([(165, 37), (174, 35), (180, 30), (184, 23), (189, 17)], fill=0, width=4, joint="curve")
+    d.polygon([(198, 16), (183, 9), (185, 25)], fill=0)
+    d.rounded_rectangle((8, 7, 168, 97), radius=14, fill=1, outline=0, width=2)
+    d.fontmode = "1"
+    detail = fonts()["menu_detail"]
+    for label, y in (("You're playing", 19), ("Double-click the rocker", 70), ("to change position", 85)):
+        text_in_box(d, label, detail, 8, 169, y, y, align="center")
+    return img
 
 
-def you_are(me):
-    return (YOU_ARE_TIP[0], YOU_ARE[me])
+def position_title(me):
+    from logo import NUNITO
+
+    img = Image.new("1", (161, 33), 1)
+    d = ImageDraw.Draw(img)
+    d.fontmode = "1"
+    face = ImageFont.truetype(str(NUNITO), 28)
+    face.set_variation_by_name("ExtraBold")
+    text_in_box(d, POSITION_TITLES[me], face, 0, img.width, 16, 16, align="center")
+    return img
 
 
-def you_are_tip(d, f, me):
-    """The switch-on tip: "You are / SKIP" (bold Spleen 16x32) and "2x to change" (12x24) in a box on
-    the left, level with the rocker, an arrow from it to the rocker (a double click changes position)."""
-    lines = ((YOU_ARE_TIP[0], "big"), (YOU_ARE[me], "big"), (YOU_ARE_TIP[1], "hint"))
-    w = max(TIP_FONTS[s][1] * len(text) for text, s in lines) + 1 + 16
-    h = sum(TIP_FONTS[s][2] for _, s in lines) + 10
-    x0, y0 = 2, ROCKER_Y - 11
-    x1, y1 = x0 + w - 1, y0 + h - 1
-    d.rectangle([x0, y0, x1, y1], fill=1, outline=0, width=2)
-    y = y0 + 5
-    for text, s in lines:
-        key, cw, lh = TIP_FONTS[s]
-        x = x0 + (w - (cw * len(text) + 1)) // 2
-        for dx in (0, 1):
-            d.text((x + dx, y), text, font=f[key], fill=0)
-        y += lh
-    arrow(d, x1 + 1, ROCKER_Y)
+def position_tip(img, me):
+    card = position_card()
+    title = position_title(me)
+    card.paste(title, POSITION_TITLE_ORIGIN, ImageChops.invert(title.convert("L")).convert("1"))
+    img.paste(card, (0, HINT_TOP))
 
 
-def arrow(d, x_from, y):
-    """An arrow from x_from to the screen's right edge at y, pointing right, on a white band (so it
-    reads over anything): a 5 px shaft and a head 9 px each side, drawn in columns."""
-    tip, head = W - 1, 9
-    d.rectangle([x_from, y - head - 2, tip, y + head + 2], fill=1)
-    d.rectangle([x_from, y - 2, tip - head, y + 2], fill=0)
-    for i in range(head + 1):
-        d.rectangle([tip - i, y - i, tip - i, y + i], fill=0)
-
-
-def tooltip(d, f, lines, top, bottom, size="hint"):
+def tooltip(d, f, lines, top, bottom):
     """A bordered box (2 px) centred in top..bottom, its lines centred, bold (drawn twice, a pixel
-    apart) in Spleen 12x24, or 16x32 for size "big"."""
-    key, cw, lh = TIP_FONTS[size]
+    apart) in Spleen 12x24."""
+    cw, lh = 12, 24
     w = min(cw * max(len(t) for t in lines) + 1 + 16, W - 12)
     h = lh * len(lines) + 10
     x0, y0 = (W - w) // 2, top + (bottom - top - h) // 2
@@ -467,7 +460,7 @@ def tooltip(d, f, lines, top, bottom, size="hint"):
     for t in lines:
         x = (W - (cw * len(t) + 1)) // 2
         for dx in (0, 1):
-            d.text((x + dx, y), t, font=f[key], fill=0)
+            d.text((x + dx, y), t, font=f["hint"], fill=0)
         y += lh
 
 
@@ -536,23 +529,50 @@ def basic_screen(stones, low_battery=False, tip=False, waiting=None, scroll=0):
     return img
 
 
-def competition_screen(stones, me=0, active=0, low_battery=False, tip=False, waiting=None):
-    """Times only, with a badge strip an umpire can read at a glance: the four columns as in
-    league, 8 lines. stones: (b2h, h2h, player 0-3 or THEM) newest first; me: your position;
-    active: the column (0-3) with the cursor, whoever throws next."""
+def competition_screen(stones, me=0, active=0, low_battery=False, tip=False, waiting=None, first_column=0):
+    """Three player columns with large splits and a marker at the hidden edge."""
     f = fonts()
     img = Image.new("1", (W, H), 1)
     d = ImageDraw.Draw(img)
     d.fontmode = "1"
     strip = H - TIP_H
-    four_columns(d, f, stones, me, active, strip, waiting, "zoom_comp")
+    times_top(d, f, stones, waiting, COMP_MID)
+    first = 0 if active == 0 else 1 if active == 3 else int(bool(first_column))
+    edge_width, column_width = 8, 64
+    x0 = edge_width if first else 0
+    marker = 0 if first else W - edge_width
+    d.rectangle((marker + 2, GRID_LABEL[0], marker + 5, GRID_LABEL[1]), fill=0)
+    edge = edge_width - 1 if first else W - edge_width
+    d.line((edge, GRID_LABEL[0], edge, strip - 1), fill=0)
+    players = league_columns(me)
+    pitch = (strip - LEAGUE_TOP) // 4
+    for slot, column in enumerate(range(first, first + 3)):
+        left = x0 + slot * column_width
+        right = left + column_width
+        player = players[column]
+        name = "THEM" if player == THEM else POSITION_NAMES[player]
+        focused = column == active
+        if focused:
+            d.rectangle((left, GRID_LABEL[0], right - 1, GRID_LABEL[1]), fill=0)
+        d.text(((left + right - 6 * len(name)) // 2, GRID_LABEL[0]), name, font=f["label"], fill=int(focused))
+        if slot:
+            d.line((left, GRID_LABEL[0], left, strip - 1), fill=0)
+        splits = [(value, half) for bh, hh, owner in stones if owner == player
+                  for half, value in enumerate((bh, hh)) if value is not None]
+        for row, (value, half) in enumerate(splits[:4]):
+            y = LEAGUE_TOP + row * pitch
+            if half:
+                d.rectangle((left + 2, y, right - 2, y + pitch - 2), fill=0)
+            label = f"{value:.2f}"
+            digits = f["competition"] if f["competition"].width(label) <= column_width - 6 else f["competition_long"]
+            digits.draw_in_box(d, label, left + 1, right - 1, y, y + pitch - 1, align="center", fill=half)
     badge_strip(img, d, f, "COMPETITION", low_battery)
     if tip in ("undo", "off"):
         tooltip(d, f, UNDO_TIP if tip == "undo" else OFF_TIP, HINT_TOP, strip)
     elif tip == "move":  # over the badge strip, clear of the columns
         tooltip(d, f, MOVE_HINT, strip, H)
     elif tip:
-        you_are_tip(d, f, me)
+        position_tip(img, me)
     return img
 
 
@@ -653,7 +673,7 @@ def times_top(d, f, stones, waiting, mid, y0=0):
 
 
 def four_columns(d, f, stones, me, active, bottom, waiting, zoom):
-    """Competition and league times: the newest stone large, then the four columns down to bottom."""
+    """League: the newest stone large, then the four columns down to bottom."""
     times_top(d, f, stones, waiting, COMP_MID)
     league_times(d, f, stones, me, active, bottom, zoom)
 
@@ -694,7 +714,7 @@ def league_screen(stones, shots, me=0, active=0, low_battery=False, tip=False, w
     elif tip == "move":  # over your rocks, clear of the columns
         tooltip(d, f, MOVE_HINT, top, H)
     elif tip:  # below the headers, over the rocks too: it doesn't fit above them
-        you_are_tip(d, f, me)
+        position_tip(img, me)
     return img
 
 

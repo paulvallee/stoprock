@@ -146,6 +146,7 @@ uint8_t columns() { return columnCount(seat()); }
 // The cursor is on the player about to throw: the throw order (ThrowOrder) puts it on whoever
 // throws next, and the rocker moves it too (or moves a time afterwards).
 uint8_t activeCol = 0;          // the column with the cursor
+uint8_t competitionFirst = 0;   // first visible column in Competition
 int basicScroll = 0;             // basic: rows scrolled down, to older stones (the rocker; a new stone resets it)
 // League: what rocker up/down work on, the focus (bold border): the players' columns (up = next,
 // down = previous) or your rocks (made/missed). Hold down 0.5 s for your rocks; logging a shot (or
@@ -337,6 +338,7 @@ void newGame() {
     tipUntil = -1;
     stoneCount = 0;
     basicScroll = 0;
+    competitionFirst = 0;
     Serial.printf("game: new, %s mode\n", modeName(mode));
 }
 
@@ -362,6 +364,7 @@ struct Model {
     uint8_t page = 0;       // coach: which page
     uint8_t me = 0;         // competition: your position
     uint8_t activeCol = 0;  // competition and league: the column with the cursor
+    uint8_t competitionFirst = 0;
     int scroll = 0;         // basic: rows scrolled down
     Stone stones[kMaxStones];
     uint8_t stoneCount = 0;
@@ -415,7 +418,8 @@ void displayTask(void*) {
         } else if (m.mode == GameMode::Basic) {
             drawBasic(next, m.stones, m.stoneCount, m.warning, m.tip, m.waiting, m.scroll);
         } else if (m.mode == GameMode::Competition) {
-            drawCompetition(next, m.stones, m.stoneCount, m.me, m.activeCol, m.warning, m.tip, m.waiting);
+            drawCompetition(next, m.stones, m.stoneCount, m.me, m.activeCol, m.warning, m.tip, m.waiting,
+                            m.competitionFirst);
         } else if (m.mode == GameMode::Coach) {
             if (m.page == 0)
                 drawCoachTimer(next, m.stones, m.stoneCount, m.shots, m.waiting, m.activeCol, m.tip, m.focus);
@@ -441,6 +445,8 @@ void displayTask(void*) {
 void syncModel(board::Refresh refresh = board::Refresh::Partial) {
     static board::Refresh requestedRefresh;
     requestedRefresh = refresh;
+    if (mode == GameMode::Competition)
+        competitionFirst = competitionFirstColumn(competitionFirst, activeCol);
     {  // basic: never scrolled past the end (an undo can take a row away)
         const int most = stoneCount + (timing.state() == TimingState::Started ? 1 : 0) - 4;
         if (basicScroll > (most > 0 ? most : 0)) basicScroll = most > 0 ? most : 0;
@@ -450,6 +456,7 @@ void syncModel(board::Refresh refresh = board::Refresh::Partial) {
         m.page = coachPage;
         m.me = myPosition;
         m.activeCol = activeCol;
+        m.competitionFirst = competitionFirst;
         m.scroll = basicScroll;
         memcpy(m.stones, stones, sizeof stones);
         m.stoneCount = stoneCount;
@@ -947,8 +954,8 @@ void onRockerPress(ButtonState& s, int64_t t) {
             prefs.putUChar("mypos", myPosition);
             restartOrder();
             Serial.printf("position: you are %s\n", kPositionNames[myPosition]);
-            tipWaiting = false;  // show "You are ..." (the switch-on tip) for 5 s
-            tipUntil = t + kTipUs;
+            tipWaiting = true;  // show the new position once the card is on screen
+            tipUntil = -1;
         }
         syncModel();  // shows at once, even while a stone is timed
         return;
@@ -1079,15 +1086,19 @@ void onPress(uint8_t b, int64_t t) {
         if (!basicIntroClearing) dismissBasicIntro();
         return;
     }
-    // Rocker up/down act when let go (next/previous player, or made/missed), or move the focus or
-    // the newest time when held (pollButtons).
-    if (b == board::kUp || b == board::kDown) return;
+    const bool dismissPosition = rules().positions && (tipWaiting || tipUntil >= 0);
+    if (dismissPosition) {
+        tipWaiting = false;
+        tipUntil = -1;
+    }
+    // Rocker up/down act on release or hold. Position-card dismissal also happens on press.
     switch (b) {
     case board::kTop:
     case board::kSide: onTimingPress(t, b); break;
     case board::kPress: onRockerPress(s, t); break;  // otherwise it acts on hold only
     default: break;
     }
+    if (dismissPosition) syncModel();
 }
 
 void pollButtons(int64_t now) {

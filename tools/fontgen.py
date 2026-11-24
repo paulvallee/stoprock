@@ -115,16 +115,19 @@ def main():
     # The startup menu uses printable ASCII so new entries can be added without changing the font subset.
     emit_font("kFontMenuTitle", f["menu_title"], ascii_chars, out)
     emit_font("kFontMenuDetail", f["menu_detail"], ascii_chars, out)
-    # The switch-on tip and the hold hints use only these characters.
-    big = "".join(screen.you_are(0)) + "".join(screen.YOU_ARE)
-    emit_font("kFontSpleen16x32", f["menu"], "".join(sorted(set(big))), out)
-    hint = "".join(screen.UNDO_TIP + screen.OFF_TIP + screen.PAGE_TIP + screen.MOVE_HINT + screen.YOU_ARE_TIP[1:])
+    hint = "".join(screen.UNDO_TIP + screen.OFF_TIP + screen.PAGE_TIP + screen.MOVE_HINT)
     emit_font("kFontSpleen12x24", f["hint"], "".join(sorted(set(hint))), out)
     with Image.open(screen.OFF_PAGE_PATH) as off_page:
         if off_page.mode != "1" or off_page.size != (screen.W, screen.H):
             raise ValueError("The off page must be a 200 x 200, 1-bit image")
         emit_bitmap("kOffPage", off_page, out)
     emit_bitmap("kBasicIntro", screen.basic_intro(), out)
+    emit_bitmap("kPositionCard", screen.position_card(), out)
+    for i, title in enumerate(screen.POSITION_TITLES):
+        emit_bitmap(f"kPosition{title}", screen.position_title(i), out)
+    out.append("const Bitmap kPositionTitles[] = {"
+               + ", ".join("kPosition" + title for title in screen.POSITION_TITLES) + "};")
+    out.append("")
     with Image.open(logo.NATIVE_LOGO) as native_logo:
         if native_logo.mode != "1" or native_logo.size != (176, 39):
             raise ValueError("The startup logo must be a 176 x 39, 1-bit image")

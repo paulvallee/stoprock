@@ -72,7 +72,7 @@ constexpr SegFont kNarrowFont{12, 6, 2, 1, 2, true};  // coach's five columns: a
 // solid "1"; longFont: narrower, for 20.00, the one time with no "1" to spare.
 struct Zoom { SegFont font, longFont; };
 constexpr Zoom kZoomLeague{{22, 13, 3, 2, 3, true, true}, {22, 11, 3, 2, 3, true, true}};
-constexpr Zoom kZoomComp{{24, 14, 3, 2, 3, true, true}, {24, 11, 3, 2, 3, true, true}};
+constexpr Zoom kCompetitionDigits{{24, 14, 3, 2, 3, true, true}, {24, 11, 3, 2, 3, true, true}};
 constexpr Zoom kZoomCoach{{18, 11, 2, 2, 2, true, true}, {18, 8, 2, 2, 2, true, true}};
 constexpr int kZoomLines = 4;      // filling the column's height
 constexpr double kZoomSpread = 1.3;  // its width, in columns: over 15% of each neighbour (30% of one at an edge)
@@ -218,8 +218,7 @@ void focusBox(Canvas& c, int x0, int y0, int x1, int y1) {
     rectOutline(c, x0 + 1, y0 + 1, x1 - 1, y1 - 1);
 }
 
-// Competition and league history: four columns, your teammates and THEM (leagueTimes). H2H times
-// are a digit wider, so the H2H half of the large row is wider (x 92).
+// H2H times are a digit wider, so the H2H half of the large row is wider (x 92).
 constexpr int COMP_MID = 92;
 // No labels: B2H is black on white, H2H white on black, as in the columns.
 constexpr int kTimesY1 = 44;  // the newest stone large in y 0-44 (2 px line under it)
@@ -275,10 +274,10 @@ void endRow(Canvas& c, const ShotLog& shots, int end, int cy) {
 constexpr int kHintTop = kTimesY1 + 2;      // the hold hints: over the times
 
 // A bordered box (2 px) centred in top..bottom, its lines centred, bold (drawn twice, a pixel apart)
-// in Spleen 12x24, or 16x32 if big.
-static void tooltip(Canvas& c, const char* const* lines, int n, int top, int bottom, bool big = false) {
-    const Font& f = big ? kFontSpleen16x32 : kFontSpleen12x24;
-    const int cw = big ? 16 : 12, lh = big ? 32 : 24;
+// in Spleen 12x24.
+static void tooltip(Canvas& c, const char* const* lines, int n, int top, int bottom) {
+    const Font& f = kFontSpleen12x24;
+    constexpr int cw = 12, lh = 24;
     int longest = 0;
     for (int i = 0; i < n; ++i) {
         const int len = static_cast<int>(strlen(lines[i]));
@@ -299,43 +298,11 @@ static void tooltip(Canvas& c, const char* const* lines, int n, int top, int bot
     }
 }
 
-// The switch-on tip (competition and league), also shown when you change position: "You are / SKIP"
-// (bold Spleen 16x32) and "2x to change" (12x24) in a box on the left, level with the rocker, and an
-// arrow from it to the rocker (a double click changes position).
-constexpr int kRockerY = 59;  // the rocker's height beside the screen (CoreInk: right side)
-static const char* const kYouAre[4] = {"LEAD", "SECOND", "THIRD", "SKIP"};
-
-// An arrow from xFrom to the screen's right edge at y, pointing right, on a white band (so it reads
-// over anything): a 5 px shaft and a head 9 px each side, drawn in columns.
-static void arrowRight(Canvas& c, int xFrom, int y) {
-    constexpr int tip = W - 1, head = 9;
-    c.fillRect(xFrom, y - head - 2, tip, y + head + 2, false);
-    c.fillRect(xFrom, y - 2, tip - head, y + 2);
-    for (int i = 0; i <= head; ++i) c.fillRect(tip - i, y - i, tip - i, y + i);
-}
-
+// Cover just the player history. The latest times and the lower strip stay visible.
 static void switchOnTip(Canvas& c, uint8_t me) {
-    struct Line { const char* text; bool big; };
-    const Line lines[3] = {{"You are", true}, {kYouAre[me % 4], true}, {"2x to change", false}};
-    int w = 0, h = 10;
-    for (const Line& l : lines) {
-        const int lw = (l.big ? 16 : 12) * static_cast<int>(strlen(l.text));
-        if (lw > w) w = lw;
-        h += l.big ? 32 : 24;
-    }
-    w += 1 + 16;
-    const int x0 = 2, y0 = kRockerY - 11, x1 = x0 + w - 1, y1 = y0 + h - 1;
-    c.fillRect(x0, y0, x1, y1, false);
-    rectOutline(c, x0, y0, x1, y1);
-    rectOutline(c, x0 + 1, y0 + 1, x1 - 1, y1 - 1);
-    int y = y0 + 5;
-    for (const Line& l : lines) {
-        const int cw = l.big ? 16 : 12;
-        const int x = x0 + (w - (cw * static_cast<int>(strlen(l.text)) + 1)) / 2;
-        for (int dx = 0; dx < 2; ++dx) c.text(l.big ? kFontSpleen16x32 : kFontSpleen12x24, x + dx, y, l.text);
-        y += l.big ? 32 : 24;
-    }
-    arrowRight(c, x1 + 1, kRockerY);
+    c.fillRect(0, kHintTop, W - 1, kHintTop + kPositionCard.h - 1, false);
+    c.blit(kPositionCard, 0, kHintTop);
+    c.blit(kPositionTitles[me % 4], 8, kHintTop + 28);
 }
 
 // While the rocker centre is held, before the undo (1 s): the hold does something. tip says which:
@@ -451,7 +418,7 @@ static void timesTop(Canvas& c, const Stone* stones, int count, Waiting waiting,
     hline(c, 0, W - 1, kTimesY1, 2);
 }
 
-// The newest stone large, then the four columns down to bottom.
+// League: the newest stone large, then the four columns down to bottom.
 static void fourColumns(Canvas& c, const Stone* stones, int count, uint8_t me, uint8_t active, int bottom,
                         Waiting waiting, const Zoom& zoom) {
     timesTop(c, stones, count, waiting, COMP_MID);
@@ -516,11 +483,54 @@ void drawBasic(Canvas& c, const Stone* stones, uint8_t count, bool lowBattery, T
     if (tip == Tip::Undo || tip == Tip::PowerOff) undoTip(c, kHintTop, strip, tip);
 }
 
+static void competitionHistory(Canvas& c, const Stone* stones, int count, uint8_t me,
+                               uint8_t active, uint8_t first, int bottom) {
+    constexpr int edgeWidth = 8;
+    constexpr int columnWidth = (W - edgeWidth) / kCompetitionVisibleColumns;
+    constexpr int splits = 4;
+    const int pitch = (bottom - kLinesTop) / splits;
+    const int x0 = first ? edgeWidth : 0;
+    const int marker = first ? 0 : W - edgeWidth;
+    c.fillRect(marker + 2, GRID_LABEL_Y0, marker + 5, GRID_LABEL_Y1);
+    vline(c, first ? edgeWidth - 1 : W - edgeWidth, GRID_LABEL_Y0, bottom - 1);
+
+    for (int slot = 0; slot < kCompetitionVisibleColumns; ++slot) {
+        const int column = first + slot;
+        const int left = x0 + slot * columnWidth;
+        const int right = left + columnWidth;
+        const uint8_t player = columnPlayer(me, static_cast<uint8_t>(column));
+        const char* name = player == kThem ? "THEM" : kPositions[player];
+        const bool focused = column == active;
+        if (focused) c.fillRect(left, GRID_LABEL_Y0, right - 1, GRID_LABEL_Y1);
+        c.text(kFontSpleen6x12, (left + right - 6 * static_cast<int>(strlen(name))) / 2,
+               GRID_LABEL_Y0, name, !focused);
+        if (slot > 0) vline(c, left, GRID_LABEL_Y0, bottom - 1);
+
+        int row = 0;
+        for (int i = 0; i < count && row < splits; ++i) {
+            if (stones[i].player != player) continue;
+            const int32_t values[] = {stones[i].bh, stones[i].hh};
+            for (int half = 0; half < 2 && row < splits; ++half) {
+                const int32_t value = values[half];
+                if (value < 0) continue;
+                const int y = kLinesTop + row++ * pitch;
+                if (half == 1) c.fillRect(left + 2, y, right - 2, y + pitch - 2);
+                char label[12];
+                formatTime(value, label, sizeof label);
+                const SegFont& digits = kCompetitionDigits.font.width(label) <= columnWidth - 6
+                    ? kCompetitionDigits.font : kCompetitionDigits.longFont;
+                segInBox(c, digits, label, left + 1, right - 1, y, y + pitch - 1, kCentre, 0, half == 0);
+            }
+        }
+    }
+}
+
 void drawCompetition(Canvas& c, const Stone* stones, uint8_t count, uint8_t me, uint8_t activeCol,
-                     bool lowBattery, Tip tip, Waiting waiting) {
+                     bool lowBattery, Tip tip, Waiting waiting, uint8_t firstColumn) {
     c.clear();
     const int strip = H - TIP_H;
-    fourColumns(c, stones, count, me, activeCol, strip, waiting, kZoomComp);
+    timesTop(c, stones, count, waiting, COMP_MID);
+    competitionHistory(c, stones, count, me, activeCol, competitionFirstColumn(firstColumn, activeCol), strip);
     badgeStrip(c, "COMPETITION", lowBattery);
     if (tip == Tip::SwitchOn) switchOnTip(c, me);
     if (tip == Tip::Undo || tip == Tip::PowerOff) undoTip(c, kHintTop, strip, tip);
