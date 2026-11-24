@@ -53,7 +53,7 @@ first run also downloads the push-button part (`pushbutton.wasm`) from the esp-e
 | <kbd>S</kbd> | **side / power** | Timing click; hold 3 s to switch off (shows the help page; press it again to switch back on) |
 | <kbd>↑</kbd> | rocker **▲** | Next column; on the rocks (league, coach: hold <kbd>↓</kbd> to get there), made. Hold to move the newest time (on the rocks: back to the times) |
 | <kbd>↓</kbd> | rocker **▼** | Previous column, or missed on the rocks; hold it for the rocks (league, coach) or to move the newest time left (competition) |
-| <kbd>Enter</kbd> | rocker **●** | Hold 1 s to undo the newest time or shot ("Keep holding to undo" shows after 0.2 s); keep holding to undo another every 1 s. Press twice quickly: change your position (coach: switch page) |
+| <kbd>Enter</kbd> | rocker **●** | Hold 1 s to undo the newest time or shot ("Keep holding / to undo" shows after 0.2 s); keep holding to undo another every 1 s. Press twice quickly: change your position (coach: switch page) |
 
 **Export games** asks the device for every game it has recorded and saves the listing to
 `simulator/exports/games-<date>-<time>.txt` (the page shows the path). Analyse it with

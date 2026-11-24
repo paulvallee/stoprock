@@ -319,61 +319,56 @@ void endRow(Canvas& c, const ShotLog& shots, int end, int cy) {
 constexpr int kTipTop = GRID_LABEL_Y1 + 1;  // switch-on tips start below the column headers, so a new position shows in them
 constexpr int kHintTop = kTimesY1 + 2;      // the hold hints: over the times
 
-// A bordered box (2 px) centred in top..bottom, lines centred; an empty line is a half-line gap.
-// Snug, so the tallest tip (league's) fits below the column headers and the widest clears the focus
-// border at the sides.
-static void tooltip(Canvas& c, const char* const* lines, int n, int top, int bottom) {
-    int longest = 0, height = 0;
+// A bordered box (2 px) centred in top..bottom, its lines centred, bold (drawn twice, a pixel apart)
+// in Spleen 12x24, or 16x32 if big.
+static void tooltip(Canvas& c, const char* const* lines, int n, int top, int bottom, bool big = false) {
+    const Font& f = big ? kFontSpleen16x32 : kFontSpleen12x24;
+    const int cw = big ? 16 : 12, lh = big ? 32 : 24;
+    int longest = 0;
     for (int i = 0; i < n; ++i) {
         const int len = static_cast<int>(strlen(lines[i]));
         if (len > longest) longest = len;
-        height += len ? 12 : 6;
     }
-    const int w = 6 * longest + 16 < W - 12 ? 6 * longest + 16 : W - 12, h = height + 10;  // tighter only where a line needs it
+    const int w = cw * longest + 1 + 16 < W - 12 ? cw * longest + 1 + 16 : W - 12, h = lh * n + 10;
     const int x0 = (W - w) / 2;
-    int y0 = top + (bottom - top - h) / 2;
+    const int y0 = top + static_cast<int>(floor((bottom - top - h) / 2.0));  // floors like Python's //
     const int y1 = y0 + h - 1;
     c.fillRect(x0, y0, x0 + w - 1, y1, false);
     rectOutline(c, x0, y0, x0 + w - 1, y1);
     rectOutline(c, x0 + 1, y0 + 1, x0 + w - 2, y1 - 1);
     int y = y0 + 5;
     for (int i = 0; i < n; ++i) {
-        const int len = static_cast<int>(strlen(lines[i]));
-        if (len) c.text(kFontSpleen6x12, (W - 6 * len) / 2, y, lines[i]);
-        y += len ? 12 : 6;
+        const int x = (W - (cw * static_cast<int>(strlen(lines[i])) + 1)) / 2;
+        for (int dx = 0; dx < 2; ++dx) c.text(f, x + dx, y, lines[i]);
+        y += lh;
     }
 }
 
-// Switch-on tips: your position, how to change it, and what holding the rocker does (competition
-// has no rocks, so only moving the last time). Also shown when you change position.
-static const char* const kYouAre[4] = {"You are LEAD", "You are SECOND", "You are THIRD", "You are SKIP"};
+// The switch-on tip (competition and league): your position, big. Also shown when you change it.
+static const char* const kYouAre[4] = {"LEAD", "SECOND", "THIRD", "SKIP"};
+static void switchOnTip(Canvas& c, uint8_t me, int top, int bottom) {
+    const char* const lines[2] = {"You are", kYouAre[me % 4]};
+    tooltip(c, lines, 2, top, bottom, true);
+}
+
 // While the rocker centre is held, before the undo (1 s): the hold does something. tip says which:
 // Undo, or PowerOff (the side button held, before it switches off).
 static void undoTip(Canvas& c, int top, int bottom, Tip tip = Tip::Undo) {
-    const char* const lines[1] = {tip == Tip::PowerOff ? "Keep holding to turn off" : "Keep holding to undo"};
-    tooltip(c, lines, 1, top, bottom);
+    const char* const lines[2] = {"Keep holding", tip == Tip::PowerOff ? "to turn off" : "to undo"};
+    tooltip(c, lines, 2, top, bottom);
 }
 
 // Coach: the rocker centre clicked once (switching page takes a double click).
 static void pageTip(Canvas& c, int top, int bottom) {
-    const char* const lines[2] = {"Double click rocker middle", "to change pages"};
+    const char* const lines[2] = {"Double click", "to change page"};
     tooltip(c, lines, 2, top, bottom);
 }
 
-// While the rocker is held to move the newest time: over the bottom (top..bottom), clear of the columns.
+// While the rocker is held to move the newest time: one line, over the bottom (top..bottom), clear of
+// the columns.
 static void moveTip(Canvas& c, int top, int bottom) {
-    const char* const lines[1] = {"Keep holding to move time"};
+    const char* const lines[1] = {"Moving time"};
     tooltip(c, lines, 1, top, bottom);
-}
-
-static void switchOnTip(Canvas& c, uint8_t me, bool league, int top, int bottom) {
-    const char* lines[8] = {kYouAre[me % 4], "", "Double click rocker to", "change your position", "",
-                            "Hold rocker down: your rocks", "Hold rocker up: move last time", "Hold rocker middle: undo"};
-    if (!league) {  // competition: no rocks
-        lines[5] = lines[6];
-        lines[6] = lines[7];
-    }
-    tooltip(c, lines, league ? 8 : 7, top, bottom);
 }
 
 // The zoomed column's edges (za, zb): kZoomSpread columns wide, centred on the cursor's column, kept
@@ -505,7 +500,7 @@ void drawCompetition(Canvas& c, const Stone* stones, uint8_t count, uint8_t me, 
     const char* const lines[2] = {"COMPETITION", lowBattery ? "Battery low" : "STOPWATCH ONLY"};
     for (int i = 0; i < 2; ++i)
         c.text(label, W - 2 - 6 * static_cast<int>(strlen(lines[i])), strip + 1 + 12 * i, lines[i], false);
-    if (tip == Tip::SwitchOn) switchOnTip(c, me, false, kTipTop, strip);
+    if (tip == Tip::SwitchOn) switchOnTip(c, me, kTipTop, strip);
     if (tip == Tip::Undo || tip == Tip::PowerOff) undoTip(c, kHintTop, strip, tip);
     if (tip == Tip::Move) moveTip(c, strip, H);  // over the badge strip
 }
@@ -543,7 +538,7 @@ void drawLeague(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& sh
         y0 += 13;
     }
     if (shots.count() > 0) bigPercent(c, shots.percent(), x0, W - 2, y0, H);
-    if (tip == Tip::SwitchOn) switchOnTip(c, me, true, kTipTop, H);  // over the rocks too: it doesn't fit above them
+    if (tip == Tip::SwitchOn) switchOnTip(c, me, kTipTop, top);
     if (tip == Tip::Undo || tip == Tip::PowerOff) undoTip(c, kHintTop, top, tip);
     if (tip == Tip::Move) moveTip(c, top, H);  // over your rocks
 }
@@ -577,11 +572,6 @@ void drawCoachTimer(Canvas& c, const Stone* stones, uint8_t count, const ShotLog
     if (tip == Tip::Undo || tip == Tip::PowerOff) undoTip(c, kHintTop, bottom, tip);
     if (tip == Tip::Page) pageTip(c, kHintTop, bottom);
     if (tip == Tip::Move) moveTip(c, bottom, H);  // over the rocks
-    if (tip == Tip::SwitchOn) {
-        const char* const lines[6] = {"Double click rocker to", "switch page", "", "Hold rocker down: rocks",
-                                      "Hold rocker up: move last time", "Hold rocker middle: undo"};
-        tooltip(c, lines, 6, kTipTop, bottom);
-    }
 }
 
 void drawCoachRocks(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& shots, Waiting waiting,

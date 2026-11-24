@@ -34,7 +34,8 @@ extern const Font kFontDseg33;      // ... an H2H of 20.00 s, too wide at 37
 extern const Font kFontDseg24;      // coach page 2's newest result
 extern const Font kFontDseg16;      // percentage
 extern const Font kFontSpleen6x12;  // labels, tips, help page
-extern const Font kFontSpleen16x32; // the mode menu (only its letters)
+extern const Font kFontSpleen16x32; // the mode menu, the switch-on tip (only their letters)
+extern const Font kFontSpleen12x24; // the hold hints (only their letters)
 extern const Bitmap kLogo;          // 176 px wordmark
 extern const Bitmap kLogoStrip;     // 106 x 22 wordmark for competition's badge strip
 extern const Sprite kRockSmall;     // a rock slot (radius 5)

@@ -325,8 +325,8 @@ void newGame() {
     gameStartUs = esp_timer_get_time();
     entryCount = 0;
     restartOrder();
-    // the switch-on tip for 5 s: your position and the holds (coach: page switch and moving times)
-    tipWaiting = true;
+    // the switch-on tip for 5 s: your position (a coach has none: no tip)
+    tipWaiting = rules().positions;
     tipUntil = -1;
     stoneCount = 0;
     Serial.printf("game: new, %s mode\n", modeName(mode));

@@ -112,7 +112,11 @@ def main():
     emit_font("kFontDseg16", f["pct"], "0123456789", out)
     spleen_chars = "".join(chr(c) for c in range(32, 127)) + "°"
     emit_font("kFontSpleen6x12", f["label"], spleen_chars, out)
-    emit_font("kFontSpleen16x32", f["menu"], "".join(sorted(set("".join(screen.MENU_MODES)))), out)  # the mode menu
+    # the mode menu and the switch-on tip; the hold hints: only the characters they use
+    big = "".join(screen.MENU_MODES) + "".join(screen.you_are(0)) + "".join(screen.YOU_ARE)
+    emit_font("kFontSpleen16x32", f["menu"], "".join(sorted(set(big))), out)
+    hint = "".join(screen.UNDO_TIP + screen.OFF_TIP + screen.PAGE_TIP + screen.MOVE_HINT)
+    emit_font("kFontSpleen12x24", f["hint"], "".join(sorted(set(hint))), out)
     emit_bitmap("kLogo", logo.device_logo(), out)
     emit_bitmap("kLogoStrip", logo.strip_logo(), out)  # competition's badge strip, drawn white
     # rocks (radius 5) for league and coach, drawn as tools/mockups/screen.py small_rock()

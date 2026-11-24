@@ -153,7 +153,8 @@ def fonts():
 def _make_fonts():
     return dict(
         label=bdf("spleen-6x12"),
-        menu=bdf("spleen-16x32"),  # the mode menu
+        menu=bdf("spleen-16x32"),  # the mode menu and the switch-on tip
+        hint=bdf("spleen-12x24"),  # the hold hints
         big=ImageFont.truetype(str(DSEG), 37),  # the newest stone, at the top
         big_long=ImageFont.truetype(str(DSEG), 33),  # ... an H2H of 20.00 s, too wide at 37
         top_small=ImageFont.truetype(str(DSEG), 24),  # coach page 2's newest stone
@@ -376,35 +377,37 @@ def newest_row(d, f, stones, waiting, mid, fonts_, y0, y1, r, cy):
             stopwatch(d, (x0 + x1) // 2, cy, r, fill)
 
 
-# Switch-on tips ("" = a half-line gap): your position, how to change it, and in league (not
-# competition, which has no holds) what holding the rocker does. Also shown when you change position.
+# Tips, big: the switch-on tip (competition and league) says only your position, also shown when you
+# change it (the help page has the controls); the hold hints say what holding does.
 YOU_ARE = ("LEAD", "SECOND", "THIRD", "SKIP")
-POSITION_TIP = ("Double click rocker to", "change your position")
-TIP_TOP = GRID_LABEL[1] + 1  # switch-on tips start below the column headers, so a new position shows in them
+TIP_TOP = GRID_LABEL[1] + 1  # the switch-on tip: below the column headers, so a new position shows in them
 HINT_TOP = TIMES_Y1 + 2       # the hold hints: over the times
-MOVE_TIP = "Hold rocker up: move last time"
-UNDO_LINE = "Hold rocker middle: undo"  # the switch-on tips' last line
-UNDO_TIP = ("Keep holding to undo",)
-PAGE_TIP = ("Double click rocker middle", "to change pages")  # tip="page": coach, the centre clicked once
-OFF_TIP = ("Keep holding to turn off",)  # tip="off": the side button held, before it switches off (3 s)
-MOVE_HINT = ("Keep holding to move time",)  # tip="move": rocker held to move the newest time, over the bottom  # tip="undo": while the rocker centre is held, before the undo (1 s)
-LEAGUE_TIP = ("Hold rocker down: your rocks", MOVE_TIP, UNDO_LINE)
+UNDO_TIP = ("Keep holding", "to undo")       # tip="undo": the rocker centre held, before the undo (1 s)
+OFF_TIP = ("Keep holding", "to turn off")    # tip="off": the side button held, before it switches off (3 s)
+PAGE_TIP = ("Double click", "to change page")  # tip="page": coach, the centre clicked once
+MOVE_HINT = ("Moving time",)  # tip="move": the rocker held to move the newest time; one line, over the bottom
+TIP_FONTS = {"hint": ("hint", 12, 24), "big": ("menu", 16, 32)}  # by size: the font, its advance and line height
 
 
-def tooltip(d, f, lines, top, bottom):
-    """A bordered box (2 px) centred in top..bottom, lines centred; an empty line is a half-line
-    gap. Snug, so the tallest tip (league's) fits below the column headers and the widest clears
-    the focus border at the sides."""
-    w = min(6 * max(len(t) for t in lines) + 16, W - 12)  # tighter only where a line needs it
-    h = sum(12 if t else 6 for t in lines) + 10
+def you_are(me):
+    return ("You are", YOU_ARE[me])
+
+
+def tooltip(d, f, lines, top, bottom, size="hint"):
+    """A bordered box (2 px) centred in top..bottom, its lines centred, bold (drawn twice, a pixel
+    apart) in Spleen 12x24, or 16x32 for size "big"."""
+    key, cw, lh = TIP_FONTS[size]
+    w = min(cw * max(len(t) for t in lines) + 1 + 16, W - 12)
+    h = lh * len(lines) + 10
     x0, y0 = (W - w) // 2, top + (bottom - top - h) // 2
     y1 = y0 + h - 1
     d.rectangle([x0, y0, x0 + w - 1, y1], fill=1, outline=0, width=2)
     y = y0 + 5
     for t in lines:
-        if t:
-            d.text(((W - 6 * len(t)) // 2, y), t, font=f["label"], fill=0)
-        y += 12 if t else 6
+        x = (W - (cw * len(t) + 1)) // 2
+        for dx in (0, 1):
+            d.text((x + dx, y), t, font=f[key], fill=0)
+        y += lh
 
 
 def competition_screen(stones, me=0, active=0, low_battery=False, tip=False, waiting=None):
@@ -430,7 +433,7 @@ def competition_screen(stones, me=0, active=0, low_battery=False, tip=False, wai
     elif tip == "move":  # over the badge strip, clear of the columns
         tooltip(d, f, MOVE_HINT, strip, H)
     elif tip:
-        tooltip(d, f, (f"You are {YOU_ARE[me]}", "") + POSITION_TIP + ("", MOVE_TIP, UNDO_LINE), TIP_TOP, strip)
+        tooltip(d, f, you_are(me), TIP_TOP, strip, "big")
     return img
 
 
@@ -572,7 +575,7 @@ def league_screen(stones, shots, me=0, active=0, low_battery=False, tip=False, w
     elif tip == "move":  # over your rocks, clear of the columns
         tooltip(d, f, MOVE_HINT, top, H)
     elif tip:  # below the headers, over the rocks too: it doesn't fit above them
-        tooltip(d, f, (f"You are {YOU_ARE[me]}", "") + POSITION_TIP + ("",) + LEAGUE_TIP, TIP_TOP, H)
+        tooltip(d, f, you_are(me), TIP_TOP, top, "big")
     return img
 
 
@@ -608,7 +611,6 @@ def coach_rock(d, i, shots, cx, cy):
 
 
 COACH_TIMES_Y0 = 4  # coach: the newest stone's digits start under the page marks (y 1-4)
-COACH_TIP = ("Double click rocker to", "switch page", "", "Hold rocker down: rocks", MOVE_TIP, UNDO_LINE)
 
 
 def coach_timer_screen(stones, shots, waiting=None, active=0, tip=False, focus="players"):
@@ -650,8 +652,6 @@ def coach_timer_screen(stones, shots, waiting=None, active=0, tip=False, focus="
         tooltip(d, f, PAGE_TIP, HINT_TOP, bottom)
     elif tip == "move":  # over the rocks, clear of the columns
         tooltip(d, f, MOVE_HINT, bottom, H)
-    elif tip:
-        tooltip(d, f, COACH_TIP, TIP_TOP, bottom)
     return img
 
 
