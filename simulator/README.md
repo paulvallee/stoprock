@@ -55,6 +55,10 @@ first run also downloads the push-button part (`pushbutton.wasm`) from the esp-e
 | <kbd>↓</kbd> | rocker **▼** | Missed shot (competition: previous column; league: previous column, hold it for your rocks) |
 | <kbd>Enter</kbd> | rocker **●** | Hold 1 s to undo the newest time or shot ("Keep holding to undo" shows after 0.2 s); keep holding to undo another every 1 s. Press twice quickly: change your position (coach: switch page) |
 
+**Export games** asks the device for every game it has recorded and saves the listing to
+`simulator/exports/games-<date>-<time>.txt` (the page shows the path). Analyse it with
+`python3 tools/analyze_games.py simulator/exports/<file>`, or attach the file to share it.
+
 The **Restart in** buttons also tell the firmware which rocker is held over the second serial port,
 because the emulator's restart may not keep a button pressed through it.
 

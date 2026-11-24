@@ -104,6 +104,8 @@ bool rtcSeconds(uint32_t* seconds) {
     return true;
 }
 
+bool command(char*, size_t) { return false; }  // commands come over USB only
+
 bool lightSleep(int64_t wakeAtUs) {
     for (int p : kPins) gpio_wakeup_enable(static_cast<gpio_num_t>(p), GPIO_INTR_LOW_LEVEL);
     esp_sleep_enable_gpio_wakeup();

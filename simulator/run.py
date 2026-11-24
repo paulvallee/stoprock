@@ -25,6 +25,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+EXPORTS = HERE / "exports"  # the Export games button saves the device's games here
 ROOT = HERE.parent
 DEFAULT_FIRMWARE = ROOT / "firmware" / ".pio" / "build" / "emu" / "stoprock-emu.bin"
 PART = HERE / "parts" / "pushbutton.wasm"
@@ -41,6 +42,7 @@ class Device:
         self.lock = threading.Lock()
         self.listeners = []
         self.history = []  # recent console lines, replayed to a page that connects later
+        self.export = None  # lines of a games listing being collected (@GAMES ... @END)
         self.control_port = control_port
         self.uart1_port = uart1_port
         self.battery = 100                # the page's slider
@@ -90,10 +92,25 @@ class Device:
             elif line.startswith("@LED "):
                 self.emit({"type": "led", "on": line.split()[1] == "1"})
             else:
+                self._collect(line)
                 print(line)
                 self.history = (self.history + [line])[-300:]
                 self.emit({"type": "log", "text": line})
         self.emit({"type": "log", "text": f"emulator exited ({self.proc.wait()})"})
+
+    def _collect(self, line):
+        """The games listing the Export button asked for: saved to exports/ once it's complete."""
+        if line.startswith("@GAMES "):
+            self.export = [line]
+        elif self.export is not None:
+            self.export.append(line)
+            if line == "@END":
+                EXPORTS.mkdir(exist_ok=True)
+                path = EXPORTS / time.strftime("games-%Y%m%d-%H%M%S.txt")
+                path.write_text("\n".join(self.export) + "\n")
+                self.export = None
+                print("saved", path)
+                self.emit({"type": "export", "path": str(path.relative_to(HERE.parent))})
 
     def _framebuffer(self, line):
         try:
@@ -181,6 +198,11 @@ def make_handler(device):
             if self.path == "/battery":
                 device.battery = max(0, min(100, int(body.get("value", 100))))
                 self.send_response(204)
+                self.end_headers()
+                return
+            if self.path == "/export":  # every game on the device, saved to exports/ (see _collect)
+                ok = device.send_uart1("cmd games")
+                self.send_response(204 if ok else 503)
                 self.end_headers()
                 return
             if self.path == "/hold":  # the rocker held at the next start-up: up, down or none

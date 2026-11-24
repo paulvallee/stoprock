@@ -48,9 +48,13 @@ RTC_NOINIT_ATTR uint32_t savedHold;
 RTC_NOINIT_ATTR uint32_t savedHoldMagic;
 int holdAtStart = kButtonCount;
 
-// Read any lines waiting on UART1 ("battery N", "hold up|down|none"); true if a battery one arrived.
+char pendingCommand[48];
+bool commandWaiting = false;
+
+// Read any lines waiting on UART1 ("battery N", "hold up|down|none", "cmd <console command>");
+// true if a battery one arrived.
 bool readBatteryLines() {
-    static char line[24];
+    static char line[56];
     static uint8_t len = 0;
     bool got = false;
     while (Serial1.available()) {
@@ -67,12 +71,25 @@ bool readBatteryLines() {
             const char* w = line + 5;
             savedHold = !strcmp(w, "up") ? kUp : !strcmp(w, "down") ? kDown : kButtonCount;
             savedHoldMagic = kHoldMagic;
+        } else if (!strncmp(line, "cmd ", 4)) {  // the page's Export button: "cmd games"
+            strncpy(pendingCommand, line + 4, sizeof pendingCommand - 1);
+            pendingCommand[sizeof pendingCommand - 1] = 0;
+            commandWaiting = true;
         }
     }
     return got;
 }
 
 }  // namespace
+
+bool command(char* out, size_t len) {
+    readBatteryLines();
+    if (!commandWaiting) return false;
+    commandWaiting = false;
+    strncpy(out, pendingCommand, len - 1);
+    out[len - 1] = 0;
+    return true;
+}
 
 void begin() {
     for (int p : kPins) pinMode(p, INPUT_PULLUP);

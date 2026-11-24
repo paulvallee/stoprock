@@ -4,9 +4,9 @@
 // second, third and skip. You time your three teammates and the other team ("THEM"), and log
 // your own shots. This keeps track of where in the end the game is (the last throw placed), and:
 //   - guesses who throws next: the throw after the last one, skipping yours (you're throwing it);
-//   - when a stone starts, uses the time since the previous one to count throws nobody timed: a
-//     stone starting under 80 s after the previous one is the next throw; longer gaps are
-//     counted at about 56 s a throw (an end of 16 in 15 minutes), at least two;
+//   - when a stone starts, uses the time since the previous one to count throws nobody timed,
+//     from the time each throw takes (kIntervalS: by position, skips slowest, plus the swap before
+//     the first skip stone and the break between ends): the count whose expected time is nearest;
 //   - files each stone where it's told (the column the cursor was on) and moves the game on to the
 //     nearest throw of that column, so a correction from the rocker puts it back in step;
 //   - takes your logged shots as fixed points: your rock 1 or 2 of the end, in the end your
@@ -27,8 +27,14 @@ public:
     static constexpr uint8_t kThem = kLeagueColumns - 1;  // the other team's column for a player
     static constexpr uint8_t kCoach = kCoachSeat;          // reset(kCoach): a coach, every position a column
     static constexpr uint8_t kMine = 0xFE;   // a throw of yours: no column
-    static constexpr int64_t kNextThrowUs = 80LL * 1000000;  // under this since the last start: the next throw
-    static constexpr int64_t kThrowUs = 56LL * 1000000;      // a throw, typically
+    // Expected time from one stone's start to the next's, in seconds, by who throws the next one:
+    // lead, 2nd, 3rd, skip (both teams). Skips take longest; before the first skip stone of an end
+    // the skip and vice swap ends (kSkipSwapS more), and between ends there's a break (kEndBreakS
+    // more). About 15.5 minutes an end. Guesses until real games say otherwise: see
+    // tools/analyze_games.py, which reads these lines.
+    static constexpr int kIntervalS[4] = {50, 52, 56, 70};
+    static constexpr int kSkipSwapS = 20;
+    static constexpr int kEndBreakS = 60;
     static constexpr int64_t kShotLagUs = 20LL * 1000000;    // you log your shot about this long after throwing
 
     // me: your position (0 lead .. 3 skip), or kCoach.
@@ -52,9 +58,11 @@ public:
     // A rock of your team's was logged (coach: every one): its stone k (0-7: lead, lead, 2nd, ...)
     // of end e, at t.
     void teamShot(int e, int k, int64_t t);
-    // Throws from the last one placed to your next (1: you're next), and when the last one started
-    // (-1: not known). Your next rock is thrown about (throws - 1) * kThrowUs after the following throw.
+    // Throws from the last one placed to your next (1: you're next).
     int throwsToMine() const;
+    // When the throw k after the last one placed should start (k 0: the last one's start; -1 if
+    // that isn't known).
+    int64_t expectedStart(int k) const;
     // When the throws counted since the last start (see predict()) next go up, after t: the cursor
     // may move on then. -1: never (nothing placed yet, or far past the end).
     int64_t nextChange(int64_t t) const;
@@ -74,6 +82,7 @@ private:
         bool ourFirst = true;
     };
     int throwsSince(int64_t t) const;
+    int64_t after(int k) const;  // expected time from the last throw's start to throw k after it
     Pos best(const Pos& from, int n, int want) const;  // want: a column, or -1 = any of the others'
 
     struct State {

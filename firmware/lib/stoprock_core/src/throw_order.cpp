@@ -36,12 +36,28 @@ uint8_t ThrowOrder::columnOf(int s, bool ourFirst) const {
     return static_cast<uint8_t>(playerColumn(me_, static_cast<uint8_t>(p)));
 }
 
+int64_t ThrowOrder::after(int k) const {
+    int64_t us = 0;
+    for (int i = 1; i <= k; ++i) {
+        const int j = last_.s + i;          // may run into the next end
+        const int s = ((j % 16) + 16) % 16;
+        us += kIntervalS[s / 4] * 1000000LL;
+        if (s == 12) us += kSkipSwapS * 1000000LL;
+        if (s == 0 && j > 0) us += kEndBreakS * 1000000LL;
+    }
+    return us;
+}
+
+int64_t ThrowOrder::expectedStart(int k) const { return lastT_ < 0 ? -1 : lastT_ + after(k); }
+
+// The count of throws whose expected time is nearest the time since the last start: the next
+// one up to halfway to the one after, and so on.
 int ThrowOrder::throwsSince(int64_t t) const {
     if (t < 0 || lastT_ < 0) return 1;
     const int64_t gap = t - lastT_;
-    if (gap < kNextThrowUs) return 1;
-    const int64_t n = (gap + kThrowUs / 2) / kThrowUs;
-    return n < 2 ? 2 : n > 24 ? 24 : static_cast<int>(n);
+    int n = 1;
+    while (n < 24 && gap >= (after(n) + after(n + 1)) / 2) ++n;
+    return n;
 }
 
 // The nearest throw to n throws after from that belongs to want, in this end or the next.
@@ -96,8 +112,7 @@ int64_t ThrowOrder::nextChange(int64_t t) const {
     if (lastT_ < 0) return -1;
     const int n = throwsSince(t);
     if (n >= 24) return -1;
-    // 1 -> 2 at 80 s; then n -> n + 1 halfway between throws: (n + 0.5) throws
-    return n == 1 ? lastT_ + kNextThrowUs : lastT_ + (2 * n + 1) * kThrowUs / 2;
+    return lastT_ + (after(n) + after(n + 1)) / 2;  // halfway to the throw after
 }
 
 void ThrowOrder::place(uint8_t c, int64_t t) {

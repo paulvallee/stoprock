@@ -128,13 +128,14 @@ static void test_cursor_follows_the_clock() {
     o.place(0, 0);
     TEST_ASSERT_EQUAL_INT(2, o.lastThrow());
     TEST_ASSERT_EQUAL_UINT8(ThrowOrder::kThem, o.predict(10 * S));
-    TEST_ASSERT_EQUAL_INT64(80 * S, o.nextChange(10 * S));
-    TEST_ASSERT_EQUAL_INT64(140 * S, o.nextChange(80 * S));
+    // halfway to the throw after: THEM's (50 s) and yours (52 s) -> 76 s, then 128 s
+    TEST_ASSERT_EQUAL_INT64(76 * S, o.nextChange(10 * S));
+    TEST_ASSERT_EQUAL_INT64(128 * S, o.nextChange(76 * S));
     // nothing timed since: THEM, you, THEM, you, THEM, then the 3rd, about 6 throws on
     int64_t t = 0, firstThird = -1;
     while ((t = o.nextChange(t)) >= 0 && t < 600 * S)
         if (firstThird < 0 && o.predict(t) == 1) firstThird = t;
-    TEST_ASSERT_EQUAL_INT64(308 * S, firstThird);
+    TEST_ASSERT_EQUAL_INT64(286 * S, firstThird);  // halfway between THEM's last (258 s) and the 3rd (314 s)
 }
 
 static void test_mine_so_far() {
@@ -160,7 +161,10 @@ static void test_coach_times_every_stone() {
     int64_t t = 0;
     for (int e = 0; e < 8; ++e) {
         const bool ourFirst = e % 2 == 1;  // they have the first rock in end 1, then it swaps
-        for (int s = 0; s < 16; ++s, t += 55 * S) {
+        for (int s = 0; s < 16; ++s) {
+            // the model's own pace (skips slower, the swap, the end break), give or take 5 s
+            t += (ThrowOrder::kIntervalS[s / 4] + (s == 12 ? ThrowOrder::kSkipSwapS : 0) +
+                  (s == 0 && e > 0 ? ThrowOrder::kEndBreakS : 0) + (s * 7 + e * 3) % 11 - 5) * S;
             const uint8_t truth = o.columnOf(s, ourFirst);
             if (s % 5 != 2) {  // a few go untimed
                 if (o.predict(t) != truth) ++wrong;

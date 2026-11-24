@@ -409,7 +409,7 @@ void planRocksFocus() {
     rocksFocusAt = -1;
     if (!rules().focus || order.lastStart() < 0) return;
     const int k = order.throwsToMine();
-    if (k == 1 || k == 2) rocksFocusAt = order.lastStart() + (k - 1) * ThrowOrder::kThrowUs + kOwnShotFocusUs;
+    if (k == 1 || k == 2) rocksFocusAt = order.expectedStart(k - 1) + kOwnShotFocusUs;
 }
 
 void closeStone(int64_t now) {
@@ -753,12 +753,13 @@ void movePlayer(int dir) {
     syncModel();
 }
 
-// Rocker up held on the columns: the newest time moves a column right every 0.6 s (round
-// and round), shown where it is. Returns false when there's no time to move.
-bool stepMove() {
+// Rocker up held on the columns: the newest time moves a column right every 0.6 s (round and
+// round), shown where it is; rocker down held (where it doesn't move the focus: competition, coach)
+// moves it left. Returns false when there's no time to move.
+bool stepMove(int dir) {
     const int col = stoneCount > 0 ? playerColumn(seat(), stones[0].player) : -1;
     if (col < 0) { sound.play(kError); return false; }
-    const uint8_t to = static_cast<uint8_t>((col + 1) % columns());  // the way rocker up moves the cursor
+    const uint8_t to = static_cast<uint8_t>((col + (dir < 0 ? columns() - 1 : 1)) % columns());  // as a press moves the cursor
     stones[0].player = columnPlayer(seat(), to);
     activeCol = to;
     ++moveSteps;
@@ -800,7 +801,7 @@ void onRelease(uint8_t b) {
         syncModel();
     }
     if (b != board::kUp && b != board::kDown) return;
-    if (b == board::kUp && moveSteps > 0) { finishMove(); return; }
+    if (moveSteps > 0) { finishMove(); return; }  // a held up (or down) moved the newest time
     if (buttons[b].holdFired) return;
     if (rules().shotsPerEnd && (!rules().focus || focus == Focus::Rocks)) onShot(b == board::kUp);
     else movePlayer(b == board::kUp ? 1 : -1);  // up = next player, down = previous
@@ -812,7 +813,7 @@ void onPress(uint8_t b, int64_t t) {
     s.downSince = t;
     s.holdFired = false;
     s.nextRepeat = t + kUndoHoldUs;
-    if (b == board::kUp) moveSteps = 0;
+    if (b == board::kUp || b == board::kDown) moveSteps = 0;
     activity(t);
     // Rocker up/down act when let go (next/previous player, or made/missed), or move the focus or
     // the newest time when held (pollButtons).
@@ -854,11 +855,12 @@ void pollButtons(int64_t now) {
 
         // holds
         if (s.down && !s.holdFired) {
-            // Rocker press: undo the newest entry after 1 s, then again every 1 s while held, with
-            // "Keep holding to undo" from 0.2 s into each. Stops after one error buzz once there's
-            // nothing left to undo.
-            if (b == board::kPress && !undoHint && now < s.nextRepeat &&
-                now >= s.nextRepeat - kUndoHoldUs + kUndoHintUs) {
+            // Rocker press: undo the newest entry after 1 s, then again every 1 s while held.
+            // "Keep holding to undo" shows from 0.2 s until the first undo only: shown again for the
+            // repeats, it would vanish and reappear at every one. Stops after one error buzz once
+            // there's nothing left to undo.
+            if (b == board::kPress && !undoHint && now < s.downSince + kUndoHoldUs &&
+                now >= s.downSince + kUndoHintUs) {
                 undoHint = true;
                 syncModel();
             }
@@ -870,17 +872,18 @@ void pollButtons(int64_t now) {
             }
             if (b == board::kSide && now - s.downSince >= kPowerHoldUs) { s.holdFired = true; showHelpAndPowerOff(); }
             // League: hold down for your rocks; hold up for the columns. Every mode: hold up on the
-            // columns to move the newest time a column right every 0.6 s (let go where it belongs).
+            // columns to move the newest time a column right every 0.6 s (let go where it belongs);
+            // without a focus (competition, coach), hold down to move it left.
             const bool rocker = b == board::kUp || b == board::kDown;
             if (rules().focus && rocker && (b == board::kDown || focus == Focus::Rocks) &&
                 now - s.downSince >= kFocusHoldUs) {
                 s.holdFired = true;  // not a short press when it's let go
                 activity(now);
                 setFocus(b == board::kUp ? Focus::Players : Focus::Rocks);
-            } else if (b == board::kUp && focus == Focus::Players &&
+            } else if (rocker && (b == board::kUp || !rules().focus) && focus == Focus::Players &&
                        now - s.downSince >= kMoveStepUs * (moveSteps + 1)) {
-                activity(now);
-                if (!stepMove()) s.holdFired = true;
+                activity(now);  // up moves the newest time right; down (no focus to move) left
+                if (!stepMove(b == board::kUp ? 1 : -1)) s.holdFired = true;
             }
         }
     }
@@ -901,6 +904,69 @@ void printGames(uint32_t fromId) {
     Serial.println("@END");
 }
 
+// One console command (USB serial, or the simulator's second port: board::command()).
+void runCommand(const char* buf) {
+    if (buf[0] == 't' && buf[1] == ' ') {
+        board::clockSet(strtoul(buf + 2, nullptr, 10));
+        Serial.printf("clock: set to %lu\n", static_cast<unsigned long>(board::clockNow()));
+    } else if (!strcmp(buf, "games")) {
+        printGames(bank.firstId());
+    } else if (!strcmp(buf, "games new")) {
+        printGames(bank.syncedId() + 1 > bank.firstId() ? bank.syncedId() + 1 : bank.firstId());
+    } else if (!strncmp(buf, "game ", 5)) {
+        printGames(strtoul(buf + 5, nullptr, 10));  // from that id on
+    } else if (!strncmp(buf, "ack ", 4)) {
+        bank.markSynced(strtoul(buf + 4, nullptr, 10));
+        Serial.printf("@ACK %lu\n", static_cast<unsigned long>(bank.syncedId()));
+    } else if (!strcmp(buf, "bank")) {
+        Serial.printf("@BANK {\"first\":%lu,\"last\":%lu,\"synced\":%lu,\"current\":%lu,\"version\":%u}\n",
+                      static_cast<unsigned long>(bank.firstId()), static_cast<unsigned long>(bank.lastId()),
+                      static_cast<unsigned long>(bank.syncedId()), static_cast<unsigned long>(bank.current().id),
+                      Databank::kVersion);
+    } else if (!strcmp(buf, "erase-all yes")) {
+        bank.eraseAll();
+        Serial.println("@ERASED");
+    } else if (!strcmp(buf, "audit")) {
+        ClockAudit history[kAuditHistory] = {};
+        if (prefs.getBytesLength("audits") == sizeof history) prefs.getBytes("audits", history, sizeof history);
+        Serial.println("@AUDIT");
+        printAudit(audit, true);
+        for (int i = 1; i < kAuditHistory; ++i)
+            if (history[i].samples > 0) printAudit(history[i], false);
+        Serial.println("@END");
+    } else if (!strncmp(buf, "sleeptiming ", 12)) {
+        sleepWhileTiming = !strcmp(buf + 12, "on");
+        prefs.putBool("sleeptim", sleepWhileTiming);
+        Serial.printf("sleep while timing: %s\n", sleepWhileTiming ? "on" : "off");
+    } else if (!strcmp(buf, "n")) {
+        newGame();
+        syncModel();
+    } else if (!strncmp(buf, "mode ", 5)) {  // testing: as if switched on in that mode
+        const char* name = buf + 5;
+        if (!strcmp(name, "competition")) mode = GameMode::Competition;
+        else if (!strcmp(name, "league")) mode = GameMode::League;
+        else if (!strcmp(name, "coach")) mode = GameMode::Coach;
+        else { Serial.println("modes: competition | league | coach"); return; }
+        coachPage = 0;
+        newGame();
+        syncModel(true);
+    } else if (!strcmp(buf, "page")) {  // testing: coach page switch, as a double press
+        if (!rules().positions) { coachPage ^= 1; syncModel(); }
+    } else if (!strcmp(buf, "o")) {
+        showHelpAndPowerOff();
+    } else if (!strcmp(buf, "s")) {
+        Serial.printf("status: board %s, %s mode, stones %d, shots %d/%d, games %lu-%lu, battery %d%%, clock %lu%s\n",
+                      board::name(), modeName(mode), stoneCount, shots.madeCount(), shots.count(),
+                      static_cast<unsigned long>(bank.firstId()), static_cast<unsigned long>(bank.lastId()),
+                      board::batteryPercent(), static_cast<unsigned long>(board::clockNow()),
+                      board::clockValid() ? "" : " (not set)");
+    } else if (buf[0]) {
+        Serial.println("commands: t <unix seconds> | s | games | games new | game <id> | ack <id> | bank | "
+                       "erase-all yes | audit | sleeptiming on|off | n (new game) | o (power off) | "
+                       "mode competition|league|coach | page");
+    }
+}
+
 void serialCommands() {
     static char buf[48];
     static uint8_t len = 0;
@@ -909,66 +975,10 @@ void serialCommands() {
         if (c != '\n' && c != '\r') { if (len < sizeof buf - 1) buf[len++] = c; continue; }
         buf[len] = 0;
         len = 0;
-        if (buf[0] == 't' && buf[1] == ' ') {
-            board::clockSet(strtoul(buf + 2, nullptr, 10));
-            Serial.printf("clock: set to %lu\n", static_cast<unsigned long>(board::clockNow()));
-        } else if (!strcmp(buf, "games")) {
-            printGames(bank.firstId());
-        } else if (!strcmp(buf, "games new")) {
-            printGames(bank.syncedId() + 1 > bank.firstId() ? bank.syncedId() + 1 : bank.firstId());
-        } else if (!strncmp(buf, "game ", 5)) {
-            printGames(strtoul(buf + 5, nullptr, 10));  // from that id on
-        } else if (!strncmp(buf, "ack ", 4)) {
-            bank.markSynced(strtoul(buf + 4, nullptr, 10));
-            Serial.printf("@ACK %lu\n", static_cast<unsigned long>(bank.syncedId()));
-        } else if (!strcmp(buf, "bank")) {
-            Serial.printf("@BANK {\"first\":%lu,\"last\":%lu,\"synced\":%lu,\"current\":%lu,\"version\":%u}\n",
-                          static_cast<unsigned long>(bank.firstId()), static_cast<unsigned long>(bank.lastId()),
-                          static_cast<unsigned long>(bank.syncedId()), static_cast<unsigned long>(bank.current().id),
-                          Databank::kVersion);
-        } else if (!strcmp(buf, "erase-all yes")) {
-            bank.eraseAll();
-            Serial.println("@ERASED");
-        } else if (!strcmp(buf, "audit")) {
-            ClockAudit history[kAuditHistory] = {};
-            if (prefs.getBytesLength("audits") == sizeof history) prefs.getBytes("audits", history, sizeof history);
-            Serial.println("@AUDIT");
-            printAudit(audit, true);
-            for (int i = 1; i < kAuditHistory; ++i)
-                if (history[i].samples > 0) printAudit(history[i], false);
-            Serial.println("@END");
-        } else if (!strncmp(buf, "sleeptiming ", 12)) {
-            sleepWhileTiming = !strcmp(buf + 12, "on");
-            prefs.putBool("sleeptim", sleepWhileTiming);
-            Serial.printf("sleep while timing: %s\n", sleepWhileTiming ? "on" : "off");
-        } else if (!strcmp(buf, "n")) {
-            newGame();
-            syncModel();
-        } else if (!strncmp(buf, "mode ", 5)) {  // testing: as if switched on in that mode
-            const char* name = buf + 5;
-            if (!strcmp(name, "competition")) mode = GameMode::Competition;
-            else if (!strcmp(name, "league")) mode = GameMode::League;
-            else if (!strcmp(name, "coach")) mode = GameMode::Coach;
-            else { Serial.println("modes: competition | league | coach"); continue; }
-            coachPage = 0;
-            newGame();
-            syncModel(true);
-        } else if (!strcmp(buf, "page")) {  // testing: coach page switch, as a double press
-            if (!rules().positions) { coachPage ^= 1; syncModel(); }
-        } else if (!strcmp(buf, "o")) {
-            showHelpAndPowerOff();
-        } else if (!strcmp(buf, "s")) {
-            Serial.printf("status: board %s, %s mode, stones %d, shots %d/%d, games %lu-%lu, battery %d%%, clock %lu%s\n",
-                          board::name(), modeName(mode), stoneCount, shots.madeCount(), shots.count(),
-                          static_cast<unsigned long>(bank.firstId()), static_cast<unsigned long>(bank.lastId()),
-                          board::batteryPercent(), static_cast<unsigned long>(board::clockNow()),
-                          board::clockValid() ? "" : " (not set)");
-        } else if (buf[0]) {
-            Serial.println("commands: t <unix seconds> | s | games | games new | game <id> | ack <id> | bank | "
-                           "erase-all yes | audit | sleeptiming on|off | n (new game) | o (power off) | "
-                           "mode competition|league|coach | page");
-        }
+        runCommand(buf);
     }
+    static char other[48];
+    if (board::command(other, sizeof other)) runCommand(other);
 }
 
 }  // namespace

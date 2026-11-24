@@ -42,6 +42,10 @@ bool rtcSeconds(uint32_t* seconds);
 // Returns false if this board doesn't sleep (the app then just idles).
 bool lightSleep(int64_t wakeAtUs);
 
+// A console command from somewhere other than the USB serial port (the simulator's page sends them
+// on its second port, e.g. "games" for its Export button). False if none is waiting.
+bool command(char* out, size_t len);
+
 // Switch off (the e-ink keeps the last image). Returns only where power-off is impossible
 // (on USB power, or in the simulator), after the user presses the side button again.
 void powerOff();

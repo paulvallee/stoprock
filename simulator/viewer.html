@@ -32,6 +32,7 @@
   .modes { margin: 8px 0; }
   button.mode { padding: 4px 10px; border-radius: 6px; margin-left: 4px; }
   button.mode:disabled { background: #999; cursor: default; }
+  button.export { padding: 4px 10px; border-radius: 6px; }
   label { display: inline-flex; gap: 6px; align-items: center; margin: 8px 0; }
 </style>
 </head>
@@ -70,6 +71,7 @@
     <button class="mode" data-mode="coach">coach</button>
     <span id="mode-status"></span>
   </div>
+  <div class="modes"><button class="export" id="export">Export games</button> <span id="export-status"></span></div>
   <label>Battery <input type="range" id="battery" min="0" max="100" value="100"> <span id="battery-value">100%</span></label>
   <br>
   <label><input type="checkbox" id="sound" checked> Sound</label>
@@ -140,6 +142,7 @@ events.onmessage = (m) => {
   else if (e.type === "tone") tone(e.hz);
   else if (e.type === "led") document.getElementById("led").classList.toggle("on", e.on);
   else if (e.type === "log") addLog(e.text);
+  else if (e.type === "export") document.getElementById("export-status").textContent = `saved to ${e.path}`;
   else if (e.type === "battery") {
     document.getElementById("battery").value = e.value;
     document.getElementById("battery-value").textContent = e.value + "%";
@@ -224,6 +227,14 @@ slider.addEventListener("pointerup", () => slider.blur());
 slider.addEventListener("input", () => {
   document.getElementById("battery-value").textContent = slider.value + "%";
   fetch("/battery", { method: "POST", body: JSON.stringify({ value: Number(slider.value) }) });
+});
+// Export: the device lists its games, run.py saves them to simulator/exports/ (the path shows here).
+document.getElementById("export").addEventListener("click", async (ev) => {
+  ev.currentTarget.blur();  // so arrow keys and Space keep going to the device
+  const status = document.getElementById("export-status");
+  status.textContent = "asking the device…";
+  const r = await fetch("/export", { method: "POST", body: "{}" });
+  if (!r.ok) status.textContent = "the device didn't answer; is it switched on?";
 });
 </script>
 </body>
