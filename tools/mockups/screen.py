@@ -329,8 +329,9 @@ def newest_row(d, f, stones, waiting, mid, font, y0, y1, margin, r, cy):
 YOU_ARE = ("LEAD", "SECOND", "THIRD", "SKIP")
 POSITION_TIP = ("Double click rocker to", "change your position")
 MOVE_TIP = "Hold rocker up: move last time"
+UNDO_LINE = "Hold rocker middle: undo"  # the switch-on tips' last line
 UNDO_TIP = ("Keep holding to undo",)  # tip="undo": while the rocker centre is held, before the undo (1 s)
-LEAGUE_TIP = ("Hold rocker down: your rocks", MOVE_TIP)
+LEAGUE_TIP = ("Hold rocker down: your rocks", MOVE_TIP, UNDO_LINE)
 
 
 def tooltip(d, f, lines, top, bottom):
@@ -339,6 +340,8 @@ def tooltip(d, f, lines, top, bottom):
     w = 6 * max(len(t) for t in lines) + 16
     h = sum(12 if t else 6 for t in lines) + 14
     x0, y0 = (W - w) // 2, top + (bottom - top - h) // 2
+    if y0 < top + 12:  # it would cut through the column headers: cover them instead
+        y0 = top
     y1 = y0 + h - 1
     d.rectangle([x0, y0, x0 + w - 1, y1], fill=1, outline=0, width=2)
     y = y0 + 7
@@ -369,7 +372,7 @@ def competition_screen(stones, me=0, active=0, low_battery=False, tip=False, wai
     if tip == "undo":
         tooltip(d, f, UNDO_TIP, 49, strip)
     elif tip:
-        tooltip(d, f, (f"You are {YOU_ARE[me]}", "") + POSITION_TIP + ("", MOVE_TIP), 49, strip)
+        tooltip(d, f, (f"You are {YOU_ARE[me]}", "") + POSITION_TIP + ("", MOVE_TIP, UNDO_LINE), 49, strip)
     return img
 
 
@@ -519,7 +522,7 @@ def coach_rock(d, i, shots, cx, cy):
 
 COACH_COLS = [0, 40, 80, 120, 160, 200]  # page 1's five columns: Lead, 2nd, 3rd, Skip, THEM
 COACH_LINES = 6
-COACH_TIP = ("Double click rocker to", "switch page", "", MOVE_TIP)
+COACH_TIP = ("Double click rocker to", "switch page", "", MOVE_TIP, UNDO_LINE)
 
 
 def coach_timer_screen(stones, shots, waiting=None, active=0, tip=False):

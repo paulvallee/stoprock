@@ -299,7 +299,10 @@ static void tooltip(Canvas& c, const char* const* lines, int n, int top, int bot
         height += len ? 12 : 6;
     }
     const int w = 6 * longest + 16, h = height + 14;
-    const int x0 = (W - w) / 2, y0 = top + (bottom - top - h) / 2, y1 = y0 + h - 1;
+    const int x0 = (W - w) / 2;
+    int y0 = top + (bottom - top - h) / 2;
+    if (y0 < top + 12) y0 = top;  // it would cut through the column headers: cover them instead
+    const int y1 = y0 + h - 1;
     c.fillRect(x0, y0, x0 + w - 1, y1, false);
     rectOutline(c, x0, y0, x0 + w - 1, y1);
     rectOutline(c, x0 + 1, y0 + 1, x0 + w - 2, y1 - 1);
@@ -321,10 +324,13 @@ static void undoTip(Canvas& c, int top, int bottom) {
 }
 
 static void switchOnTip(Canvas& c, uint8_t me, bool league, int top, int bottom) {
-    const char* lines[7] = {kYouAre[me % 4], "", "Double click rocker to", "change your position", "",
-                            "Hold rocker down: your rocks", "Hold rocker up: move last time"};
-    if (!league) lines[5] = lines[6];  // competition: no rocks
-    tooltip(c, lines, league ? 7 : 6, top, bottom);
+    const char* lines[8] = {kYouAre[me % 4], "", "Double click rocker to", "change your position", "",
+                            "Hold rocker down: your rocks", "Hold rocker up: move last time", "Hold rocker middle: undo"};
+    if (!league) {  // competition: no rocks
+        lines[5] = lines[6];
+        lines[6] = lines[7];
+    }
+    tooltip(c, lines, league ? 8 : 7, top, bottom);
 }
 
 // Competition and league's four columns: your teammates in throwing order, then THEM. Each lists its stones newest
@@ -471,8 +477,9 @@ void drawCoachTimer(Canvas& c, const Stone* stones, uint8_t count, const ShotLog
     for (int row = 0; row < 2; ++row) endRow(c, shots, first + row, bottom + 24 + row * 15);
     if (tip == Tip::Undo) undoTip(c, 49, bottom);
     if (tip == Tip::SwitchOn) {
-        const char* const lines[4] = {"Double click rocker to", "switch page", "", "Hold rocker up: move last time"};
-        tooltip(c, lines, 4, 49, bottom);
+        const char* const lines[5] = {"Double click rocker to", "switch page", "", "Hold rocker up: move last time",
+                                      "Hold rocker middle: undo"};
+        tooltip(c, lines, 5, 49, bottom);
     }
 }
 
