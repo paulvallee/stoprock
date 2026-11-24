@@ -49,6 +49,9 @@ bool command(char* out, size_t len);
 // Switch off (the e-ink keeps the last image). Returns only where power-off is impossible
 // (on USB power, or in the simulator), after the user presses the side button again.
 void powerOff();
+// True when this start should be "off": the simulator's first start, which shows the off page and
+// waits for the side button as a device would. Never on the CoreInk (it only runs once switched on).
+bool startsOff();
 
 const char* name();
 

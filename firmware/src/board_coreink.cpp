@@ -105,6 +105,7 @@ bool rtcSeconds(uint32_t* seconds) {
 }
 
 bool command(char*, size_t) { return false; }  // commands come over USB only
+bool startsOff() { return false; }               // running means it was switched on
 
 bool lightSleep(int64_t wakeAtUs) {
     for (int p : kPins) gpio_wakeup_enable(static_cast<gpio_num_t>(p), GPIO_INTR_LOW_LEVEL);

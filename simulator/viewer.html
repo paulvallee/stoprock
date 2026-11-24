@@ -125,7 +125,7 @@ function tone(hz) {
 }
 function unlockAudio() { if (!audio) audio = new AudioContext(); }
 
-let poweredOn = true;  // from the console: "stoprock ready" / "power: off"
+let poweredOn = false;  // from the console: "stoprock ready" / "power: off" (it starts off)
 function addLog(text) {
   if (text.includes("stoprock ready")) poweredOn = true;
   else if (text.includes("power: off")) poweredOn = false;

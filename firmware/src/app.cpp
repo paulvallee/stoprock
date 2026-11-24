@@ -1074,6 +1074,9 @@ void setup() {
     myPosition = prefs.getUChar("mypos", 0) % 4;
     if (!bankStore.begin()) Serial.println("databank: no \"games\" partition, games won't be kept");
     bank.begin();
+    // The simulator's first start is "off": the off page, until the side button switches it on (a
+    // restart, picking the mode as below). Never on the CoreInk.
+    if (board::startsOff()) showHelpAndPowerOff();
     // The mode: whatever the rocker is doing while the side button switches the device on.
     if (board::heldAtStart(board::kDown)) mode = GameMode::League;
     else if (board::heldAtStart(board::kUp)) mode = GameMode::Coach;

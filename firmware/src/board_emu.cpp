@@ -44,6 +44,10 @@ RTC_NOINIT_ATTR uint32_t savedBatteryMagic;
 int battery = -1;
 // The rocker the viewer says is held for the next start-up (kButtonCount = none), until used.
 constexpr uint32_t kHoldMagic = 0x401DB07;
+// Set when the side button switches the simulator back on (powerOff() returning, then a restart):
+// a start without it is the emulator's first, which starts off.
+constexpr uint32_t kOnMagic = 0x5E1EC7ED;
+RTC_NOINIT_ATTR uint32_t switchedOnMagic;
 RTC_NOINIT_ATTR uint32_t savedHold;
 RTC_NOINIT_ATTR uint32_t savedHoldMagic;
 int holdAtStart = kButtonCount;
@@ -157,6 +161,13 @@ void powerOff() {
     // the button is held. The app ignores a button already held when it starts.
     while (digitalRead(kPins[kSide]) == LOW) delay(20);
     while (digitalRead(kPins[kSide]) == HIGH) { readBatteryLines(); delay(20); }  // also takes "hold ..."
+    switchedOnMagic = kOnMagic;  // the restart that follows is a switch-on
+}
+
+bool startsOff() {
+    const bool first = switchedOnMagic != kOnMagic;
+    switchedOnMagic = 0;
+    return first;
 }
 
 const char* name() { return "esp-emulator"; }
