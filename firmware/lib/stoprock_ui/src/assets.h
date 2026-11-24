@@ -39,8 +39,8 @@ extern const Bitmap kLogo;          // 176 px wordmark
 extern const Bitmap kLogoStrip;     // 106 x 22 wordmark for competition's badge strip
 extern const Sprite kRockSmall;     // a rock slot (radius 5)
 extern const Sprite kCursorSmall;   // cursor: the slot drawn bold
-extern const Sprite kCheckSmall;    // made
-extern const Sprite kCrossSmall;    // missed
+extern const Sprite kMadeSmall;     // made: the rock filled
+extern const Sprite kMissedSmall;   // missed: a dot in the ring
 extern const Sprite kStopwatch;      // where a time is awaited, in the large row (ring radius 10)
 extern const Sprite kStopwatchSmall; // ... and in coach page 2's smaller row (radius 6)
 

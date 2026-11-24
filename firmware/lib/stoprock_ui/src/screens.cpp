@@ -302,7 +302,7 @@ void pageMarks(Canvas& c, int page) {
 // Coach-mode rock i of the game: empty, made or missed; bold ring = cursor.
 void coachRock(Canvas& c, const ShotLog& shots, int i, int cx, int cy) {
     c.sprite(kRockSmall, cx, cy);
-    if (i < shots.count()) c.sprite(shots.made(i) ? kCheckSmall : kCrossSmall, cx, cy);
+    if (i < shots.count()) c.sprite(shots.made(i) ? kMadeSmall : kMissedSmall, cx, cy);
     if (i == shots.cursor()) c.sprite(kCursorSmall, cx, cy);
 }
 
@@ -528,7 +528,7 @@ void drawLeague(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& sh
         for (int r = 0; r < 2; ++r) {
             const int i = end * 2 + r, cy = top + 19 + r * 13;
             c.sprite(kRockSmall, cx, cy);
-            if (i < shots.count()) c.sprite(shots.made(i) ? kCheckSmall : kCrossSmall, cx, cy);
+            if (i < shots.count()) c.sprite(shots.made(i) ? kMadeSmall : kMissedSmall, cx, cy);
             if (i == cursor) c.sprite(kCursorSmall, cx, cy);
         }
     }

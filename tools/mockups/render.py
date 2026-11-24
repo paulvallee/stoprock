@@ -108,7 +108,7 @@ def main():
         return screen.league_screen(LEAGUE_STONES, shots, LEAGUE_ME, active, focus=focus)
     sheet("Logging your shots with the rocker (ring = cursor on your next rock)", [
         ("1. HOLD rocker DOWN 0.5 s", "The bold border moves to your rocks", lg(BASE, "rocks", 1)),
-        ("2. Rocker UP", "Check; back to the columns, THEM up next", lg(BASE + [True])),
+        ("2. Rocker UP", "Made (filled); back to the columns, THEM up next", lg(BASE + [True])),
         ("3. HOLD rocker centre 0.5 s", "Undo: cursor steps back and clears that rock", lg(BASE)),
         ("4. Hold DOWN, then DOWN", "Rock fills with an X", lg(BASE + [False])),
     ], DOCS / "rocker-storyboard.png", cols=2)

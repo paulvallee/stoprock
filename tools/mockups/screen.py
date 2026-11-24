@@ -577,13 +577,11 @@ def league_screen(stones, shots, me=0, active=0, low_battery=False, tip=False, w
 
 
 def small_rock(d, cx, cy, state, cursor):
-    """Coach-mode rock (radius 5): empty, made (check) or missed (X); bold ring = cursor."""
-    d.ellipse([cx - 5, cy - 5, cx + 5, cy + 5], outline=0, width=1)
-    if state is True:
-        d.line([(cx - 3, cy), (cx - 1, cy + 2), (cx + 3, cy - 3)], fill=0, width=2)
-    elif state is False:
-        d.line([(cx - 2, cy - 2), (cx + 2, cy + 2)], fill=0, width=2)
-        d.line([(cx - 2, cy + 2), (cx + 2, cy - 2)], fill=0, width=2)
+    """A rock (radius 5): an empty ring not yet thrown, filled made, a dot in the ring missed; bold
+    ring = cursor."""
+    d.ellipse([cx - 5, cy - 5, cx + 5, cy + 5], outline=0, width=1, fill=0 if state is True else None)
+    if state is False:
+        d.ellipse([cx - 2, cy - 2, cx + 2, cy + 2], fill=0)
     if cursor:
         d.ellipse([cx - 5, cy - 5, cx + 5, cy + 5], outline=0, width=3)
 
