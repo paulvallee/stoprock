@@ -153,6 +153,7 @@ def fonts():
 def _make_fonts():
     return dict(
         label=bdf("spleen-6x12"),
+        menu=bdf("spleen-16x32"),  # the mode menu
         big=ImageFont.truetype(str(DSEG), 37),  # the newest stone, at the top
         big_long=ImageFont.truetype(str(DSEG), 33),  # ... an H2H of 20.00 s, too wide at 37
         top_small=ImageFont.truetype(str(DSEG), 24),  # coach page 2's newest stone
@@ -220,35 +221,29 @@ HELP_EQ_X = 5 + 6 * len("SHOTS") + 8 + 6 * len("up/down ")  # x of every "=" on 
 
 # The menu at switch-on (unless the rocker is held: then that mode straight away). The mode used last
 # is selected; up/down choose, the rocker's middle starts it.
-MENU_MODES = (("COMPETITION", "Times only, for tournaments"),
-              ("LEAGUE", "Times, plus your own shots"),
-              ("COACH", "Times and the team's 64 shots"))
-MENU_TIPS = ("up/down: choose  middle: start", "", "Big times: B2H left, H2H right", "",
-             "Skip menu: hold rocker at start", "  middle = competition", "  down   = league", "  up     = coach")
+MENU_MODES = ("COMPETITION", "LEAGUE", "COACH")
+MENU_ROW_TOP, MENU_ROW_PITCH, MENU_ROW_H = 34, 55, 48  # the three modes, big, one line each
 
 
 def mode_menu(selected):
-    """selected: 0 competition, 1 league, 2 coach."""
+    """The modes at switch-on, big (Spleen 16x32, bold), one a line; selected (0 competition, 1 league,
+    2 coach) white on black. Up/down choose, the middle starts it: no help text, the help page has it."""
     f = fonts()
     img = Image.new("1", (W, H), 1)
     d = ImageDraw.Draw(img)
     d.fontmode = "1"
     from logo import strip_logo  # here, not at the top: logo.py is a sibling module
     lg = strip_logo()
-    img.paste(0, ((W - lg.width) // 2, 3), ImageChops.invert(lg.convert("L")).convert("1"))
-    for i, (name, about) in enumerate(MENU_MODES):
-        y0 = 30 + i * 27
+    img.paste(0, ((W - lg.width) // 2, 4), ImageChops.invert(lg.convert("L")).convert("1"))
+    for i, name in enumerate(MENU_MODES):
+        y0 = MENU_ROW_TOP + i * MENU_ROW_PITCH
         on = i == selected
         if on:
-            d.rectangle([2, y0, W - 3, y0 + 25], fill=0)
-        d.text((8, y0 + 1), name, font=f["label"], fill=1 if on else 0)
-        d.text((8, y0 + 13), about, font=f["label"], fill=1 if on else 0)
-    d.line([(0, 113), (W - 1, 113)], fill=0)
-    y = 117
-    for t in MENU_TIPS:
-        if t:
-            d.text((6, y), t, font=f["label"], fill=0)
-        y += 12 if t else 4
+            d.rectangle([2, y0, W - 3, y0 + MENU_ROW_H - 1], fill=0)
+        l, tp, r, b = ink(name, f["menu"])
+        x, y = (W - (r - l + 1)) // 2 - l, y0 + (MENU_ROW_H - (b - tp)) // 2 - tp
+        for dx in (0, 1):  # bold: twice, a pixel apart
+            d.text((x + dx, y), name, font=f["menu"], fill=1 if on else 0)
     return img
 
 

@@ -54,7 +54,7 @@ Timing clicks are timestamped in the interrupt handler, so screen activity never
 
 ### Start-up modes
 
-Switching on with the side button alone shows the **mode menu**: the three modes, each with a line about it, and the one used last selected. Rocker up/down choose (round and round), the rocker's middle starts the one selected. The menu also says which of the big times is which (B2H left, H2H right: there are no labels on the timing screens) and how to skip it next time: hold the rocker while switching on (middle competition, down league, up coach). At the menu the side button held 3 s still switches off, and 5 minutes untouched switches off too.
+Switching on with the side button alone shows the **mode menu**: the three modes in big bold letters (Spleen 16×32), one a line, under the logo, and the one used last selected. No help text: the help page (shown while off) has the controls. Rocker up/down choose (round and round), the rocker's middle starts the one selected. To skip it, hold the rocker while switching on (middle competition, down league, up coach), as the help page says. At the menu the side button held 3 s still switches off, and 5 minutes untouched switches off too.
 
 | Switch on with | Mode | Screen | Rocker |
 |---|---|---|---|
@@ -214,6 +214,7 @@ Rules:
 |---|---|---|
 | DSEG7 Classic Bold | Newest result, percentage | SIL Open Font License 1.1 |
 | Spleen 6×12 | Labels, help page | BSD 2-clause |
+| Spleen 16×32 | Mode menu | BSD 2-clause |
 | Nunito Black | Logo | SIL Open Font License 1.1 |
 | Drawn segments | Older results, end numbers | Our own code |
 

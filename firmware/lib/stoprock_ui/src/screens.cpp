@@ -476,28 +476,20 @@ static void fourColumns(Canvas& c, const Stone* stones, int count, uint8_t me, u
     leagueTimes(c, stones, count, me, active, bottom, zoom);
 }
 
+// The modes at switch-on, big (bold Spleen 16x32), one a line; the selected one white on black. No help text: the help
+// page has it.
 void drawModeMenu(Canvas& c, uint8_t selected) {
     c.clear();
-    const Font& f = kFontSpleen6x12;
-    c.blit(kLogoStrip, (W - kLogoStrip.w) / 2, 3);
-    static const char* const kModes[3][2] = {{"COMPETITION", "Times only, for tournaments"},
-                                             {"LEAGUE", "Times, plus your own shots"},
-                                             {"COACH", "Times and the team's 64 shots"}};
+    c.blit(kLogoStrip, (W - kLogoStrip.w) / 2, 4);
+    static const char* const kModes[3] = {"COMPETITION", "LEAGUE", "COACH"};
+    constexpr int kRowTop = 34, kRowPitch = 55, kRowH = 48;
     for (int i = 0; i < 3; ++i) {
-        const int y0 = 30 + i * 27;
+        const int y0 = kRowTop + i * kRowPitch;
         const bool on = i == selected;
-        if (on) c.fillRect(2, y0, W - 3, y0 + 25);
-        c.text(f, 8, y0 + 1, kModes[i][0], !on);
-        c.text(f, 8, y0 + 13, kModes[i][1], !on);
-    }
-    hline(c, 0, W - 1, 113);
-    static const char* const kTips[] = {"up/down: choose  middle: start", "", "Big times: B2H left, H2H right", "",
-                                        "Skip menu: hold rocker at start", "  middle = competition",
-                                        "  down   = league", "  up     = coach"};
-    int y = 117;
-    for (const char* t : kTips) {
-        if (*t) c.text(f, 6, y, t);
-        y += *t ? 12 : 4;
+        if (on) c.fillRect(2, y0, W - 3, y0 + kRowH - 1);
+        const InkBox b = c.ink(kFontSpleen16x32, kModes[i]);
+        const int x = (W - (b.r - b.l + 1)) / 2 - b.l, y = y0 + (kRowH - (b.b - b.t)) / 2 - b.t;
+        for (int dx = 0; dx < 2; ++dx) c.text(kFontSpleen16x32, x + dx, y, kModes[i], !on);  // bold: twice, a pixel apart
     }
 }
 
