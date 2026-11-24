@@ -64,8 +64,17 @@ Each line is one switch-on, the current one first; your game is the line after i
 a 15 s H2H caused by sleeping. Under about 3 ms is invisible in hundredths; past about 5 ms, turn sleeping
 while timing off with `sleeptiming off`. Send me the output and I'll interpret it.
 
-## Not yet checked on hardware
+## Checked on hardware, and not
 
-The CoreInk build compiles but has not run on a device yet. To check when it arrives: the pin map, the LED's
-polarity, the power button's own hold behaviour, light sleep and wake-up, the partial-update time, and battery
-readings (docs/SPEC.md open items).
+Seen on a CoreInk on USB (November 2026): it stays on through light sleep, all buttons read up at start-up, and the top
+button starts the stopwatch, logs B2H and H2H and wakes the chip from light sleep. The side button does the same; held
+3 s it switches off, and a press then restarts it. (Not with M5Unified's `powerOff()`, after which the side button did
+nothing on USB: see `board_coreink.cpp`.)
+
+Still to check: battery power beyond a reported switch-off and on, the LED's polarity, the buzzer, battery readings, and
+why the first partial update after a full refresh takes about 520 ms instead of 260 (docs/SPEC.md open items). Also the
+USB port dropping with the cable in: seen once, about 30 s into idle with no `power: off` in the log. The board carried
+on, and replugging brought the port back. Cause not known.
+
+While the chip sleeps it doesn't hear the serial console: a command typed then is lost. Press a rocker button first and
+type within 2 s.

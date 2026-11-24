@@ -1,5 +1,5 @@
 // M5Stack CoreInk (current revision, GDEY0154D67 screen). Pins from M5Stack's CoreInk
-// library; confirm on the device (docs/SPEC.md open item 1).
+// library; what's been confirmed on a device is in docs/SPEC.md section 2.
 #include <Arduino.h>
 #include <M5Unified.h>
 #include <driver/gpio.h>
@@ -120,6 +120,11 @@ bool command(char*, size_t) { return false; }  // commands come over USB only
 bool startsOff() { return false; }               // running means it was switched on
 
 bool lightSleep(int64_t wakeAtUs) {
+    // Waking on a button needs a low-level trigger, and gpio_wakeup_enable writes it over the
+    // falling edge the timing buttons interrupt on (gpio_wakeup_disable doesn't put it back). Left
+    // like that, a press interrupts without end for as long as it's held, the app never gets to
+    // see it held, and it's dropped. So: no interrupts while asleep, and the edge back after.
+    for (Button b : {kTop, kSide}) gpio_intr_disable(static_cast<gpio_num_t>(kPins[b]));
     for (int p : kPins) gpio_wakeup_enable(static_cast<gpio_num_t>(p), GPIO_INTR_LOW_LEVEL);
     esp_sleep_enable_gpio_wakeup();
     if (wakeAtUs >= 0) {
@@ -132,18 +137,42 @@ bool lightSleep(int64_t wakeAtUs) {
     gpio_hold_dis(kPowerHoldPin);
     esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_ALL);
     for (int p : kPins) gpio_wakeup_disable(static_cast<gpio_num_t>(p));
+    for (Button b : {kTop, kSide}) {  // (a press that woke us is the app's to see, from the level)
+        gpio_set_intr_type(static_cast<gpio_num_t>(kPins[b]), GPIO_INTR_NEGEDGE);
+        gpio_intr_enable(static_cast<gpio_num_t>(kPins[b]));
+    }
     return true;
 }
 
+// Not M5.Power.powerOff(): on the CoreInk that ends in a deep sleep nothing wakes (M5Unified arms the
+// side button only on boards without a real-time clock interrupt pin), so on USB, which keeps the board
+// powered with the latch dropped, only a reset brought it back.
 void powerOff() {
-    gpio_hold_dis(kPowerHoldPin);  // free, so the power-off can drop it
+    const auto side = static_cast<gpio_num_t>(kPins[kSide]);
     M5.Display.waitDisplay();
     M5.Display.sleep();
-    M5.Power.powerOff();  // on battery this cuts power; on USB it may return
-    // Still powered (USB): wait for the side button to be let go and pressed again;
-    // the app then restarts.
-    while (digitalRead(kPins[kSide]) == LOW) delay(20);
-    while (digitalRead(kPins[kSide]) == HIGH) delay(20);
+    // Let go first (up for 50 ms): the button itself keeps the power on, and would wake the sleep below.
+    for (int up = 0; up < 5; delay(10)) up = held(kSide) ? 0 : up + 1;
+    Serial.println("power: latch dropped");
+    Serial.flush();
+    gpio_hold_dis(kPowerHoldPin);
+    digitalWrite(kPowerHoldPin, LOW);  // on battery the power goes here
+    delay(500);
+    // Still powered (USB): sleep until the side button is pressed; the app then restarts.
+    Serial.println("power: still powered (USB), waiting for the side button");
+    Serial.flush();
+    gpio_hold_en(kPowerHoldPin);  // the latch stays dropped: unplugging USB now switches it off
+    gpio_intr_disable(static_cast<gpio_num_t>(kPins[kTop]));
+    gpio_intr_disable(side);
+    esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_ALL);
+    gpio_wakeup_enable(side, GPIO_INTR_LOW_LEVEL);
+    esp_sleep_enable_gpio_wakeup();
+    do {
+        esp_light_sleep_start();
+        delay(20);
+    } while (!held(kSide));  // a bounce, not a press
+    gpio_hold_dis(kPowerHoldPin);
+    digitalWrite(kPowerHoldPin, HIGH);  // on again
 }
 
 const char* name() { return "CoreInk"; }

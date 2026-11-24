@@ -1,6 +1,6 @@
 # stoprock: device specification
 
-A pocket curling stopwatch with a shot-percentage tracker. Version 0.3 (design agreed; firmware in `firmware/`, not yet run on hardware).
+A pocket curling stopwatch with a shot-percentage tracker. Version 0.3 (design agreed; firmware in `firmware/`, first runs on a CoreInk in November 2026).
 
 Mockups: [`mockups/screens.png`](mockups/screens.png) (help page, league screen, low battery), [`mockups/modes.png`](mockups/modes.png) (the three start-up modes) and [`mockups/rocker-storyboard.png`](mockups/rocker-storyboard.png). Regenerate them with `python tools/mockups/render.py`.
 
@@ -20,7 +20,9 @@ Prototype base: **M5Stack CoreInk** (current revision). A custom, branded enclos
 | Other | Passive buzzer, green LED, BM8563 real-time clock, 390 mAh battery |
 | Rated temperature | 0–60 °C |
 
-**Pins (from M5Stack's older CoreInk library; verify against the current revision before use)**
+**Pins (from M5Stack's older CoreInk library; on a real CoreInk the screen, the top, side and rocker buttons and the power hold work as listed; buzzer and LED not checked yet)**
+
+The top and side buttons need the chip's internal pull-ups. Power hold is held through light sleep (`gpio_hold_en`), as a released latch is thought to be why the first build lost its USB port at its first sleep (not proved: the port has also dropped once since, with the board running on). Waking on a button overwrites its interrupt type with a low level, so the timing buttons' falling edge is restored after every sleep.
 
 | Function | GPIO |
 |---|---|
@@ -38,7 +40,7 @@ Graphics library: **M5GFX / M5Unified** (has a driver for this screen, `Panel_GD
 | Input | Action |
 |---|---|
 | Top button **or** side button (short press) | Timing click. Either works; the user picks whichever is comfortable. |
-| Side button, held | Power on (from off), in the mode the rocker picks (below). Power off when held 3 s while on (to confirm against the hardware's own power-button behaviour); from 0.5 s into the hold a box reads "Keep holding to turn off" (where the undo one goes). When it shows, that press's timing click is taken back (the hold is a power-off, not a click): a stone it started is cancelled and its stopwatch goes, a B2H it logged goes with its stone, an H2H it logged goes (the stone keeps its B2H if it had one). Let go before 3 s and the device stays on. |
+| Side button, held | Power on (from off), in the mode the rocker picks (below). Power off when held 3 s while on (to confirm against the hardware's own power-button behaviour); from 0.5 s into the hold a box reads "Keep holding to turn off" (where the undo one goes). When it shows, that press's timing click is taken back (the hold is a power-off, not a click): a stone it started is cancelled and its stopwatch goes, a B2H it logged goes with its stone, an H2H it logged goes (the stone keeps its B2H if it had one). Let go before 3 s and the device stays on. After 3 s the off page is drawn and the power goes once the button is let go. On USB, which keeps the board powered, it then sleeps until the side button is pressed, and restarts. |
 | Rocker up | Log a **made** shot at the cursor |
 | Rocker down | Log a **missed** shot at the cursor |
 | Rocker press, held 1 s | **Undo** the newest entry, a time or a shot, whichever came last (like backspace), in every mode; a stone being timed is cancelled first (with its B2H, if it has one). The throw order steps back with it. From 0.2 s into the hold a box reads "Keep holding to undo"; it goes with the undo, or when you let go. Keep holding to undo another entry every 1 s; stops after one error buzz when nothing is left. |
@@ -223,9 +225,9 @@ Rules:
 
 ## 15. Open items
 
-1. Pin map for the current CoreInk revision.
-2. Side power button: hardware behaviour when held, to settle the 3 s power-off.
-3. Measured click-to-visible time, at room temperature and on the ice.
+1. Pin map for the current CoreInk revision: buzzer and LED (and its polarity) still to check.
+2. Side power button: hardware behaviour when held, to settle the 3 s power-off. On USB, holding it 3 s draws the off page, and dropping the latch leaves the board powered. Letting go before 3 s leaves it on. A side press then restarts it (seen in the serial log). Switching off and on again on battery was reported to work but has no log (no port then).
+3. Measured click-to-visible time, at room temperature and on the ice. So far, on USB at room temperature, the screen update alone took 257-282 ms for a partial and about 1.85 s for a full refresh at start-up, but the first partial after a full refresh took about 520 ms: over the 0.3 s target (section 10), cause not known.
 4. Battery life in real use.
 5. Clock audit after a real game: is sleeping while timing accurate enough (section 7)?
 6. Trademark check for "stoprock".
