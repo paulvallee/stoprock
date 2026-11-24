@@ -126,11 +126,11 @@ struct ModeRules {
                           // it; a coach (who may log many rocks at once) keeps it where they put it.
                           // Either way, starting the stopwatch brings it to the times.
     bool positions;       // you have a position (double click changes it); a coach has none (double click: page)
-    bool columns;         // the times are in a column per player, with a cursor (zoom: no players, a row a stone)
+    bool columns;         // the times are in a column per player, with a cursor (basic: no players, a row a stone)
     bool pages;           // coach: two pages (double click switches)
 };
 const ModeRules& rules() {
-    static const ModeRules kRules[4] = {  // indexed by GameMode: League, Competition, Coach, Zoom
+    static const ModeRules kRules[4] = {  // indexed by GameMode: League, Competition, Coach, Basic
         {2, true, true, true, true, false},
         {0, false, false, true, true, false},
         {8, true, false, false, true, true},
@@ -146,7 +146,7 @@ uint8_t columns() { return columnCount(seat()); }
 // The cursor is on the player about to throw: the throw order (ThrowOrder) puts it on whoever
 // throws next, and the rocker moves it too (or moves a time afterwards).
 uint8_t activeCol = 0;          // the column with the cursor
-int zoomScroll = 0;             // zoom: rows scrolled down, to older stones (the rocker; a new stone resets it)
+int basicScroll = 0;             // basic: rows scrolled down, to older stones (the rocker; a new stone resets it)
 // League: what rocker up/down work on, the focus (bold border): the players' columns (up = next,
 // down = previous) or your rocks (made/missed). Hold down 0.5 s for your rocks; logging a shot (or
 // holding up 0.5 s) goes back to the columns. On the columns, holding up moves the newest time.
@@ -333,7 +333,7 @@ void newGame() {
     tipWaiting = rules().positions;
     tipUntil = -1;
     stoneCount = 0;
-    zoomScroll = 0;
+    basicScroll = 0;
     Serial.printf("game: new, %s mode\n", modeName(mode));
 }
 
@@ -359,7 +359,7 @@ struct Model {
     uint8_t page = 0;       // coach: which page
     uint8_t me = 0;         // competition: your position
     uint8_t activeCol = 0;  // competition and league: the column with the cursor
-    int scroll = 0;         // zoom: rows scrolled down
+    int scroll = 0;         // basic: rows scrolled down
     Stone stones[kMaxStones];
     uint8_t stoneCount = 0;
     ShotLog shots;          // the shots on screen (deferred while a stone is timed)
@@ -411,8 +411,8 @@ void displayTask(void*) {
             drawHelp(next, m.lastGame, m.shotPct, m.battery, m.batteryNote);
         } else if (m.menu) {
             drawModeMenu(next, m.menuSel);
-        } else if (m.mode == GameMode::Zoom) {
-            drawZoom(next, m.stones, m.stoneCount, m.warning, m.tip, m.waiting, m.scroll);
+        } else if (m.mode == GameMode::Basic) {
+            drawBasic(next, m.stones, m.stoneCount, m.warning, m.tip, m.waiting, m.scroll);
         } else if (m.mode == GameMode::Competition) {
             drawCompetition(next, m.stones, m.stoneCount, m.me, m.activeCol, m.warning, m.tip, m.waiting);
         } else if (m.mode == GameMode::Coach) {
@@ -442,16 +442,16 @@ void displayTask(void*) {
 void syncModel(bool full = false) {
     static bool sFull;
     sFull = full;
-    {  // zoom: never scrolled past the end (an undo can take a row away)
+    {  // basic: never scrolled past the end (an undo can take a row away)
         const int most = stoneCount + (timing.state() == TimingState::Started ? 1 : 0) - 4;
-        if (zoomScroll > (most > 0 ? most : 0)) zoomScroll = most > 0 ? most : 0;
+        if (basicScroll > (most > 0 ? most : 0)) basicScroll = most > 0 ? most : 0;
     }
     publish([](Model& m) {
         m.mode = mode;
         m.page = coachPage;
         m.me = myPosition;
         m.activeCol = activeCol;
-        m.scroll = zoomScroll;
+        m.scroll = basicScroll;
         memcpy(m.stones, stones, sizeof stones);
         m.stoneCount = stoneCount;
         if (!timing.active()) m.shots = shots;
@@ -574,7 +574,7 @@ void handleOutcome(const Outcome& o, int64_t now) {
             focusTo(Focus::Players);
             Serial.println("focus: players (timing)");
         }
-        zoomScroll = 0;  // zoom: back to the top, where the stone under way shows
+        basicScroll = 0;  // basic: back to the top, where the stone under way shows
         // tips go: timing has the screen (the hold hints stay while their hold lasts)
         tipWaiting = false;
         tipUntil = -1;
@@ -754,7 +754,7 @@ void showHelpAndPowerOff() {
 // ------------------------------------------------------------------ the mode menu
 // The menu's modes, in its order, and the rocker held at switch-on that skips to each.
 constexpr int kMenuCount = 4;
-const GameMode kMenuModes[kMenuCount] = {GameMode::Competition, GameMode::League, GameMode::Coach, GameMode::Zoom};
+const GameMode kMenuModes[kMenuCount] = {GameMode::Basic, GameMode::Competition, GameMode::League, GameMode::Coach};
 uint8_t menuIndex(GameMode m) {
     for (uint8_t i = 0; i < kMenuCount; ++i)
         if (kMenuModes[i] == m) return i;
@@ -768,7 +768,9 @@ constexpr int64_t kMenuIdleUs = 5 * 60 * kSec;  // untouched this long at the me
 GameMode chooseMode() {
     static uint8_t sel;
     static bool full;
-    sel = prefs.getUChar("lastmode", 0) % kMenuCount;
+    // the mode itself is kept (not its place in the menu, which may change); competition the first time
+    const uint8_t last = prefs.getUChar("menumode", static_cast<uint8_t>(GameMode::Competition));
+    sel = menuIndex(last < kMenuCount ? static_cast<GameMode>(last) : GameMode::Competition);
     auto show = [](bool f) {
         full = f;
         publish([](Model& m) {
@@ -970,15 +972,15 @@ void onRockerPress(ButtonState& s, int64_t t) {
     lastRockerPress = t;
 }
 
-// Zoom: the rows a row down (+1, older stones) or up (-1), as far as there are rows (4 show).
-void scrollZoom(int dir) {
+// Basic: the rows a row down (+1, older stones) or up (-1), as far as there are rows (4 show).
+void scrollBasic(int dir) {
     const bool fresh = timing.state() == TimingState::Started;  // a stone under way, no time yet: a row of its own
     const int most = stoneCount + (fresh ? 1 : 0) - 4;
-    const int to = zoomScroll + dir;
+    const int to = basicScroll + dir;
     if (to < 0 || to > (most > 0 ? most : 0)) { sound.play(kError); return; }
-    zoomScroll = to;
+    basicScroll = to;
     sound.play(kClick);
-    Serial.printf("zoom: scrolled %d\n", zoomScroll);
+    Serial.printf("basic: scrolled %d\n", basicScroll);
     syncModel();
 }
 
@@ -1066,7 +1068,7 @@ void releaseAction(uint8_t b) {
     if (buttons[b].holdFired) return;
     if (rules().shotsPerEnd && (!rules().focus || focus == Focus::Rocks)) onShot(b == board::kUp);
     else if (rules().columns) movePlayer(b == board::kUp ? 1 : -1);  // up = next player, down = previous
-    else scrollZoom(b == board::kDown ? 1 : -1);  // zoom: down = older stones, up = newer
+    else scrollBasic(b == board::kDown ? 1 : -1);  // basic: down = older stones, up = newer
 }
 
 void onPress(uint8_t b, int64_t t) {
@@ -1234,8 +1236,8 @@ void runCommand(const char* buf) {
         if (!strcmp(name, "competition")) mode = GameMode::Competition;
         else if (!strcmp(name, "league")) mode = GameMode::League;
         else if (!strcmp(name, "coach")) mode = GameMode::Coach;
-        else if (!strcmp(name, "zoom")) mode = GameMode::Zoom;
-        else { Serial.println("modes: competition | league | coach | zoom"); return; }
+        else if (!strcmp(name, "basic")) mode = GameMode::Basic;
+        else { Serial.println("modes: basic | competition | league | coach"); return; }
         coachPage = 0;
         newGame();
         syncModel(true);
@@ -1263,7 +1265,7 @@ void runCommand(const char* buf) {
     } else if (buf[0]) {
         Serial.println("commands: t <unix seconds> | s | games | games new | game <id> | ack <id> | bank | "
                        "erase-all yes | audit | crash | crash clear | sleeptiming on|off | n (new game) | "
-                       "o (power off) | mode competition|league|coach|zoom | page");
+                       "o (power off) | mode basic|competition|league|coach | page");
     }
 }
 
@@ -1306,7 +1308,7 @@ void setup() {
     else if (board::heldAtStart(board::kUp)) mode = GameMode::Coach;
     else if (board::heldAtStart(board::kPress)) mode = GameMode::Competition;
     else mode = chooseMode();
-    prefs.putUChar("lastmode", menuIndex(mode));  // selected in the menu next time
+    prefs.putUChar("menumode", static_cast<uint8_t>(mode));  // selected in the menu next time
     newGame();  // every switch-on starts a new game
 
     // A button already held at start-up (the side button used to switch on) is neither a

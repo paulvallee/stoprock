@@ -98,8 +98,8 @@ def main():
          screen.coach_timer_screen(COACH_STONES, COACH_SHOTS, active=COACH_ACTIVE)),
         ("Coach, page 2", "Rock priority: all 64 rocks, % per position",
          screen.coach_rocks_screen(COACH_STONES, COACH_SHOTS)),
-        ("Zoom (from the menu)", "Times only, as big as they go: 4 stones, no players",
-         screen.zoom_screen(LEAGUE_STONES)),
+        ("Basic (from the menu)", "Times only, as big as they go: 4 stones, no players",
+         screen.basic_screen(LEAGUE_STONES)),
     ], DOCS / "modes.png")
 
     # you're 2nd: hold the rocker down to log your rocks; after one, the focus is back on the

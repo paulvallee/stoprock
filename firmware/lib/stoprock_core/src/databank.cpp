@@ -40,7 +40,7 @@ const char* modeName(GameMode m) {
     switch (m) {
         case GameMode::Competition: return "competition";
         case GameMode::Coach: return "coach";
-        case GameMode::Zoom: return "zoom";
+        case GameMode::Basic: return "basic";
         default: return "league";
     }
 }

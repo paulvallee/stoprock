@@ -122,7 +122,7 @@ def main(paths):
     adjacent, after_shot = [], []
     seen = 0
     for g in games(paths):
-        if g.get("v", 0) < 5 or g.get("mode") == "zoom":  # zoom: no players, nothing to check
+        if g.get("v", 0) < 5 or g.get("mode") in ("basic", "zoom"):  # basic: no players, nothing to check
             continue
         seen += 1
         print(f"\nGame {g['id']} ({g['mode']}): {len(g['stones'])} stones, {g.get('thrown', 0)} shots logged")

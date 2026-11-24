@@ -33,8 +33,8 @@ struct StoneTimes {
 };
 
 // How the device was switched on (see docs/SPEC.md). 0 = league, so older records read as league.
-enum class GameMode : uint8_t { League = 0, Competition = 1, Coach = 2, Zoom = 3 };
-const char* modeName(GameMode m);  // "league", "competition", "coach", "zoom"
+enum class GameMode : uint8_t { League = 0, Competition = 1, Coach = 2, Basic = 3 };
+const char* modeName(GameMode m);  // "league", "competition", "coach", "basic"
 
 struct GameRecord {
     static constexpr uint16_t kMaxStones = 128;  // 8 ends x 16 stones

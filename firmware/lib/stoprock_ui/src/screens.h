@@ -38,13 +38,13 @@ enum class Tip : uint8_t { None, SwitchOn, Undo, Move, PowerOff, Page };
 void drawHelp(Canvas& c, const char* lastGame, int shotPct = -1, int battery = -1,
               const char* batteryNote = nullptr);
 
-// The mode menu at switch-on: the modes, big, one a line. selected: 0 competition, 1 league, 2 coach, 3 zoom.
+// The mode menu at switch-on: the modes, big, one a line. selected: 0 basic, 1 competition, 2 league, 3 coach.
 void drawModeMenu(Canvas& c, uint8_t selected);
 
-// Zoom: times only, no players, a row a stone (4), as big as they go; the badge strip below. scroll:
+// Basic: times only, no players, a row a stone (4), as big as they go; the badge strip below. scroll:
 // rows scrolled down, to older stones (the badge then says which show, e.g. "5-8 of 14").
-void drawZoom(Canvas& c, const Stone* stones, uint8_t count, bool lowBattery, Tip tip = Tip::None,
-              Waiting waiting = Waiting::None, int scroll = 0);
+void drawBasic(Canvas& c, const Stone* stones, uint8_t count, bool lowBattery, Tip tip = Tip::None,
+               Waiting waiting = Waiting::None, int scroll = 0);
 
 // Competition (switched on with the side button alone): times only, and a badge strip an umpire
 // can read. lowBattery replaces the strip's second line. The history is as in league (below): four

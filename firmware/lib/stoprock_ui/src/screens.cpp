@@ -507,7 +507,7 @@ static void fourColumns(Canvas& c, const Stone* stones, int count, uint8_t me, u
 void drawModeMenu(Canvas& c, uint8_t selected) {
     c.clear();
     c.blit(kLogoStrip, (W - kLogoStrip.w) / 2, 4);
-    static const char* const kModes[4] = {"COMPETITION", "LEAGUE", "COACH", "ZOOM"};
+    static const char* const kModes[4] = {"BASIC", "COMPETITION", "LEAGUE", "COACH"};
     constexpr int kRowTop = 30, kRowPitch = 42, kRowH = 38;
     for (int i = 0; i < 4; ++i) {
         const int y0 = kRowTop + i * kRowPitch;
@@ -530,13 +530,13 @@ static void badgeStrip(Canvas& c, const char* name, bool lowBattery, const char*
         c.text(kFontSpleen6x12, W - 2 - 6 * static_cast<int>(strlen(lines[i])), strip + 1 + 12 * i, lines[i], false);
 }
 
-// Zoom: competition's times with no players, as big as they go: a row a stone, newest first, 4 rows,
+// Basic: competition's times with no players, as big as they go: a row a stone, newest first, 4 rows,
 // B2H black on white left of COMP_MID, H2H white on black right of it, the badge strip below. The rows
 // scroll (scroll: rows down, to older stones); scrolled, the badge says which stones show. A stone
 // being timed with no time yet has a row of its own at the top, with the stopwatch; one awaiting its
 // H2H has the stopwatch in its H2H cell.
-void drawZoom(Canvas& c, const Stone* stones, uint8_t count, bool lowBattery, Tip tip, Waiting waiting,
-              int scroll) {
+void drawBasic(Canvas& c, const Stone* stones, uint8_t count, bool lowBattery, Tip tip, Waiting waiting,
+               int scroll) {
     c.clear();
     const int strip = H - TIP_H, rowH = (H - TIP_H) / 4, kRows = 4;
     c.fillRect(COMP_MID, 0, W - 1, strip - 1);
@@ -569,7 +569,7 @@ void drawZoom(Canvas& c, const Stone* stones, uint8_t count, bool lowBattery, Ti
         }
     }
     if (scroll > 0) snprintf(buf, sizeof buf, "%d-%d of %d", first, last, count);
-    badgeStrip(c, "ZOOM", lowBattery, scroll > 0 ? buf : nullptr);
+    badgeStrip(c, "BASIC", lowBattery, scroll > 0 ? buf : nullptr);
     if (tip == Tip::Undo || tip == Tip::PowerOff) undoTip(c, kHintTop, strip, tip);
 }
 

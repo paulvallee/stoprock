@@ -222,13 +222,13 @@ HELP_EQ_X = 5 + 6 * len("SHOTS") + 8 + 6 * len("up/down ")  # x of every "=" on 
 
 # The menu at switch-on (unless the rocker is held: then that mode straight away). The mode used last
 # is selected; up/down choose, the rocker's middle starts it.
-MENU_MODES = ("COMPETITION", "LEAGUE", "COACH", "ZOOM")
+MENU_MODES = ("BASIC", "COMPETITION", "LEAGUE", "COACH")
 MENU_ROW_TOP, MENU_ROW_PITCH, MENU_ROW_H = 30, 42, 38  # the modes, big, one a line
 
 
 def mode_menu(selected):
-    """The modes at switch-on, big (Spleen 16x32, bold), one a line; selected (0 competition, 1 league,
-    2 coach, 3 zoom) white on black. Up/down choose, the middle starts it: no help text, the help page has it."""
+    """The modes at switch-on, big (Spleen 16x32, bold), one a line; selected (0 basic, 1 competition,
+    2 league, 3 coach) white on black. Up/down choose, the middle starts it: no help text, the help page has it."""
     f = fonts()
     img = Image.new("1", (W, H), 1)
     d = ImageDraw.Draw(img)
@@ -455,14 +455,14 @@ def badge_strip(img, d, f, name, low_battery, note=None):
         d.text((W - 2 - 6 * len(t), y), t, font=f["label"], fill=1)
 
 
-# Zoom: competition's times with no players, as big as they go: a row a stone, newest first, 4 rows,
+# Basic: competition's times with no players, as big as they go: a row a stone, newest first, 4 rows,
 # B2H black on white left of COMP_MID, H2H white on black right of it, the badge strip below. The
 # rocker scrolls (down: older, up: newer), a row a press; scrolled, the badge says which stones show.
-ZOOM_ROW_H = (H - TIP_H) // 4  # 43
-ZOOM_ROWS = 4
+BASIC_ROW_H = (H - TIP_H) // 4  # 43
+BASIC_ROWS = 4
 
 
-def zoom_rows(stones, waiting):
+def basic_rows(stones, waiting):
     """The rows to scroll through, newest first: (b2h, h2h, stopwatch in the B2H cell, in the H2H cell,
     stone number counting from the newest, 1; None for a stone being timed with no time yet)."""
     rows = []
@@ -473,7 +473,7 @@ def zoom_rows(stones, waiting):
     return rows
 
 
-def zoom_screen(stones, low_battery=False, tip=False, waiting=None, scroll=0):
+def basic_screen(stones, low_battery=False, tip=False, waiting=None, scroll=0):
     """stones: (b2h, h2h, ...) newest first; scroll: rows scrolled down (to older stones). The top row
     unscrolled is the stone being timed, as the newest row of the other modes."""
     f = fonts()
@@ -482,11 +482,11 @@ def zoom_screen(stones, low_battery=False, tip=False, waiting=None, scroll=0):
     d.fontmode = "1"
     strip = H - TIP_H
     d.rectangle([COMP_MID, 0, W - 1, strip - 1], fill=0)
-    rows = zoom_rows(stones, waiting)
-    scroll = max(0, min(scroll, len(rows) - ZOOM_ROWS))
-    shown = rows[scroll:scroll + ZOOM_ROWS]
+    rows = basic_rows(stones, waiting)
+    scroll = max(0, min(scroll, len(rows) - BASIC_ROWS))
+    shown = rows[scroll:scroll + BASIC_ROWS]
     for i, (bh, hh, watch_bh, watch_hh, _) in enumerate(shown):
-        y0 = i * ZOOM_ROW_H
+        y0 = i * BASIC_ROW_H
         if i:
             d.line([(0, y0), (COMP_MID - 1, y0)], fill=0)  # between rows: black on white, white on black
             d.line([(COMP_MID, y0), (W - 1, y0)], fill=1)
@@ -494,14 +494,14 @@ def zoom_screen(stones, low_battery=False, tip=False, waiting=None, scroll=0):
             v, watch = (bh, watch_bh) if k == 0 else (hh, watch_hh)
             if v is not None:
                 font = f["big_long"] if v >= 20 else f["big"]
-                dseg_number(d, v, font, x0, x1, y0, y0 + ZOOM_ROW_H, margin=0, align="center", fill=k)
+                dseg_number(d, v, font, x0, x1, y0, y0 + BASIC_ROW_H, margin=0, align="center", fill=k)
             elif watch:
-                stopwatch(d, (x0 + x1) // 2, y0 + ZOOM_ROW_H // 2, STOPWATCH_BIG, k)
+                stopwatch(d, (x0 + x1) // 2, y0 + BASIC_ROW_H // 2, STOPWATCH_BIG, k)
     note = None
     if scroll > 0:  # which stones show, counting from the newest
         nums = [n for *_, n in shown if n is not None]
         note = f"{nums[0]}-{nums[-1]} of {len(stones)}"
-    badge_strip(img, d, f, "ZOOM", low_battery, note)
+    badge_strip(img, d, f, "BASIC", low_battery, note)
     if tip in ("undo", "off"):
         tooltip(d, f, UNDO_TIP if tip == "undo" else OFF_TIP, HINT_TOP, strip)
     return img
