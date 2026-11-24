@@ -360,16 +360,22 @@ static void leagueTimes(Canvas& c, const Stone* stones, int count, uint8_t me, u
     playerColumns(c, stones, count, me, xs, kLeagueColumns, active, bottom, linesMax, kRowFont);
 }
 
+// The top of the times, every mode: Back2Hog | Hog2Hog labels (split at mid; the H2H label ends at
+// labelRight), the newest stone large, a stopwatch where an awaited time will appear.
+static void timesTop(Canvas& c, const Stone* stones, int count, Waiting waiting, int mid, int labelRight) {
+    const Font& label = kFontSpleen6x12;
+    textInBox(c, label, "Back2Hog", 0, mid, 0, LABEL_H, kCentre, 4);
+    textInBox(c, label, "Hog2Hog", mid, labelRight, 0, LABEL_H, kCentre, 4);
+    hline(c, 0, W - 1, LABEL_H);
+    newestRow(c, stones, count, waiting, mid, kFontDseg25, 13, 47, 3, kStopwatch, 30);
+    hline(c, 0, W - 1, 47, 2);
+    vline(c, mid, 0, 46);
+}
+
 // The newest stone large, then the four columns down to bottom.
 static void fourColumns(Canvas& c, const Stone* stones, int count, uint8_t me, uint8_t active, int bottom,
                         int linesMax, Waiting waiting) {
-    const Font& label = kFontSpleen6x12;
-    textInBox(c, label, "Back2Hog", 0, COMP_MID, 0, LABEL_H, kCentre, 4);
-    textInBox(c, label, "Hog2Hog", COMP_MID, W, 0, LABEL_H, kCentre, 4);
-    hline(c, 0, W - 1, LABEL_H);
-    newestRow(c, stones, count, waiting, COMP_MID, kFontDseg25, 13, 47, 3, kStopwatch, 30);
-    hline(c, 0, W - 1, 47, 2);
-    vline(c, COMP_MID, 0, 46);
+    timesTop(c, stones, count, waiting, COMP_MID, W);
     leagueTimes(c, stones, count, me, active, bottom, linesMax);
 }
 
@@ -435,12 +441,7 @@ void drawCoachTimer(Canvas& c, const Stone* stones, uint8_t count, const ShotLog
     const Font& label = kFontSpleen6x12;
     pageMarks(c, 0);
     const int bottom = 150;
-    textInBox(c, label, "Back2Hog", 0, WIDE_MID, 0, LABEL_H, kCentre, 4);
-    textInBox(c, label, "Hog2Hog", WIDE_MID, W - 18, 0, LABEL_H, kCentre, 4);
-    hline(c, 0, W - 1, LABEL_H);
-    newestRow(c, stones, count, waiting, WIDE_MID, kFontDseg25, 13, 47, 3, kStopwatch, 30);
-    hline(c, 0, W - 1, 47, 2);
-    vline(c, WIDE_MID, 0, 46);
+    timesTop(c, stones, count, waiting, WIDE_MID, W - 18);  // left of the page marks
     static const int xs[kCoachColumns + 1] = {0, 40, 80, 120, 160, 200};
     playerColumns(c, stones, count, kCoachSeat, xs, kCoachColumns, activeCol, bottom, kCoachRows, kNarrowFont);
     hline(c, 0, W - 1, bottom, 2);

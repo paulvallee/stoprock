@@ -425,15 +425,20 @@ def player_columns(d, f, stones, xs, players, active, bottom, lines_max, font):
                              fill=1 if inverted else 0)
 
 
-def four_columns(d, f, stones, me, active, bottom, lines_max, waiting):
-    """Competition and league times: the newest stone large, then the four columns down to bottom."""
-    mid = COMP_MID
+def times_top(d, f, stones, waiting, mid, label_right=W):
+    """The top of the times, every mode: Back2Hog | Hog2Hog labels (split at mid; the H2H label ends
+    at label_right), the newest stone large, a stopwatch where an awaited time will appear."""
     text_in_box(d, "Back2Hog", f["label"], 0, mid, 0, 12, align="center")
-    text_in_box(d, "Hog2Hog", f["label"], mid, W, 0, 12, align="center")
+    text_in_box(d, "Hog2Hog", f["label"], mid, label_right, 0, 12, align="center")
     d.line([(0, 12), (W - 1, 12)], fill=0)
     newest_row(d, f, stones, waiting, mid, f["big"], 13, 47, 3, STOPWATCH_BIG, 30)
     d.line([(0, 47), (W - 1, 47)], fill=0, width=2)
     d.line([(mid, 0), (mid, 46)], fill=0)
+
+
+def four_columns(d, f, stones, me, active, bottom, lines_max, waiting):
+    """Competition and league times: the newest stone large, then the four columns down to bottom."""
+    times_top(d, f, stones, waiting, COMP_MID)
     league_times(d, f, stones, me, active, bottom, lines_max)
 
 
@@ -521,13 +526,7 @@ def coach_timer_screen(stones, shots, waiting=None, active=0, tip=False):
     d.fontmode = "1"
     page_marks(d, 0)
     bottom = 150
-    mid = WIDE_MID
-    text_in_box(d, "Back2Hog", f["label"], 0, mid, 0, 12, align="center")
-    text_in_box(d, "Hog2Hog", f["label"], mid, W - 18, 0, 12, align="center")
-    d.line([(0, 12), (W - 1, 12)], fill=0)
-    newest_row(d, f, stones, waiting, mid, f["big"], 13, 47, 3, STOPWATCH_BIG, 30)
-    d.line([(0, 47), (W - 1, 47)], fill=0, width=2)
-    d.line([(mid, 0), (mid, 46)], fill=0)
+    times_top(d, f, stones, waiting, WIDE_MID, W - 18)  # left of the page marks
     player_columns(d, f, stones, COACH_COLS, [0, 1, 2, 3, THEM], active, bottom, COACH_LINES, f["narrow"])
     d.line([(0, bottom), (W - 1, bottom)], fill=0, width=2)
     gx = COACH_GX

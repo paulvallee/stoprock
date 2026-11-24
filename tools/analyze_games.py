@@ -17,10 +17,23 @@ version 5 or later, prints:
   20 s before you log it).
 """
 import json
+import re
 import statistics
 import sys
+from pathlib import Path
 
-NEXT_THROW_S, THROW_S, SHOT_LAG_S = 80, 56, 20
+ORDER_H = Path(__file__).resolve().parents[1] / "firmware" / "lib" / "stoprock_core" / "src" / "throw_order.h"
+
+
+def order_constant(name):
+    """A ThrowOrder constant in seconds, read from throw_order.h so the analysis checks what the device does."""
+    m = re.search(rf"{name}\s*=\s*(\d+)LL\s*\*\s*1000000", ORDER_H.read_text())
+    if not m:
+        sys.exit(f"{name} not found in {ORDER_H}")
+    return int(m.group(1))
+
+
+NEXT_THROW_S, THROW_S, SHOT_LAG_S = (order_constant(n) for n in ("kNextThrowUs", "kThrowUs", "kShotLagUs"))
 NAMES = {"lead": "Lead", "second": "2nd", "third": "3rd", "skip": "Skip", "them": "THEM", None: "-"}
 BUCKETS = [(0, 80, "under 80 s"), (80, 140, "80-140 s"), (140, 200, "140-200 s"), (200, 10 ** 9, "200 s +")]
 
