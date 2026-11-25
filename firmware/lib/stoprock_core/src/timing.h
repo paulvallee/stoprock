@@ -6,9 +6,9 @@
 namespace stoprock {
 
 struct TimingConfig {
-    int64_t doublePressUs = 1000000;  // gaps under this are one click (a heavy tee-to-hog can be ~1.6 s)
-    int64_t bhMaxUs = 7000000;        // B2H is [doublePress, bhMax): a stick delivery can take over 5.5 s
-    int64_t hhMinUs = 5500000;        // after a B2H, an H2H is at least this (a big-weight one can be ~6 s);
+    int64_t doublePressUs = 1000000;  // gaps under this are one click (a heavy tee-to-hog can be ~1.6s)
+    int64_t bhMaxUs = 7000000;        // B2H is [doublePress, bhMax): a stick delivery can take over 5.5s
+    int64_t hhMinUs = 5500000;        // after a B2H, an H2H is at least this (a big-weight one can be ~6s);
                                       // a click sooner is ignored
     int64_t hhMaxUs = 20000000;       // H2H at most this (H2H-only: [bhMax, hhMax]); also the wait timeout
 };

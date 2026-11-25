@@ -25,12 +25,12 @@ constexpr int64_t kSec = 1000000;
 constexpr int64_t kConfirmUs = 15000;          // a timing press must still be held 15 ms after its edge
 constexpr int64_t kEdgeGapUs = 30000;          // ignore further edges of the same button within 30 ms
 constexpr int64_t kStableUs = 20000;           // rocker debounce
-constexpr int64_t kUndoHoldUs = kSec;       // hold the rocker centre 1 s to undo (and 1 s for each more)
-constexpr int64_t kUndoHintUs = kSec / 5;   // ... "Keep holding to undo" shows 0.2 s into it (and
-                                            // "Keep holding to move time" 0.2 s into a hold that moves a time)
+constexpr int64_t kUndoHoldUs = kSec;       // hold the rocker centre 1s to undo (and 1s for each more)
+constexpr int64_t kUndoHintUs = kSec / 5;   // ... "Keep holding to undo" shows 0.2s into it (and
+                                            // "Keep holding to move time" 0.2s into a hold that moves a time)
 constexpr int64_t kPowerHoldUs = 3 * kSec;
 constexpr int64_t kOffHintUs = kSec / 2;       // "Keep holding to turn off" from then (a timing click is quicker)
-constexpr int64_t kDoublePressUs = 400000;     // two rocker presses within 0.4 s: a double press
+constexpr int64_t kDoublePressUs = 400000;     // two rocker presses within 0.4s: a double press
 constexpr int64_t kFocusHoldUs = kSec / 2;     // league: hold rocker down (up from your rocks) to move the focus
 constexpr int64_t kMoveStepUs = 700000;        // holding up moves the newest time this often
 constexpr int64_t kScrollModeHoldUs = 700000;  // hold down to browse or log rocks, hold up to return
@@ -154,19 +154,19 @@ uint8_t activeCol = 0;          // the column with the cursor
 TimeHistoryView timeHistory;    // shared by the three modes that have player columns
 int basicScroll = 0;             // basic: rows scrolled down, to older stones (the rocker; a new stone resets it)
 // League: what rocker up/down work on, the focus (bold border): the players' columns (up = next,
-// down = previous) or your rocks (made/missed). Hold down 0.5 s for your rocks; logging a shot (or
-// holding up 0.5 s) goes back to the columns. On the columns, holding up moves the newest time.
+// down = previous) or your rocks (made/missed). Hold down 0.5s for your rocks; logging a shot (or
+// holding up 0.5s) goes back to the columns. On the columns, holding up moves the newest time.
 Focus focus = Focus::Players;
 ThrowOrder order;               // where in the end the game is
 bool manualCursor = false;      // the cursor was put where it is with the rocker: leave it there
 int64_t stoneStart = -1;        // when the stone being timed started
 int64_t gameStartUs = 0;        // when this game started (switch-on)
-// A stone started with no second click for longer than a B2H can be (7 s): it can only be an
+// A stone started with no second click for longer than a B2H can be (7s): it can only be an
 // H2H, so the stopwatch moves to the H2H box. h2hSwitchAt: when that happens for the stone under way.
 int64_t h2hSwitchAt = -1;
 uint8_t moveSteps = 0;          // columns the newest time has moved during this hold of rocker up
 // League: when your throw is next, the focus moves to your rocks by itself this long after the
-// stone before yours started (about 13 s after it's done, if it was timed), ready for your shot.
+// stone before yours started (about 13s after it's done, if it was timed), ready for your shot.
 constexpr int64_t kOwnShotFocusUs = 30 * kSec;
 int64_t rocksFocusAt = -1;      // ... then; -1 = not due
 // Between stones the cursor follows the clock, moving on when enough time has gone by for another
@@ -204,7 +204,7 @@ bool tipWaiting = false;         // start the timer when the tip is actually on 
 bool basicIntroClearing = false; // presses still dismiss only while the display clears it
 bool undoHint = false;           // "Keep holding to undo": the rocker centre is held, the undo not yet due
 // Coach: a single click of the rocker centre (switching page takes two): "Double click rocker middle
-// to change pages", once the double-click window has passed, for 3 s or till the next press.
+// to change pages", once the double-click window has passed, for 3s or till the next press.
 constexpr int64_t kPageTipUs = 3 * kSec;
 int64_t singleClickAt = -1;     // the click to check, once the window has passed (-1: none)
 int64_t singleClickPress = -1;  // ... the press it was (a second press since: a double click)
@@ -212,7 +212,7 @@ int64_t pageTipUntil = -1;
 // The position card and a press of the rocker centre: dismissed once the double-click window has
 // passed (a double click changes position and shows the card again: no blink in between).
 int64_t cardDismissAt = -1;
-bool offHint = false;            // "Keep holding to turn off": the side button held, not yet 3 s
+bool offHint = false;            // "Keep holding to turn off": the side button held, not yet 3s
 bool moveHint = false;           // "Keep holding to move time": rocker up (or down) held to move a time, till let go
 uint8_t stonesSinceClean = 0;
 
@@ -685,7 +685,7 @@ void auditSave() {
 }
 
 // A sample pairs a real-time clock second edge with the chip timer. Waiting for the edge
-// takes up to ~1 s, so it runs a step per loop pass (buttons keep working meanwhile) and the
+// takes up to ~1s, so it runs a step per loop pass (buttons keep working meanwhile) and the
 // chip doesn't sleep until it's done.
 bool auditWaiting = false;
 uint32_t auditFrom = 0;
@@ -779,7 +779,7 @@ int menuIndex(GameMode mode) {
 constexpr int64_t kMenuIdleUs = 5 * 60 * kSec;  // untouched this long at the menu: switch off
 
 // At switch-on, unless the rocker is held: the modes, the one used last selected. Up/down
-// choose (round and round), the rocker's middle starts the one selected. The side button held 3 s
+// choose (round and round), the rocker's middle starts the one selected. The side button held 3s
 // switches off as always (once it's been let go after switching on).
 GameMode chooseMode() {
     static StartupMenuSelection selection, tutorialSelection;
@@ -927,7 +927,7 @@ void onShot(bool made) {
 }
 
 // Hold the rocker centre: undo the newest entry, a time or a shot, whichever came last (again every
-// 0.5 s while held). A stone being timed is cancelled first: if it has its B2H, that time goes too.
+// 0.5s while held). A stone being timed is cancelled first: if it has its B2H, that time goes too.
 // The throw order steps back with it. Returns false when there was nothing to undo.
 // Cancel the stone being timed. Returns true if its B2H is the newest entry, to be undone too
 // (not if something, a coach's shot, was logged since).
@@ -1020,7 +1020,7 @@ void switchPage() {
     Serial.printf("coach: page %d\n", coachPage + 1);
 }
 
-// A second short rocker press within 0.4 s (not an undo): changes your position (lead, 2nd, 3rd,
+// A second short rocker press within 0.4s (not an undo): changes your position (lead, 2nd, 3rd,
 // skip, round again), or a coach's page. Defer the single-click action until the window closes.
 void onRockerPress(ButtonState& s, int64_t t) {
     if (t - lastRockerPress < kDoublePressUs) {
@@ -1083,7 +1083,7 @@ void movePlayer(int dir) {
     syncModel();
 }
 
-// Rocker up held on the columns: the newest time moves a column left every 0.7 s, wrapping.
+// Rocker up held on the columns: the newest time moves a column left every 0.7s, wrapping.
 // Returns false when there's no time to move.
 bool stepMove() {
     const int col = stoneCount > 0 ? playerColumn(seat(), stones[0].player) : -1;
@@ -1229,7 +1229,7 @@ void pollButtons(int64_t now) {
             }
             if (s.down && !raw && stable) {
                 s.down = false;
-                if (b == board::kSide && offHint) {  // let go before 3 s: stays on (the click was taken back)
+                if (b == board::kSide && offHint) {  // let go before 3s: stays on (the click was taken back)
                     offHint = false;
                     syncModel();
                 }
@@ -1244,8 +1244,8 @@ void pollButtons(int64_t now) {
 
         // holds
         if (s.down && !s.holdFired) {
-            // Rocker press: undo the newest entry after 1 s, then again every 1 s while held.
-            // "Keep holding to undo" shows from 0.2 s until the first undo only: shown again for the
+            // Rocker press: undo the newest entry after 1s, then again every 1s while held.
+            // "Keep holding to undo" shows from 0.2s until the first undo only: shown again for the
             // repeats, it would vanish and reappear at every one. Stops after one error buzz once
             // there's nothing left to undo.
             if (b == board::kPress && !undoHint && now < s.downSince + kUndoHoldUs &&

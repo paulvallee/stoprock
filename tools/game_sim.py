@@ -6,11 +6,11 @@ refreshes, awake time and battery use.
 Rules modelled (docs/SPEC.md sections 4, 7, 10), with sleep-while-timing on (the default):
 - Each click wakes the chip just long enough to confirm the press and beep; a B2H or H2H
   result also waits for its partial update. In between, it sleeps.
-- 5 s after each H2H the chip wakes for the next tip: a partial update, or a full
+- 5s after each H2H the chip wakes for the next tip: a partial update, or a full
   (ghost-clearing) refresh after every 4th stone. Then it sleeps again.
 - A rocker press wakes it, logs the shot (one partial update when no stone is being
-  timed) and keeps it awake 2 s.
-- Every 10 minutes a clock-audit sample keeps it awake up to ~1 s (0.5 s on average).
+  timed) and keeps it awake 2s.
+- Every 10 minutes a clock-audit sample keeps it awake up to ~1s (0.5s on average).
 - The chip runs at 80 MHz.
 - Switching on draws the menu and the mode with fast whole-screen updates (as partials);
   the first ghost-clearing full refresh follows the first stone. Switching off (the off page)
@@ -27,7 +27,7 @@ CLICK_AWAKE_S = 0.05          # confirm the press (15 ms) and beep (30 ms)
 AUDIT_EVERY_S, AUDIT_AWAKE_S = 600, 0.5
 REFRESH_DELAY_S = 5.0
 OWN_ROCKS = (0, 2)           # your two rocks in each end (as lead: stones 1 and 3)
-SHOT_LOGGED_AFTER_S = 35.0   # you log your rock ~35 s after its back-line click, once it stops
+SHOT_LOGGED_AFTER_S = 35.0   # you log your rock ~35s after its back-line click, once it stops
 WAKE_OVERHEAD_S = 0.02       # wake-up, run the loop, go back to sleep
 
 # Estimated currents at 3.7 V (to be measured on a real CoreInk), low / typical / high

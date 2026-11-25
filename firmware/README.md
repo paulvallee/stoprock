@@ -43,7 +43,7 @@ Type into the serial console:
 
 While a stone is timed the chip sleeps between clicks, and time asleep is counted by a less precise backup
 clock. The firmware measures that clock against the real-time clock's crystal throughout the game. After the
-game, switch it off as usual (hold the side button 3 s; that takes the audit's final sample). Then plug it into
+game, switch it off as usual (hold the side button 3s; that takes the audit's final sample). Then plug it into
 your Mac, open the serial console (which switches it on, starting a new audit) and type `audit`:
 
 ```sh
@@ -61,20 +61,20 @@ Each line is one switch-on, the current one first; your game is the line after i
 ```
 
 (The numbers above are made up, to show the format.) `est_error_ms_15s_h2h` is what matters: the typical error in
-a 15 s H2H caused by sleeping. Under about 3 ms is invisible in hundredths; past about 5 ms, turn sleeping
+a 15s H2H caused by sleeping. Under about 3 ms is invisible in hundredths; past about 5 ms, turn sleeping
 while timing off with `sleeptiming off`. Send me the output and I'll interpret it.
 
 ## Checked on hardware, and not
 
 Seen on a CoreInk on USB (November 2026): it stays on through light sleep, all buttons read up at start-up, and the top
 button starts the stopwatch, logs B2H and H2H and wakes the chip from light sleep. The side button does the same; held
-3 s it switches off, and a press then restarts it. (Not with M5Unified's `powerOff()`, after which the side button did
+3s it switches off, and a press then restarts it. (Not with M5Unified's `powerOff()`, after which the side button did
 nothing on USB: see `board_coreink.cpp`.)
 
 Still to check: battery power beyond a reported switch-off and on, the LED's polarity, the buzzer, battery readings, and
 how clean the fast update looks when waking and switching from the menu into a mode. Also the
-USB port dropping with the cable in: seen once, about 30 s into idle with no `power: off` in the log. The board carried
+USB port dropping with the cable in: seen once, about 30s into idle with no `power: off` in the log. The board carried
 on, and replugging brought the port back. Cause not known.
 
 While the chip sleeps it doesn't hear the serial console: a command typed then is lost. Press a rocker button first and
-type within 2 s.
+type within 2s.

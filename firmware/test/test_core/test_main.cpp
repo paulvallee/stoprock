@@ -48,10 +48,10 @@ static void test_double_press_restarts() {
 static void test_window_boundaries() {
     TimingEngine t;
     t.click(0);
-    TEST_ASSERT_EQUAL(TimingEvent::BH, t.click(sec(1.0)).event);  // 1.0 s is B2H
+    TEST_ASSERT_EQUAL(TimingEvent::BH, t.click(sec(1.0)).event);  // 1.0s is B2H
     t.reset();
     t.click(0);
-    TEST_ASSERT_EQUAL(TimingEvent::Restarted, t.click(sec(0.99)).event);  // under 1 s: double press
+    TEST_ASSERT_EQUAL(TimingEvent::Restarted, t.click(sec(0.99)).event);  // under 1s: double press
     t.reset();
     t.click(0);
     Outcome heavy = t.click(sec(1.6));                     // big-weight tee-to-hog
@@ -59,7 +59,7 @@ static void test_window_boundaries() {
     TEST_ASSERT_EQUAL_INT64(sec(1.6), heavy.us);
     t.reset();
     t.click(0);
-    TEST_ASSERT_EQUAL(TimingEvent::HH, t.click(sec(7.0)).event);  // 7 s with no B2H before: H2H
+    TEST_ASSERT_EQUAL(TimingEvent::HH, t.click(sec(7.0)).event);  // 7s with no B2H before: H2H
     t.reset();
     t.click(0);
     TEST_ASSERT_EQUAL(TimingEvent::BH, t.click(sec(6.99)).event); // just under: B2H (a stick delivery)
@@ -72,12 +72,12 @@ static void test_window_boundaries() {
     t.reset();
     t.click(0);
     t.click(sec(2.6));                                            // heavy B2H
-    Outcome peel = t.click(sec(2.6 + 6.0));                       // big-weight peel H2H, 6 s
+    Outcome peel = t.click(sec(2.6 + 6.0));                       // big-weight peel H2H, 6s
     TEST_ASSERT_EQUAL(TimingEvent::HH, peel.event);
     TEST_ASSERT_EQUAL_INT64(sec(6.0), peel.us);
     t.reset();
     t.click(0);
-    TEST_ASSERT_EQUAL(TimingEvent::HH, t.click(sec(20.0)).event); // 20 s is still H2H
+    TEST_ASSERT_EQUAL(TimingEvent::HH, t.click(sec(20.0)).event); // 20s is still H2H
 }
 
 static void test_click_too_soon_after_bh_is_ignored() {
@@ -96,7 +96,7 @@ static void test_click_after_hh_starts_next_stone_immediately() {
     t.click(0);
     t.click(sec(3));
     t.click(sec(17));                                            // H2H, done
-    TEST_ASSERT_EQUAL(TimingEvent::Started, t.click(sec(19.5)).event);  // 2.5 s later
+    TEST_ASSERT_EQUAL(TimingEvent::Started, t.click(sec(19.5)).event);  // 2.5s later
 }
 
 static void test_abandoned_start_times_out() {

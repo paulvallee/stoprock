@@ -216,7 +216,7 @@ constexpr int kLinesTop = 59;   // the columns' first line
 constexpr int kCoachTimesY0 = 4;  // coach: the newest stone's digits start under the page marks (y 1-4)
 
 // The current stone across both halves, centred: B2H black on white, H2H white on its black half
-// (filled by the caller); longFont for an H2H of 20.00 s, too wide for font. A stopwatch where an
+// (filled by the caller); longFont for an H2H of 20.00s, too wide for font. A stopwatch where an
 // awaited time will appear. Awaiting the B2H, or the H2H of a stone with no B2H, the row is still
 // empty (no time yet).
 void newestRow(Canvas& c, const Stone* stones, int count, Waiting waiting, int mid, const Font& font,
@@ -293,7 +293,7 @@ static void switchOnTip(Canvas& c, uint8_t me) {
     c.blit(kPositionTitles[me % 4], 8, kHintTop + 28);
 }
 
-// While the rocker centre is held, before the undo (1 s): the hold does something. tip says which:
+// While the rocker centre is held, before the undo (1s): the hold does something. tip says which:
 // Undo, or PowerOff (the side button held, before it switches off).
 static void undoTip(Canvas& c, int top, int bottom, Tip tip = Tip::Undo) {
     const char* const lines[2] = {"Keep holding", tip == Tip::PowerOff ? "to turn off" : "to undo"};

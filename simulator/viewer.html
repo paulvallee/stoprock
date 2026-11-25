@@ -53,13 +53,13 @@
 <div class="panel">
   <h1>stoprock simulator</h1>
   <p>The real firmware, running in Espressif's esp-emulator on an ESP32-S3. Screen updates appear when the
-     CoreInk's e-ink would finish them: 0.26 s after the press, or after a 2 s flashing full refresh. Hold a button with the mouse or a key.</p>
+     CoreInk's e-ink would finish them: 0.26s after the press, or after a 2s flashing full refresh. Hold a button with the mouse or a key.</p>
   <table class="keys">
     <tr><td><kbd>Space</kbd> or <kbd>T</kbd></td><td>top button: timing click</td></tr>
-    <tr><td><kbd>S</kbd></td><td>side button: timing click; hold 3 s to switch off</td></tr>
+    <tr><td><kbd>S</kbd></td><td>side button: timing click; hold 3s to switch off</td></tr>
     <tr><td><kbd>↑</kbd> / <kbd>↓</kbd></td><td>rocker up: made / rocker down: missed;
       competition mode: next / previous player</td></tr>
-    <tr><td><kbd>Enter</kbd></td><td>rocker press: hold 0.5 s to undo; keep holding to undo more;
+    <tr><td><kbd>Enter</kbd></td><td>rocker press: hold 0.5s to undo; keep holding to undo more;
       press twice quickly: coach mode, switch page; competition mode, change your position</td></tr>
     <tr><td>switched off: <kbd>S</kbd></td><td>switch on in competition mode</td></tr>
     <tr><td>hold <kbd>↓</kbd> + <kbd>S</kbd></td><td>switch on in league mode</td></tr>
@@ -184,7 +184,7 @@ document.addEventListener("keyup", (e) => {
   const name = KEYS[e.key] || KEYS[e.key.toLowerCase()];
   if (name) { e.preventDefault(); release(name); }
 });
-// Restart in a mode: what you'd do with the device. If it's on, hold the side button 3 s to
+// Restart in a mode: what you'd do with the device. If it's on, hold the side button 3s to
 // switch it off; then hold the rocker (down = league, up = coach, nothing = competition) while
 // the side button switches it on, and let go once it's up.
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));

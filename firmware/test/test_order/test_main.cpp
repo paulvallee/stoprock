@@ -69,7 +69,7 @@ static void test_untimed_stones_are_counted_by_the_gap() {
 
 static void test_quick_stones_are_the_next_throw() {
     Game g(2);
-    g.playEnd(true, 40);  // a fast end: 40 s a throw, all under 80 s
+    g.playEnd(true, 40);  // a fast end: 40s a throw, all under 80s
     TEST_ASSERT_EQUAL_INT(0, g.wrong);
 }
 
@@ -128,15 +128,15 @@ static void test_cursor_follows_the_clock() {
     o.place(0, 0);
     TEST_ASSERT_EQUAL_INT(2, o.lastThrow());
     TEST_ASSERT_EQUAL_UINT8(ThrowOrder::kThem, o.predict(10 * S));
-    // 75% of the way to the throw after: THEM's lead (45 s), then yours (50 s more) -> 82.5 s;
-    // then 95 + 37.5 = 132.5 s
+    // 75% of the way to the throw after: THEM's lead (45s), then yours (50s more) -> 82.5s;
+    // then 95 + 37.5 = 132.5s
     TEST_ASSERT_EQUAL_INT64(82500000, o.nextChange(10 * S));
     TEST_ASSERT_EQUAL_INT64(132500000, o.nextChange(82500000));
     // nothing timed since: THEM, you, THEM, you, THEM, then the 3rd, about 6 throws on
     int64_t t = 0, firstThird = -1;
     while ((t = o.nextChange(t)) >= 0 && t < 600 * S)
         if (firstThird < 0 && o.predict(t) == 1) firstThird = t;
-    TEST_ASSERT_EQUAL_INT64(284 * S, firstThird);  // 75% of the way from THEM's last (245 s) to the 3rd (297 s)
+    TEST_ASSERT_EQUAL_INT64(284 * S, firstThird);  // 75% of the way from THEM's last (245s) to the 3rd (297s)
 }
 
 static void test_mine_so_far() {
@@ -163,7 +163,7 @@ static void test_mine_so_far() {
 }
 
 static void test_coach_times_every_stone() {
-    // a coach times every stone and logs each of the team's rocks ~25 s after it starts
+    // a coach times every stone and logs each of the team's rocks ~25s after it starts
     ThrowOrder o;
     o.reset(ThrowOrder::kCoach);
     TEST_ASSERT_EQUAL_UINT8(4, o.themColumn());
@@ -172,7 +172,7 @@ static void test_coach_times_every_stone() {
     for (int e = 0; e < 8; ++e) {
         const bool ourFirst = e % 2 == 1;  // they have the first rock in end 1, then it swaps
         for (int s = 0; s < 16; ++s) {
-            // the model's own pace (skips slower, the swap, the end break), give or take 5 s
+            // the model's own pace (skips slower, the swap, the end break), give or take 5s
             t += (ThrowOrder::kIntervalS[s / 4] + (s == 12 ? ThrowOrder::kSkipSwapS : 0) +
                   (s == 0 && e > 0 ? ThrowOrder::kEndBreakS : 0) + (s * 7 + e * 3) % 11 - 5) * S;
             const uint8_t truth = o.columnOf(s, ourFirst);
@@ -216,7 +216,7 @@ static void test_undo_steps_back() {
 }
 
 // A real end, timed by a coach on 23 Nov 2026: THEM first; THEM's lead's second stone untimed;
-// their skip thought for 130 s before their last stone. Only the game's first stone can't be known.
+// their skip thought for 130s before their last stone. Only the game's first stone can't be known.
 static void test_real_end_coach() {
     struct Stone { int start; uint8_t col; };  // coach columns: 0 lead .. 3 skip, 4 THEM
     const Stone end[] = {{432, 4}, {471, 0}, {569, 0}, {621, 4}, {678, 1}, {719, 4}, {768, 1},

@@ -15,9 +15,9 @@ version 5 or later, prints:
   against the expected times in throw_order.h (kIntervalS by position, kSkipSwapS before the first
   skip stone, kEndBreakS between ends). These are the numbers to tune;
 - the gaps between stones that look a throw apart (the other team's stone straight after ours, or
-  ours after theirs, under 150 s);
+  ours after theirs, under 150s);
 - league: how long after your logged shot the next stone started (the device takes your throw as
-  20 s before you log it).
+  20s before you log it).
 """
 import json
 import re
@@ -42,7 +42,7 @@ END_BREAK_S = int(order_constant(r"kEndBreakS\s*=\s*(\d+)", "kEndBreakS")[0])
 SHOT_LAG_S = int(order_constant(r"kShotLagUs\s*=\s*(\d+)LL", "kShotLagUs")[0])
 POSITION = {"lead": 0, "second": 1, "third": 2, "skip": 3}
 NAMES = {"lead": "Lead", "second": "2nd", "third": "3rd", "skip": "Skip", "them": "THEM", None: "-"}
-BUCKETS = [(0, 80, "under 80 s"), (80, 140, "80-140 s"), (140, 200, "140-200 s"), (200, 10 ** 9, "200 s +")]
+BUCKETS = [(0, 80, "under 80s"), (80, 140, "80-140s"), (140, 200, "140-200s"), (200, 10 ** 9, "200s +")]
 
 
 def games(paths):
@@ -141,7 +141,7 @@ def main(paths):
                 per_throw[keys(i - 1)].append(half)
                 per_throw[keys(i)].append(half)
         print("    #  start   gap   guess  ended up")
-        # your throws (league): taken as 20 s before you logged them. A coach logs the whole team's,
+        # your throws (league): taken as 20s before you logged them. A coach logs the whole team's,
         # timed or not, so in coach they don't stand for throws nobody timed.
         shot_times = (g.get("shot_times") or []) if g.get("mode") == "league" else []
         throws = sorted(t - SHOT_LAG_S for t in shot_times if t is not None)
@@ -194,7 +194,7 @@ def main(paths):
     for key, gaps in per_throw.items():
         if gaps:
             print(f"  {key:11s} {describe(gaps):45s} expected {expected[key]} s")
-    print(f"\nA throw apart (team changes, under 150 s): {describe(adjacent)}")
+    print(f"\nA throw apart (team changes, under 150s): {describe(adjacent)}")
     if after_shot:
         print(f"League, next stone after you logged a shot: {describe(after_shot)}")
         print(f"  assumed: your throw {SHOT_LAG_S} s before you log it")

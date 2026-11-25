@@ -165,7 +165,7 @@ def _make_fonts():
         hint=bdf("spleen-12x24"),  # the hold hints
         them=bdf("spleen-16x32"),  # the large THEM heading
         big=ImageFont.truetype(str(DSEG), 37),  # the newest stone, at the top
-        big_long=ImageFont.truetype(str(DSEG), 33),  # ... an H2H of 20.00 s, too wide at 37
+        big_long=ImageFont.truetype(str(DSEG), 33),  # ... an H2H of 20.00s, too wide at 37
         top_small=ImageFont.truetype(str(DSEG), 24),  # coach page 2's newest stone
         row=SegFont(h=12, w=7, t=2, gap=2, dot=2),
         tiny=SegFont(h=9, w=5, t=1, gap=1),  # equal-width cells: a "1" sits on the right
@@ -393,9 +393,9 @@ STOPWATCH_BIG, STOPWATCH_SMALL = 10, 6  # ring radius: in the large row, and coa
 
 def newest_row(d, f, stones, waiting, mid, fonts_, y0, y1, r, cy):
     """The current stone across both halves, centred: B2H black on white, H2H white on its black
-    half (filled by the caller). fonts_: (font, font for an H2H of 20.00 s, too wide for the first).
+    half (filled by the caller). fonts_: (font, font for an H2H of 20.00s, too wide for the first).
     waiting: "b2h", "h2h" or "h2h-only" while it's being timed (a stopwatch where that time will
-    appear; for "b2h" and "h2h-only", a stone whose first click was 7 s ago with no second, so it
+    appear; for "b2h" and "h2h-only", a stone whose first click was 7s ago with no second, so it
     can only be an H2H, the row is still empty)."""
     cur = None if waiting in ("b2h", "h2h-only") or not stones else stones[0]
     for k, (x0, x1) in enumerate(((0, mid), (mid, W))):
@@ -630,7 +630,7 @@ def competition_screen(stones, me=0, active=0, low_battery=False, tip=False, wai
 # left, down = right: the cursor, the highlighted header, goes on whoever is about to
 # throw; it also moves there by itself) or your rocks (up/down = made/missed). Hold down to log your
 # rocks from history; logging one goes back to the columns. Hold up on the columns to move the
-# newest time one column left every 0.7 s, in the same direction as a rocker-up tap.
+# newest time one column left every 0.7s, in the same direction as a rocker-up tap.
 LEAGUE_ROWS_BOTTOM = 159     # 2 px line under the times
 LEAGUE_PCT_X = 149           # 2 px divider left of the percentage: in line with the THEM column's
 LEAGUE_SLOTS = 16

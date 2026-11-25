@@ -166,8 +166,8 @@ bool lightSleep(int64_t wakeAtUs) {
 void powerOff() {
     const auto side = static_cast<gpio_num_t>(kPins[kSide]);
     // The off page's full refresh must finish before the power goes, or the e-ink keeps the old
-    // screen. M5GFX's wait gives up after about 2 s, and a full refresh takes about 1.85 s at room
-    // temperature, longer in the cold: wait for the panel's busy line itself, up to 8 s.
+    // screen. M5GFX's wait gives up after about 2s, and a full refresh takes about 1.85s at room
+    // temperature, longer in the cold: wait for the panel's busy line itself, up to 8s.
     for (int i = 0; i < 400 && M5.Display.displayBusy(); ++i) delay(20);
     M5.Display.waitDisplay();
     M5.Display.sleep();

@@ -32,8 +32,8 @@ public:
     // Expected time from one stone's start to the next's, in seconds, by who throws the next one:
     // lead, 2nd, 3rd, skip (both teams). Skips take longest; before the first skip stone of an end
     // the skip and vice swap ends (kSkipSwapS more), and between ends there's a break (kEndBreakS
-    // more). About 16.7 minutes an end. From one real end timed in full (23 Nov 2026: lead ~45 s,
-    // 2nd ~50, 3rd ~52, skips 87-130 s, 112 s before the first skip stone); the end break is still a
+    // more). About 16.7 minutes an end. From one real end timed in full (23 Nov 2026: lead ~45s,
+    // 2nd ~50, 3rd ~52, skips 87-130s, 112s before the first skip stone); the end break is still a
     // guess. tools/analyze_games.py reports these from timed games, and reads these lines.
     static constexpr int kIntervalS[4] = {45, 50, 52, 100};
     static constexpr int kSkipSwapS = 15;

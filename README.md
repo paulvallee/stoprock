@@ -15,6 +15,7 @@ Design agreed. Firmware written and building for the CoreInk and for the simulat
 
 | Path | What |
 |---|---|
+| [`docs/STYLE.md`](docs/STYLE.md) | Style guide: the name and logo, units (7s, not 7 s), wording, how things are drawn |
 | [`docs/SPEC.md`](docs/SPEC.md) | Device specification: controls, timing rules, screens, power, screen-update plan, open items |
 | [`docs/PRO_MODE.md`](docs/PRO_MODE.md) | Planned paid features (not built): skip/coach mode mockup and how the app would unlock them |
 | [`docs/DATABANK.md`](docs/DATABANK.md) | Game databank: what each game record holds, and how a companion app reads and acknowledges games |

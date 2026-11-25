@@ -8,8 +8,8 @@ esp-emulator doesn't emulate the original ESP32 in the CoreInk, so the simulator
 **ESP32-S3**, which it does emulate. The application code is the same; only the board layer differs
 ([`firmware/src/board_emu.cpp`](../firmware/src/board_emu.cpp)). The emulated firmware sends its screen
 updates, beeps and LED over the serial console, and `run.py` turns them into the web page. Screen updates take as
-long as on the CoreInk's e-ink. A fast update takes about 0.26 s, including whole-screen updates
-for the startup menu and mode entry. A full ghost-clearing refresh flashes for 2 s.
+long as on the CoreInk's e-ink. A fast update takes about 0.26s, including whole-screen updates
+for the startup menu and mode entry. A full ghost-clearing refresh flashes for 2s.
 The page shows the new image when the update finishes.
 The delays run on the emulated chip's clock, so if the emulator runs
 slower than real time on your computer, everything on the page slows down with it.
@@ -51,10 +51,10 @@ first run also downloads the push-button part (`pushbutton.wasm`) from the esp-e
 | Key | Mouse | Button |
 |---|---|---|
 | <kbd>Space</kbd> or <kbd>T</kbd> | **top** | Timing click |
-| <kbd>S</kbd> | **side / power** | Timing click; hold 3 s to switch off (shows the wake screen; press it again to switch back on) |
+| <kbd>S</kbd> | **side / power** | Timing click; hold 3s to switch off (shows the wake screen; press it again to switch back on) |
 | <kbd>↑</kbd> | rocker **▲** | Next column; on the rocks (league, coach: hold <kbd>↓</kbd> to get there), made. Hold to move the newest time (on the rocks: back to the times) |
 | <kbd>↓</kbd> | rocker **▼** | Previous column, or missed on the rocks; hold it for the rocks (league, coach) or to move the newest time left (competition) |
-| <kbd>Enter</kbd> | rocker **●** | Hold 1 s to undo the newest time or shot ("Keep holding / to undo" shows after 0.2 s); keep holding to undo another every 1 s. Press twice quickly: change your position (coach: switch page) |
+| <kbd>Enter</kbd> | rocker **●** | Hold 1s to undo the newest time or shot ("Keep holding / to undo" shows after 0.2s); keep holding to undo another every 1s. Press twice quickly: change your position (coach: switch page) |
 
 **Export games** asks the device for every game it has recorded and saves the listing to
 `simulator/exports/games-<date>-<time>.txt` (the page shows the path). Analyse it with
@@ -68,17 +68,17 @@ switch it on, and the **mode menu** comes up: <kbd>↑</kbd>/<kbd>↓</kbd> choo
 starts the mode selected (the one used last, at first). To skip the menu, hold the rocker while switching on: switch off,
 then hold <kbd>Enter</kbd> (competition), <kbd>↓</kbd> (league) or <kbd>↑</kbd> (coach) and press <kbd>S</kbd>, keeping
 both held until the screen changes. The **Restart in competition / league / coach** buttons do that for you: they switch
-the device off (side button held 3 s) and back on with the rocker held.
+the device off (side button held 3s) and back on with the rocker held.
 
 | Mode | Switch on with | What to try |
 |---|---|---|
-| Competition | <kbd>S</kbd> | Times only, with three of four player columns visible and an edge marker for the hidden one. Moving the cursor into the hidden column shifts the window. <kbd>↑</kbd>/<kbd>↓</kbd> next/previous column; hold <kbd>↑</kbd> to move the newest time a column right every 0.7 s; <kbd>Enter</kbd> twice quickly changes your own position |
-| League | <kbd>↓</kbd> + <kbd>S</kbd> | Times in four columns: your three teammates and THEM (Hog2Hog white on black); the cursor follows the throw order by itself. <kbd>↑</kbd>/<kbd>↓</kbd> next/previous column; hold <kbd>↑</kbd> to move the newest time a column right every 0.7 s (let go where it belongs); hold <kbd>↓</kbd> to log your rocks (<kbd>↑</kbd> made, <kbd>↓</kbd> missed, then back to the columns); <kbd>Enter</kbd> twice quickly changes your position |
+| Competition | <kbd>S</kbd> | Times only, with three of four player columns visible and an edge marker for the hidden one. Moving the cursor into the hidden column shifts the window. <kbd>↑</kbd>/<kbd>↓</kbd> next/previous column; hold <kbd>↑</kbd> to move the newest time a column right every 0.7s; <kbd>Enter</kbd> twice quickly changes your own position |
+| League | <kbd>↓</kbd> + <kbd>S</kbd> | Times in four columns: your three teammates and THEM (Hog2Hog white on black); the cursor follows the throw order by itself. <kbd>↑</kbd>/<kbd>↓</kbd> next/previous column; hold <kbd>↑</kbd> to move the newest time a column right every 0.7s (let go where it belongs); hold <kbd>↓</kbd> to log your rocks (<kbd>↑</kbd> made, <kbd>↓</kbd> missed, then back to the columns); <kbd>Enter</kbd> twice quickly changes your position |
 | Coach | <kbd>↑</kbd> + <kbd>S</kbd> | 64 rocks for the whole team; page 1 has times in five columns (Lead, 2nd, 3rd, Skip, THEM) with the cursor following the throw order. As in league: <kbd>↑</kbd>/<kbd>↓</kbd> next/previous column, hold <kbd>↑</kbd> to move the newest time, hold <kbd>↓</kbd> for the rocks (<kbd>↑</kbd> made, <kbd>↓</kbd> missed; hold <kbd>↑</kbd> back to the times); <kbd>Enter</kbd> twice quickly switches between the timer page and the rocks page |
 | Basic | <kbd>S</kbd>, then choose it in the menu (the first entry) | Times only, as big as they go: a row a stone, 4 rows, B2H left, H2H right, no players. On entry, any press dismisses the tutorial, or it closes after 20 seconds. Then <kbd>↓</kbd>/<kbd>↑</kbd> scroll to older/newer stones (the badge says which show); hold <kbd>Enter</kbd> to undo |
 
 The **Battery** slider sets the battery level the firmware reads (`run.py` sends it to the emulated chip's
-second serial port). Below 15% the screen shows the low-battery warning (league: a bar over your %; competition: the badge strip), within about 2 s. Battery levels at the start and end of a game are recorded in the databank. To try the off-page estimate, start a game, log a shot or time, wait at least a minute, lower the battery slider, then switch off.
+second serial port). Below 15% the screen shows the low-battery warning (league: a bar over your %; competition: the badge strip), within about 2s. Battery levels at the start and end of a game are recorded in the databank. To try the off-page estimate, start a game, log a shot or time, wait at least a minute, lower the battery slider, then switch off.
 
 ## What it doesn't show
 

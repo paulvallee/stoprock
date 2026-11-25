@@ -183,7 +183,7 @@ int main(int argc, char** argv) {
     drawLeague(c, league, nl, shots, 1, 1, false, Tip::None, Waiting::BackToHog, Focus::Rocks);
     snprintf(path, sizeof path, "%s/league-rocks.pbm", dir);
     writePbm(c, path);
-    // 7 s with no second click: an H2H under way, the stopwatch in the H2H box
+    // 7s with no second click: an H2H under way, the stopwatch in the H2H box
     drawLeague(c, league, nl, shots, 1, 3, false, Tip::None, Waiting::HogToHogOnly);
     snprintf(path, sizeof path, "%s/league-wait-h2h-only.pbm", dir);
     writePbm(c, path);
@@ -213,7 +213,7 @@ int main(int argc, char** argv) {
         writePbm(c, path);
     }
 
-    {  // an H2H of 20.00 s: the narrower fonts, at the top and in the zoom (THEM's column, at the edge)
+    {  // an H2H of 20.00s: the narrower fonts, at the top and in the zoom (THEM's column, at the edge)
         Stone slow[sizeof league / sizeof league[0]];
         for (int i = 0; i < nl; ++i) slow[i] = league[i];
         slow[0] = Stone{352, 2000, 4};

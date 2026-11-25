@@ -30,7 +30,7 @@ struct Sprite {
 };
 
 extern const Font kFontDseg37;      // newest result, at the top
-extern const Font kFontDseg33;      // ... an H2H of 20.00 s, too wide at 37
+extern const Font kFontDseg33;      // ... an H2H of 20.00s, too wide at 37
 extern const Font kFontDseg24;      // coach page 2's newest result
 extern const Font kFontDseg16;      // percentage
 extern const Font kFontSpleen6x12;  // labels and tips

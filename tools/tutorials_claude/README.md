@@ -36,7 +36,7 @@ Timing first (Hog to hog only right after Time a stone, as a way to time one), t
 | Undo | Hold the middle 1 second / to undo a time or shot. (Basic, Competition: the last time.) |
 | Turn off | Hold the side button / 3 seconds to turn off. |
 | Skip the menu | Hold the rocker as you / turn it on to skip the menu. |
-| Hog to hog only | Start at the near hog? / After 7 s it times H2H. |
+| Hog to hog only | Start at the near hog? / After 7s it times H2H. |
 
 ## Design rules
 

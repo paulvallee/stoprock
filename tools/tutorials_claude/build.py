@@ -151,7 +151,7 @@ def rocker(c, x, y, lit=(), hold=None, scale=1.0):
 
 
 def badge(c, cx, cy, s, r=10):
-    """A black disc with white text: "2x", "1 s", "3 s"."""
+    """A black disc with white text: "2x", "1s", "3s"."""
     c.disc(cx, cy, r)
     f = nunito(11 if len(s) < 3 else 10, "ExtraBold")
     c.ctext(s, f, cx, cy - 7, fill=1)
@@ -401,8 +401,8 @@ def skip_menu(c):
 
 
 def hog_to_hog(c):
-    # a stone timed from the near hog: no B2H comes, so after 7 s the watch moves to the H2H half
-    for x0, name, half in ((8, "Start", 0), (112, "After 7 s", 1)):
+    # a stone timed from the near hog: no B2H comes, so after 7s the watch moves to the H2H half
+    for x0, name, half in ((8, "Start", 0), (112, "After 7s", 1)):
         x1, mid, y0, y1 = x0 + 80, x0 + 36, 62, 98
         c.rrect(x0, y0, x1, y1, 3, fill=255, outline=0, width=1.6)
         c.rect(mid, y0 + 0.8, x1 - 0.8, y1 - 0.8)
@@ -431,7 +431,7 @@ CARDS = {
     "undo_times": ("Undo", undo, ("Hold the middle 1 second", "to undo the last time.")),
     "off": ("Turn off", turn_off, ("Hold the side button", "3 seconds to turn off.")),
     "menu": ("Skip the menu", skip_menu, ("Hold the rocker as you", "turn it on to skip the menu.")),
-    "h2h": ("Hog to hog only", hog_to_hog, ("Start at the near hog?", "After 7 s it times H2H.")),
+    "h2h": ("Hog to hog only", hog_to_hog, ("Start at the near hog?", "After 7s it times H2H.")),
 }
 DECKS = {
     "Basic": ("buttons", "stone", "h2h", "read", "basic_older", "undo_times", "off", "menu"),

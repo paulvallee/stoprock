@@ -107,7 +107,7 @@ def main():
         "",
     ]
     emit_font("kFontDseg37", f["big"], "0123456789", out)  # the newest stone, at the top
-    emit_font("kFontDseg33", f["big_long"], "0123456789", out)  # ... an H2H of 20.00 s
+    emit_font("kFontDseg33", f["big_long"], "0123456789", out)  # ... an H2H of 20.00s
     emit_font("kFontDseg24", f["top_small"], "0123456789", out)  # coach page 2's newest stone
     emit_font("kFontDseg16", f["pct"], "0123456789", out)
     ascii_chars = "".join(chr(c) for c in range(32, 127))

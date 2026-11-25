@@ -351,7 +351,7 @@ static void test_json_line() {
     r.shotBits = 0b101;
     r.stoneCount = 2;
     r.stones[0] = StoneTimes{347, 1392};
-    r.stones[1] = StoneTimes{NONE, 1402, 2, 4, 95};  // thrown by the third, guessed as THEM, 95 s in
+    r.stones[1] = StoneTimes{NONE, 1402, 2, 4, 95};  // thrown by the third, guessed as THEM, 95s in
     r.shotTimes[0] = 30;
     r.shotTimes[2] = 212;
     char out[400];
@@ -372,7 +372,7 @@ static void test_version_5_times_and_guesses() {
     Databank db(st);
     db.begin();
     db.startGame(0, true, 80, GameMode::League);
-    db.setShots(1, 1, 1, 70);                       // your first rock, logged 70 s in
+    db.setShots(1, 1, 1, 70);                       // your first rock, logged 70s in
     db.addStone(341, NONE, 2, StoneTimes::kThem, StoneTimes::kThem, 96);
     db.setLastHogToHog(1386, 3);
     db.addStone(347, 1392, 4, 2, StoneTimes::kThem, 205);  // guessed THEM, filed as the third

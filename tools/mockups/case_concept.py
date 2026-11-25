@@ -181,7 +181,7 @@ text(kx, ky - 15, "Key", 22, True)
 items = [
     ("Lanyard loop", "Moulded into the tub, 3.5 mm thick, rounded. No grommets."),
     ("Top button: timing", "Raised pad 14 x 4 mm, 1.5 mm proud, textured."),
-    ("Side button: timing; hold 3 s = power", "Pad on the tub's left wall, with a low rim round it against pocket presses."),
+    ("Side button: timing; hold 3s = power", "Pad on the tub's left wall, with a low rim round it against pocket presses."),
     ("Rocker cover", "Soft cover tilting on a rib behind its middle: up / press / down. Ridges and a centre dimple. Fallback: an open cut-out."),
     ("LED window", "Thin TPU over the green LED, or a clear insert."),
     ("Wordmark", "Debossed in the bezel."),
