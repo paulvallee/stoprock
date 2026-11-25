@@ -165,6 +165,10 @@ bool lightSleep(int64_t wakeAtUs) {
 // powered with the latch dropped, only a reset brought it back.
 void powerOff() {
     const auto side = static_cast<gpio_num_t>(kPins[kSide]);
+    // The off page's full refresh must finish before the power goes, or the e-ink keeps the old
+    // screen. M5GFX's wait gives up after about 2 s, and a full refresh takes about 1.85 s at room
+    // temperature, longer in the cold: wait for the panel's busy line itself, up to 8 s.
+    for (int i = 0; i < 400 && M5.Display.displayBusy(); ++i) delay(20);
     M5.Display.waitDisplay();
     M5.Display.sleep();
     // Let go first (up for 50 ms): the button itself keeps the power on, and would wake the sleep below.

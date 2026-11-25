@@ -1121,7 +1121,11 @@ void onPress(uint8_t b, int64_t t) {
     if (b == board::kUp) moveSteps = 0;
     activity(t);
     if (mode == GameMode::Basic && (tipWaiting || tipUntil >= 0 || basicIntroClearing)) {
-        s.holdFired = true;  // ignore the rest of this press, including a hold or release action
+        // The press only dismisses the tutorial: no click, hold or release action. Except that
+        // holding the side button still switches off: its hold is left to run, with no click of
+        // this press for the power-off hold to take back.
+        if (b == board::kSide) sideClick = Outcome();
+        else s.holdFired = true;
         if (!basicIntroClearing) dismissBasicIntro();
         return;
     }
