@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<script type="importmap">{"imports": {"three": "./node_modules/three/build/three.module.js",
+ "three/addons/": "./node_modules/three/examples/jsm/"}}</script>
+<style>body{margin:0;background:#f4f4f2}canvas{display:block}</style></head>
+<body>
+<script type="module">
+// The CoreInk with the stick and the timing button wired to its back socket, no solder: a 2 x 8 right-angle
+// header plugged in, female jumper plugs on its bent pins, short leads down to the controls below it.
+// Millimetres, in the CoreInk's own coordinates (hardware/coreink/coreink.json): x across as seen from the
+// front (0 left .. 40), y up (0 bottom .. 56), z through it (0 back .. 16 front).
+import * as THREE from 'three';
+import { STLLoader } from 'three/addons/loaders/STLLoader.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+const W = 640, H = 560;
+const view = new URLSearchParams(location.search).get('view') || 'back';
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(2); renderer.setSize(W, H); renderer.setClearColor(0xf4f4f2);
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.add(new THREE.HemisphereLight(0xffffff, 0x50565f, 0.9));
+const key = new THREE.DirectionalLight(0xffffff, 2.6); key.position.set(60, 90, -120); scene.add(key);
+const key2 = new THREE.DirectionalLight(0xffffff, 1.6); key2.position.set(-80, 60, 140); scene.add(key2);
+const mat = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.6, ...extra });
+const g = new THREE.Group(); scene.add(g);
+const box = (w, h, d, color, x, y, z, r = 0, extra = {}) => {
+  const m = new THREE.Mesh(r ? new RoundedBoxGeometry(w, h, d, 3, r) : new THREE.BoxGeometry(w, h, d), mat(color, extra));
+  m.position.set(x, y, z); g.add(m); return m;
+};
+const cyl = (r, h, color, x, y, z, axis = 'z', extra = {}) => {
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, 40), mat(color, extra));
+  if (axis === 'z') m.rotation.x = Math.PI / 2; if (axis === 'x') m.rotation.z = Math.PI / 2;
+  m.position.set(x, y, z); g.add(m); return m;
+};
+
+// --- the CoreInk (M5Stack's model, shifted to its own coordinates)
+const stl = await new Promise((ok, bad) => new STLLoader().load('model-coreink.stl', ok, undefined, bad));
+stl.computeVertexNormals(); stl.translate(-2.5, -2.5, -2.5);
+g.add(new THREE.Mesh(stl, mat(0xe9e9e4, { roughness: 0.5 })));
+const tex = await new THREE.TextureLoader().loadAsync('screen.png'); tex.colorSpace = THREE.SRGBColorSpace;
+const scr = new THREE.Mesh(new THREE.PlaneGeometry(27.6, 27.6), new THREE.MeshBasicMaterial({ map: tex }));
+scr.position.set(20.1, 30.9, 16.05); g.add(scr);
+
+// --- the header: 2 x 8 right-angle, its short legs in the socket (window x 3.5-8.75, y 8.75-29.75 on the
+// back), the body lying on the back beside the window, the long pins pointing across the back (+x)
+const PITCH = 2.54, cols = [4.855, 7.395];
+const pinY = i => 19.25 + (i - 3.5) * PITCH;          // 8 positions down the socket
+const body = { x0: 9.0, x1: 11.5 };
+box(body.x1 - body.x0, 8 * PITCH, 5.1, 0x1b1c1f, (body.x0 + body.x1) / 2, 19.25, -2.55);
+const gold = 0xd4af37;
+const rows = [{ z: -1.27, col: cols[1] }, { z: -3.81, col: cols[0] }];   // the column nearer the body bends lower
+// which pins carry what: socket pin n is column (n odd ? 0 : 1), position floor((n - 1) / 2) (pin 1 at the
+// bottom here; check the order against the CoreInk's own marking before plugging in)
+const wires = {   // socket pin: [colour, destination]
+  1: [0x202124, 'gnd'], 6: [0xd93025, 'vcc'], 7: [0xf6c026, 'up'], 8: [0x34a853, 'down'],
+  14: [0x4285f4, 'left'], 12: [0xa142f4, 'right'], 13: [0xff8c1a, 'mid'], 16: [0xffffff, 'time'],
+};
+const pinXY = n => ({ y: pinY(Math.floor((n - 1) / 2)), row: (n % 2) ? rows[1] : rows[0] });
+for (let n = 1; n <= 16; n++) {
+  if (!wires[n]) continue;                                 // the 8 pins not used are snipped off (reset among them)
+  const { y, row } = pinXY(n);
+  const leg = cyl(0.32, Math.abs(row.z) + 3, gold, row.col, y, (row.z + 3) / 2, 'z', { metalness: 0.8, roughness: 0.3 });
+  const across = cyl(0.32, body.x0 - row.col, gold, (row.col + body.x0) / 2, y, row.z, 'x', { metalness: 0.8, roughness: 0.3 });
+  const post = cyl(0.32, 6.0, gold, body.x1 + 3.0, y, row.z, 'x', { metalness: 0.8, roughness: 0.3 });
+}
+// --- the jumper plugs (2.54 square, 14 long) on the bent pins, and the leads
+const PLUG = 14.0, plugX0 = body.x1 + 0.6;
+const ctrl = {   // where each lead ends: the stick module's pins and the button's
+  gnd: [16.0, -14.0, 2.0], vcc: [18.5, -14.0, 2.0], up: [21.0, -14.0, 2.0], down: [23.5, -14.0, 2.0],
+  left: [26.0, -14.0, 2.0], right: [28.5, -14.0, 2.0], mid: [31.0, -14.0, 2.0], time: [20.0, -37.0, 2.0],
+};
+for (const [n, [color, dest]] of Object.entries(wires)) {
+  const { y, row } = pinXY(+n);
+  box(PLUG, 2.5, 2.5, 0x18191b, plugX0 + PLUG / 2, y, row.z, 0.3, { roughness: 0.8 });
+  const start = new THREE.Vector3(plugX0 + PLUG, y, row.z);
+  const end = new THREE.Vector3(...ctrl[dest]);
+  const pts = [start, new THREE.Vector3(start.x + 3, y - 1.5, row.z - 1.5),
+               new THREE.Vector3(start.x + 3.5 - (n % 4), 2.0, -6.5 - (n % 3)),
+               new THREE.Vector3(end.x, end.y + 9, end.z - 6), end];
+  const curve = new THREE.CatmullRomCurve3(pts);
+  const tube = new THREE.Mesh(new THREE.TubeGeometry(curve, 80, 0.6, 12, false), mat(color, { roughness: 0.5 }));
+  g.add(tube);
+  // the far end's plug
+  const tan = curve.getTangent(1);
+  const far = box(2.5, 2.5, 8, 0x18191b, end.x - tan.x * 4, end.y - tan.y * 4, end.z - tan.z * 4, 0.3, { roughness: 0.8 });
+  far.lookAt(end.x + tan.x, end.y + tan.y, end.z + tan.z);
+}
+// --- the 5-way stick module (with a VCC pin: its pull-ups on board) and the timing button, below the CoreInk
+box(26, 24, 1.6, 0x1f5fa8, 20.1, -24.0, 5.0);                       // the module's board
+for (let i = 0; i < 7; i++) cyl(0.32, 6, gold, 16.0 + i * 2.5, -14.0, 3.0, 'z', { metalness: 0.8, roughness: 0.3 });
+box(7.5, 7.5, 2.0, 0xb8bcc2, 20.1, -25.0, 6.8, 0.3);                  // the switch
+cyl(1.2, 4.0, 0x55595f, 20.1, -25.0, 9.5);                           // its stem
+cyl(5.0, 3.2, 0x3a3d42, 20.1, -25.0, 12.6);                          // the cap
+box(22, 22, 1.6, 0x1f5fa8, 20.1, -48.0, 5.0);                       // the button's board
+box(12, 12, 3.5, 0x2b2e33, 20.1, -48.0, 7.6, 0.6);                   // the 12 mm switch
+cyl(8.0, 3.0, 0xd9542b, 20.1, -48.0, 10.9);                          // its 16 mm cap
+for (let i = 0; i < 2; i++) cyl(0.32, 6, gold, 17.0 + i * 3.0, -37.0, 3.0, 'z', { metalness: 0.8, roughness: 0.3 });
+// the button's ground: a short link from the stick module's GND pin
+const link = new THREE.CatmullRomCurve3([new THREE.Vector3(16, -14, 2), new THREE.Vector3(10, -26, -3), new THREE.Vector3(17, -37, 2)]);
+g.add(new THREE.Mesh(new THREE.TubeGeometry(link, 40, 0.6, 12, false), mat(0x202124)));
+
+g.position.set(-20, 10, -4);
+const views = {
+  back: [[-125, 85, -235], [0, 6, -4]],
+  'back-close': [[-46, 50, -78], [-4, 26, -6]],
+  side: [[-265, 15, -6], [0, 6, 0]],
+  front: [[115, 55, 235], [0, 4, 2]],
+};
+const [pos, look] = views[view] || views.back;
+const cam = new THREE.PerspectiveCamera(30, W / H, 1, 2000);
+cam.position.set(...pos); cam.lookAt(...look);
+renderer.render(scene, cam);
+document.title = 'done';
+</script></body></html>
