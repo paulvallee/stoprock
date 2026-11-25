@@ -12,10 +12,12 @@ alternative set. Nothing here is wired into the firmware yet.
 
 | Deck | Cards |
 |---|---|
-| Basic (6) | Timing buttons, Time a stone, Read the times, Older stones, Undo, Turn off |
-| Competition (9) | Timing buttons, Time a stone, Read the times, Who's throwing, Wrong player?, Older times, Your position, Undo, Turn off |
-| League (10) | as Competition, plus Log your shot |
-| Coach (10) | as League, with Two pages instead of Your position |
+| Basic (8) | Timing buttons, Time a stone, Read the times, Older stones, Undo, Turn off, Skip the menu, Hog to hog only |
+| Competition (11) | Timing buttons, Time a stone, Read the times, Who's throwing, Wrong player?, Older times, Your position, Undo, Turn off, Skip the menu, Hog to hog only |
+| League (12) | as Competition, plus Log your shot |
+| Coach (12) | as League, with Two pages instead of Your position |
+
+The essentials come first; the last two cards are for when you want more.
 
 ## Copy
 
@@ -24,15 +26,17 @@ alternative set. Nothing here is wired into the firmware yet.
 | Timing buttons | Press the top or side / button at each line. |
 | Time a stone | Press at the back line, / then at each hog line. |
 | Read the times | The newest stone, big: / back to hog, hog to hog. |
-| Who's throwing | New times go to the / highlighted player. |
+| Who's throwing | The highlight moves by / itself. Times go there. |
 | Wrong player? | Hold up to move the / last time one player left. |
-| Log your shot | On your rocks: up = made, / down = missed. |
+| Log your shot | Hold down twice for rocks: / Up: made. Down: missed. |
 | Older times | Hold down to see older / times. Hold up to return. |
 | Older stones (Basic) | Down: older stones. / Up: newer stones. |
 | Your position | Double-click the middle / to change your position. |
 | Two pages (Coach) | Double-click the middle / to switch times and rocks. |
 | Undo | Hold the middle 1 second / to undo a time or shot. (Basic, Competition: the last time.) |
 | Turn off | Hold the side button / 3 seconds to turn off. |
+| Skip the menu | Hold the rocker as you / turn it on to skip the menu. |
+| Hog to hog only | Start at the near hog? / After 7 s it times H2H. |
 
 ## Design rules
 
@@ -43,10 +47,18 @@ alternative set. Nothing here is wired into the firmware yet.
 - The device drawn from `hardware/coreink/coreink.json`, every button where it really is; the rocker
   labelled but left outlined, so it isn't mistaken for a timing button.
 - Shapes and arrows drawn at 4x and reduced to 1 bit (smooth curves); text drawn at 1x in 1 bit (crisp).
-- Header: the deck, a dot a card (this one filled), the title. Footer: ▲ Back (not on the first card),
+- Header: the deck, "3/12", the title. Footer: ▲ Back (not on the first card),
   ● Done, ▼ Next (not on the last).
 
 ## Firmware changes these assume
 
 - Down on the last card should do nothing visible (or return to the list), since there's no Next.
 - "Who's throwing" and "Wrong player?" describe up as left (as the firmware now does).
+
+## Ideas taken from the alternative set (assets/screens/codex)
+
+Reviewed against it and kept only what was better: the start-up shortcuts (Skip the menu), the
+hog-to-hog-only tip, "the highlight moves by itself", "hold down twice" for the rocks, "keep holding
+to undo more", the lines named in full (Back line, Near hog, Far hog), and "3/12" in place of progress
+dots. Not taken: three- and four-line copy in mixed small sizes, the shrunken-screenshot "Read the
+screen" card (illegible at size), and straight hairline arrows.

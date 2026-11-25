@@ -179,7 +179,7 @@ def rock(c, cx, cy, state, r=10):
 
 
 def stopwatch(c, cx, cy, r, fill=0):
-    c.ring(cx, cy, r, width=1.8)
+    c.d.ellipse(c._p(cx - r, cy - r, cx + r, cy + r), outline=fill, width=round(1.8 * S))
     c.rect(cx - 1.2, cy - r - 3, cx + 1.2, cy - r, fill)
     c.rrect(cx - 3.5, cy - r - 5, cx + 3.5, cy - r - 2.5, 1, fill=fill, outline=None)
     c.line([(cx, cy), (cx + r * 0.45, cy - r * 0.55)], 1.6, fill)
@@ -236,10 +236,10 @@ def timing_buttons(c):
 
 def time_a_stone(c):
     # the sheet: three lines, the stone heading for the far hog, the presses and what they measure
-    xs = (20, 86, 178)
-    for x, name in zip(xs, ("Back", "Hog", "Hog")):
+    xs = (20, 100, 178)
+    for x, name, anchor in zip(xs, ("Back line", "Near hog", "Far hog"), ("la", "ma", "ra")):
         c.rect(x - 1, 60, x + 1, 90)
-        label(c, name, x, 45, size=12, anchor="ma")
+        label(c, name, {"la": 6, "ma": x, "ra": 194}[anchor], 45, size=12, anchor=anchor)
     c.rrect(6, 66, 194, 84, 9, fill=None, outline=0, width=1.4)
     for x in xs:  # the lines cross the ice
         c.rect(x - 1, 66, x + 1, 84)
@@ -369,6 +369,7 @@ def undo(c):
         c.rect(136 + dx, 69, 136 + dx + 2.6, 71, fill=255)
         c.rect(136 + dx, 89, 136 + dx + 2.6, 91, fill=255)
     c.ctext("13.86", nunito(13, "ExtraBold"), 163, 72)
+    label(c, "Keep holding to undo more", 100, 116, size=11, anchor="ma", weight="Bold")
 
 
 def turn_off(c):
@@ -383,14 +384,39 @@ def turn_off(c):
     badge(c, 172, 106, "3s", r=12)
 
 
+def skip_menu(c):
+    # the rocker held as the side button switches it on: which mode each part opens
+    rocker(c, 34, 46, lit=("up", "middle", "down"))
+    for i, name in enumerate(("Coach", "Competition", "League")):
+        cy = 46 + 11 + i * 22
+        c.arrow((64, cy), (70, cy), (74, cy), (80, cy), width=2, head=6)
+        label(c, name, 86, cy - 8, size=13)
+    label(c, "Basic: from the menu", 100, 118, size=11, anchor="ma", weight="Bold")
+
+
+def hog_to_hog(c):
+    # a stone timed from the near hog: no B2H comes, so after 7 s the watch moves to the H2H half
+    for x0, name, half in ((8, "Start", 0), (112, "After 7 s", 1)):
+        x1, mid, y0, y1 = x0 + 80, x0 + 36, 62, 98
+        c.rrect(x0, y0, x1, y1, 3, fill=255, outline=0, width=1.6)
+        c.rect(mid, y0 + 0.8, x1 - 0.8, y1 - 0.8)
+        c.rrect(x0, y0, x1, y1, 3, fill=None, outline=0, width=1.6)
+        cx = (x0 + mid) / 2 if half == 0 else (mid + x1) / 2
+        stopwatch(c, cx, (y0 + y1) / 2 + 2, 9, fill=0 if half == 0 else 255)
+        label(c, name, (x0 + x1) / 2, 45, size=12, anchor="ma")
+    c.arrow((92, 80), (98, 80), (102, 80), (108, 80), width=2.2, head=6)
+    label(c, "B2H", 26, 103, size=11, anchor="ma", weight="Bold")
+    label(c, "H2H", 172, 103, size=11, anchor="ma", weight="Bold")
+
+
 # --------------------------------------------------------------------------- the cards
 CARDS = {
     "buttons": ("Timing buttons", timing_buttons, ("Press the top or side", "button at each line.")),
     "stone": ("Time a stone", time_a_stone, ("Press at the back line,", "then at each hog line.")),
     "read": ("Read the times", read_the_times, ("The newest stone, big:", "back to hog, hog to hog.")),
-    "turn": ("Who's throwing", whose_turn, ("New times go to the", "highlighted player.")),
+    "turn": ("Who's throwing", whose_turn, ("The highlight moves by", "itself. Times go there.")),
     "fix": ("Wrong player?", move_time, ("Hold up to move the", "last time one player left.")),
-    "rocks": ("Log your shot", log_shot, ("On your rocks: up = made,", "down = missed.")),
+    "rocks": ("Log your shot", log_shot, ("Hold down twice for rocks:", "Up: made. Down: missed.")),
     "older": ("Older times", older_times, ("Hold down to see older", "times. Hold up to return.")),
     "basic_older": ("Older stones", lambda c: older_times(c, basic=True), ("Down: older stones.", "Up: newer stones.")),
     "position": ("Your position", position, ("Double-click the middle", "to change your position.")),
@@ -398,25 +424,21 @@ CARDS = {
     "undo": ("Undo", undo, ("Hold the middle 1 second", "to undo a time or shot.")),
     "undo_times": ("Undo", undo, ("Hold the middle 1 second", "to undo the last time.")),
     "off": ("Turn off", turn_off, ("Hold the side button", "3 seconds to turn off.")),
+    "menu": ("Skip the menu", skip_menu, ("Hold the rocker as you", "turn it on to skip the menu.")),
+    "h2h": ("Hog to hog only", hog_to_hog, ("Start at the near hog?", "After 7 s it times H2H.")),
 }
 DECKS = {
-    "Basic": ("buttons", "stone", "read", "basic_older", "undo_times", "off"),
-    "Competition": ("buttons", "stone", "read", "turn", "fix", "older", "position", "undo_times", "off"),
-    "League": ("buttons", "stone", "read", "turn", "fix", "rocks", "older", "position", "undo", "off"),
-    "Coach": ("buttons", "stone", "read", "turn", "fix", "rocks", "older", "pages", "undo", "off"),
+    "Basic": ("buttons", "stone", "read", "basic_older", "undo_times", "off", "menu", "h2h"),
+    "Competition": ("buttons", "stone", "read", "turn", "fix", "older", "position", "undo_times", "off", "menu",
+                    "h2h"),
+    "League": ("buttons", "stone", "read", "turn", "fix", "rocks", "older", "position", "undo", "off", "menu", "h2h"),
+    "Coach": ("buttons", "stone", "read", "turn", "fix", "rocks", "older", "pages", "undo", "off", "menu", "h2h"),
 }
 
 
 def header(c, mode, index, count, title):
-    label(c, mode, 10, 3, size=12, weight="Bold")
-    # progress: a dot a card, this one filled
-    gap = 6
-    x = 190 - (count - 1) * gap
-    for i in range(count):
-        if i == index:
-            c.disc(x + i * gap, 10, 2.4)
-        else:
-            c.ring(x + i * gap, 10, 1.8, width=1)
+    label(c, mode, 10, 2, size=12, weight="Bold")
+    label(c, f"{index + 1}/{count}", 190, 2, size=12, anchor="ra", weight="Bold")
     f = nunito(19, "ExtraBold")
     assert width_of(title, f) <= 184, title
     c.ctext(title, f, 100, TITLE_Y)
