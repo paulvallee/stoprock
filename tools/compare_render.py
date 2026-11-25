@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools" / "mockups"))
 import render  # noqa: E402
 import screen  # noqa: E402
+import tutorials  # noqa: E402
 
 
 def main():
@@ -32,6 +33,11 @@ def main():
     refs["league-tip"] = screen.league_screen([], [], 2, 0, tip=True)
     for i in range(len(screen.MENU_ITEMS)):
         refs[f"menu{i}"] = screen.mode_menu(i)
+    for i in range(len(screen.TUTORIAL_MENU_ITEMS)):
+        refs[f"tutorial-menu{i}"] = screen.mode_menu(i, tutorials=True)
+    for mode, name in enumerate(tutorials.MODES):
+        for page in range(len(tutorials.DECKS[mode])):
+            refs[f"tutorial-{name.lower()}-{page + 1:02d}"] = tutorials.page_image(mode, page)
     refs["coach1-tip"] = screen.coach_timer_screen([], [], tip=True)
     refs["competition-undo"] = screen.competition_screen(ls, lme, lact, tip="undo")
     refs["league-undo"] = screen.league_screen(ls, shots, lme, lact, tip="undo")
@@ -62,6 +68,9 @@ def main():
         refs[f"league{n:02d}"] = screen.league_screen(ls, [i % 3 != 2 for i in range(n)], n % 4, n % 4,
                                                       focus="rocks" if n % 2 else "players")
     refs["competition"] = screen.competition_screen(ls, lme, lact)
+    refs["league-history"] = screen.league_screen(ls, shots, lme, 3, scroll=2, scrolling=True)
+    refs["coach1-history"] = screen.coach_timer_screen(cs, [True, False, True, True, False, True], active=4,
+                                                       scroll=2, scrolling=True)
     refs["competition-them-right"] = screen.competition_screen(ls, lme, 3)
     refs["competition-columns-right"] = screen.competition_screen(ls, lme, lact, first_column=1)
     refs["competition-history"] = screen.competition_screen(ls, lme, 3, scroll=2, scrolling=True)

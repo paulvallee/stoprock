@@ -45,9 +45,10 @@ void drawScrollBar(Canvas& c, int firstVisible, int count) {
 
 }  // namespace
 
-void drawStartupMenu(Canvas& c, const StartupMenuItem* items, int count, const StartupMenuSelection& selection) {
+void drawStartupMenu(Canvas& c, const StartupMenuItem* items, int count, const StartupMenuSelection& selection,
+                     const Bitmap& heading) {
     c.clear();
-    c.blit(kLogo, (Canvas::W - kLogo.w) / 2, 4);
+    c.blit(heading, (Canvas::W - heading.w) / 2, 4);
     for (int row = 0; row < kStartupMenuVisibleRows; ++row) {
         const int index = selection.firstVisible + row;
         if (index >= count) break;
