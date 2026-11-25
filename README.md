@@ -24,6 +24,7 @@ Design agreed. Firmware written and building for the CoreInk and for the simulat
 | [`assets/fonts/`](assets/fonts/) | DSEG7 Classic Bold, Spleen 6×12 and Nunito, each with its licence |
 | [`tools/mockups/`](tools/mockups/) | Python scripts that draw the mockups and logo |
 | [`firmware/`](firmware/) | ESP32 firmware (PlatformIO): CoreInk and simulator builds, logic tests |
+| [`hardware/`](hardware/) | The CoreInk's dimensions, its case, and [concepts parked for review](hardware/CONCEPTS.md) (controls on the broom, bigger screens) |
 | [`simulator/`](simulator/) | Run the firmware in Espressif's esp-emulator and use it in your browser |
 | [`tools/fontgen.py`](tools/fontgen.py), [`tools/compare_render.py`](tools/compare_render.py) | Generate the firmware's fonts and bitmaps; check the firmware's screens against the mockups |
 
