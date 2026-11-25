@@ -17,26 +17,42 @@ OUT = HERE / "render"
 SEG = 64
 
 # ------------------------------------------------------------------ the parts inside
-GLASS_W, GLASS_H = 71.82, 36.30      # Good Display 2.66" outline (GDEY0266T90)
-ACTIVE_W, ACTIVE_H = 60.09, 30.70    # its active area (296 x 152); taken as centred for the concept
-STICK_KNOB = 11.0                    # the 5-way stick's cap (Alps SKRH-type switch underneath)
-BUTTON = 18.0                        # the timing button's cap
-
-# ------------------------------------------------------------------ the case
-W, H, T = 84.0, 80.0, 16.0           # face width, height, and thickness
-R = 10.0                             # corner radius (plan)
+GLASS_LONG, GLASS_SHORT = 71.82, 36.30    # Good Display 2.66" outline (GDEY0266T90)
+ACTIVE_LONG, ACTIVE_SHORT = 60.09, 30.70  # its active area (296 x 152); taken as centred for the concept
+STICK_KNOB = 10.0                    # the 5-way stick's cap (Alps SKRH-type switch underneath)
+BUTTON = 16.0                        # the timing button's cap
 EDGE = 2.5                           # the front edge's chamfer-round
-SCREEN_CY = H - 6.0 - GLASS_H / 2    # the glass sits 6 mm below the top
-WINDOW = (ACTIVE_W + 1.2, ACTIVE_H + 1.2)
 WINDOW_DEPTH = 1.6                   # the window is recessed: a face-down drop lands on the frame
-CONTROLS_Y = 19.0                    # the row along the bottom
-STICK_X, BUTTON_X = 22.0, 61.0
+T = 16.0                             # thickness
+
+# ------------------------------------------------------------------ layouts
+# stack: portrait screen, the stick above the timing button, at the bottom (like a Rockwatcher).
+# row: portrait screen, the stick and the button side by side at the bottom.
+# landscape: the screen across the top, the stick and button side by side below (the first concept).
+LAYOUTS = {
+    "stack": dict(W=48.0, H=125.0, R=9.0, portrait=True, stick=(24.0, 36.0), button=(24.0, 15.0)),
+    "row": dict(W=50.0, H=109.0, R=9.0, portrait=True, stick=(14.5, 15.0), button=(35.0, 15.0)),
+    "landscape": dict(W=84.0, H=80.0, R=10.0, portrait=False, stick=(22.0, 19.0), button=(61.0, 19.0)),
+}
+
+
+def configure(name):
+    """Sets the module's dimensions for a layout."""
+    global LAYOUT, W, H, R, SCREEN_CY, WINDOW, STICK_X, STICK_Y, BUTTON_X, BUTTON_Y, TUNNEL_YS, GLASS, ACTIVE
+    L = LAYOUTS[name]
+    LAYOUT, W, H, R = name, L["W"], L["H"], L["R"]
+    GLASS = (GLASS_SHORT, GLASS_LONG) if L["portrait"] else (GLASS_LONG, GLASS_SHORT)
+    ACTIVE = (ACTIVE_SHORT, ACTIVE_LONG) if L["portrait"] else (ACTIVE_LONG, ACTIVE_SHORT)
+    SCREEN_CY = H - 6.0 - GLASS[1] / 2       # the glass sits 6 mm below the top
+    WINDOW = (ACTIVE[0] + 1.2, ACTIVE[1] + 1.2)
+    (STICK_X, STICK_Y), (BUTTON_X, BUTTON_Y) = L["stick"], L["button"]
+    TUNNEL_YS = (H * 0.27, H * 0.73)
+
 
 # ------------------------------------------------------------------ the broom
 HANDLE_R = 14.5                      # about 29 mm (1 1/8")
 SADDLE_DEPTH = 3.0                   # the back's groove that sits on it
 STRAP_W, STRAP_T = 20.0, 2.0         # a strap round the handle, through two tunnels
-TUNNEL_YS = (H * 0.27, H * 0.73)
 TUNNEL_Z = (SADDLE_DEPTH + 1.2, SADDLE_DEPTH + 1.2 + 2.6)
 
 
@@ -62,10 +78,10 @@ def body():
     ]).translate((0, 0, 0.005))
     # dished wells round the stick and the button
     wells = []
-    for x, d, depth in ((STICK_X, STICK_KNOB + 7, 2.0), (BUTTON_X, BUTTON + 4, 1.6)):
+    for x, y, d, depth in ((STICK_X, STICK_Y, STICK_KNOB + 6, 2.0), (BUTTON_X, BUTTON_Y, BUTTON + 4, 1.6)):
         wells.append(Manifold.batch_hull([
-            Manifold.cylinder(0.01, d / 2 - depth, circular_segments=SEG).translate((x, CONTROLS_Y, T - depth)),
-            Manifold.cylinder(0.01, d / 2 + depth, circular_segments=SEG).translate((x, CONTROLS_Y, T)),
+            Manifold.cylinder(0.01, d / 2 - depth, circular_segments=SEG).translate((x, y, T - depth)),
+            Manifold.cylinder(0.01, d / 2 + depth, circular_segments=SEG).translate((x, y, T)),
         ]))
     # the saddle on the back, along the handle
     saddle = Manifold.cylinder(H + 2, HANDLE_R + 0.3, circular_segments=SEG * 2).rotate((-90, 0, 0)).translate(
@@ -86,10 +102,10 @@ def screen_bed():
 
 def stick():
     """The 5-way stick's cap: a short post with a dished, knurled-looking top."""
-    post = Manifold.cylinder(2.0, 2.2, circular_segments=SEG).translate((STICK_X, CONTROLS_Y, T - 2.2))
-    cap = Manifold.cylinder(3.2, STICK_KNOB / 2, STICK_KNOB / 2 - 0.6, circular_segments=SEG).translate((STICK_X, CONTROLS_Y, T - 0.6))
-    dish = Manifold.sphere(9, circular_segments=SEG).translate((STICK_X, CONTROLS_Y, T + 2.6 + 9 - 0.5))
-    ridges = [Manifold.cube((0.8, STICK_KNOB, 0.6), center=True).rotate((0, 0, a)).translate((STICK_X, CONTROLS_Y, T + 2.2))
+    post = Manifold.cylinder(2.0, 2.2, circular_segments=SEG).translate((STICK_X, STICK_Y, T - 2.2))
+    cap = Manifold.cylinder(3.2, STICK_KNOB / 2, STICK_KNOB / 2 - 0.6, circular_segments=SEG).translate((STICK_X, STICK_Y, T - 0.6))
+    dish = Manifold.sphere(9, circular_segments=SEG).translate((STICK_X, STICK_Y, T + 2.6 + 9 - 0.5))
+    ridges = [Manifold.cube((0.8, STICK_KNOB, 0.6), center=True).rotate((0, 0, a)).translate((STICK_X, STICK_Y, T + 2.2))
               for a in range(0, 180, 30)]
     knob = cap - dish
     for r in ridges:
@@ -100,9 +116,9 @@ def stick():
 def button():
     """The timing button: a broad cap standing 1.5 mm proud of the face."""
     return Manifold.batch_hull([
-        Manifold.cylinder(0.01, BUTTON / 2, circular_segments=SEG).translate((BUTTON_X, CONTROLS_Y, T - 1.6)),
-        Manifold.cylinder(0.01, BUTTON / 2, circular_segments=SEG).translate((BUTTON_X, CONTROLS_Y, T + 0.8)),
-        Manifold.cylinder(0.01, BUTTON / 2 - 1.0, circular_segments=SEG).translate((BUTTON_X, CONTROLS_Y, T + 1.5)),
+        Manifold.cylinder(0.01, BUTTON / 2, circular_segments=SEG).translate((BUTTON_X, BUTTON_Y, T - 1.6)),
+        Manifold.cylinder(0.01, BUTTON / 2, circular_segments=SEG).translate((BUTTON_X, BUTTON_Y, T + 0.8)),
+        Manifold.cylinder(0.01, BUTTON / 2 - 1.0, circular_segments=SEG).translate((BUTTON_X, BUTTON_Y, T + 1.5)),
     ])
 
 
@@ -129,13 +145,21 @@ def strap():
 
 def save(m, name):
     mesh = m.to_mesh()
-    trimesh.Trimesh(vertices=np.asarray(mesh.vert_properties)[:, :3], faces=np.asarray(mesh.tri_verts)).export(OUT / f"model-{name}.stl")
+    trimesh.Trimesh(vertices=np.asarray(mesh.vert_properties)[:, :3], faces=np.asarray(mesh.tri_verts)).export(
+        OUT / f"model-{LAYOUT}-{name}.stl")
 
 
 if __name__ == "__main__":
+    import json
+    import sys
     OUT.mkdir(exist_ok=True)
-    for name, part in (("body", body()), ("glass", screen_bed()), ("stick", stick()), ("button", button()),
-                       ("handle", handle()), ("strap", strap())):
-        save(part, name)
-        print(f"{name:7} {part.volume() / 1000:6.1f} cm3")
-    print(f"case {W:.0f} x {H:.0f} x {T:.0f} mm; window {WINDOW[0]:.1f} x {WINDOW[1]:.1f}; screen centre y {SCREEN_CY:.2f}")
+    layouts = {}
+    for name in sys.argv[1:] or LAYOUTS:
+        configure(name)
+        for part_name, part in (("body", body()), ("glass", screen_bed()), ("stick", stick()), ("button", button()),
+                                ("handle", handle()), ("strap", strap())):
+            save(part, part_name)
+        layouts[name] = dict(W=W, H=H, T=T, screen=[W / 2, SCREEN_CY], active=list(ACTIVE),
+                             portrait=LAYOUTS[name]["portrait"])
+        print(f"{name:9} case {W:.0f} x {H:.0f} x {T:.0f} mm; window {WINDOW[0]:.1f} x {WINDOW[1]:.1f}")
+    (OUT / "layouts.json").write_text(json.dumps(layouts, indent=1))

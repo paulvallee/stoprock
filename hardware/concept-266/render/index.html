@@ -9,7 +9,10 @@
 import * as THREE from 'three';
 import { STLLoader } from 'three/addons/loaders/STLLoader.js';
 const W = 640, H = 560;
-const view = new URLSearchParams(location.search).get('view') || 'front';
+const params = new URLSearchParams(location.search);
+const view = params.get('view') || 'front';
+const layout = params.get('layout') || 'stack';
+const L = (await (await fetch('layouts.json')).json())[layout];
 const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
 renderer.setPixelRatio(2);
 renderer.setSize(W, H);
@@ -24,21 +27,23 @@ const load = (f) => new Promise((ok, bad) => loader.load(f, g => { g.computeVert
 const mat = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.7, ...extra });
 const group = new THREE.Group(); scene.add(group);
 const add = async (file, material) => { const m = new THREE.Mesh(await load(file), material); group.add(m); return m; };
-await add('model-body.stl', mat(0x2b2e33, { roughness: 0.8 }));
-await add('model-glass.stl', mat(0xdcdcd6, { roughness: 0.3 }));
-await add('model-stick.stl', mat(0x55595f, { roughness: 0.6 }));
-await add('model-button.stl', mat(0xd9542b, { roughness: 0.5 }));
+const part = (n) => `model-${layout}-${n}.stl`;
+await add(part('body'), mat(0x2b2e33, { roughness: 0.8 }));
+await add(part('glass'), mat(0xdcdcd6, { roughness: 0.3 }));
+await add(part('stick'), mat(0x55595f, { roughness: 0.6 }));
+await add(part('button'), mat(0xd9542b, { roughness: 0.5 }));
 if (view.startsWith('broom') || view === 'side') {
-  await add('model-handle.stl', mat(0xe9e6df, { roughness: 0.4 }));   // a white composite handle
-  await add('model-strap.stl', mat(0x1c1d20, { roughness: 0.95 }));
+  await add(part('handle'), mat(0xe9e6df, { roughness: 0.4 }));   // a white composite handle
+  await add(part('strap'), mat(0x1c1d20, { roughness: 0.95 }));
 }
-const tex = await new THREE.TextureLoader().loadAsync('screen.png');
+const tex = await new THREE.TextureLoader().loadAsync(L.portrait ? 'screen-portrait.png' : 'screen.png');
 tex.colorSpace = THREE.SRGBColorSpace;
 tex.anisotropy = 8;
-const scr = new THREE.Mesh(new THREE.PlaneGeometry(60.09, 30.70),
+const scr = new THREE.Mesh(new THREE.PlaneGeometry(L.active[0], L.active[1]),
   new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9, color: 0xeeeeea }));
-scr.position.set(42, 55.85, 16 - 1.6 + 0.02); group.add(scr);
-group.position.set(-42, -40, -8);
+scr.position.set(L.screen[0], L.screen[1], L.T - 1.6 + 0.02); group.add(scr);
+group.position.set(-L.W / 2, -L.H / 2, -L.T / 2);
+const k = Math.max(L.W, L.H) / 84;   // camera distance follows the case's size
 const views = {
   front: [[60, 40, 190], [0, 2, 0]],
   face: [[0, 0, 200], [0, 0, 0]],
@@ -47,7 +52,8 @@ const views = {
   side: [[210, 15, 10], [0, 0, -8]],
   back: [[-60, 30, -180], [0, 0, -4]],
 };
-const [pos, look] = views[view] || views.front;
+const [pos0, look] = views[view] || views.front;
+const pos = pos0.map(v => v * k);
 const cam = new THREE.PerspectiveCamera(30, W / H, 1, 3000);
 cam.position.set(...pos);
 cam.lookAt(...look);
