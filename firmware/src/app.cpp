@@ -26,13 +26,14 @@ constexpr int64_t kConfirmUs = 15000;          // a timing press must still be h
 constexpr int64_t kEdgeGapUs = 30000;          // ignore further edges of the same button within 30 ms
 constexpr int64_t kStableUs = 20000;           // rocker debounce
 constexpr int64_t kUndoHoldUs = kSec;       // hold the rocker centre 1s to undo (and 1s for each more)
-constexpr int64_t kUndoHintUs = kSec / 5;   // ... "Keep holding to undo" shows 0.2s into it (and
-                                            // "Keep holding to move time" 0.2s into a hold that moves a time)
+constexpr int64_t kUndoHintUs = kSec / 5;   // ... "Keep holding to undo" shows 0.2s into it
+constexpr int64_t kMoveHintUs = 350000;       // "Moving time" 0.35s into a hold of up on the columns: a press to
+                                               // move the cursor can last 0.2s; the move itself is at 1s
 constexpr int64_t kPowerHoldUs = 3 * kSec;
 constexpr int64_t kOffHintUs = kSec / 2;       // "Keep holding to turn off" from then (a timing click is quicker)
 constexpr int64_t kDoublePressUs = 400000;     // two rocker presses within 0.4s: a double press
 constexpr int64_t kFocusHoldUs = kSec / 2;     // league: hold rocker down (up from your rocks) to move the focus
-constexpr int64_t kMoveStepUs = 700000;        // holding up moves the newest time this often
+constexpr int64_t kMoveStepUs = kSec;          // holding up moves the newest time this often (first at 1s)
 constexpr int64_t kScrollModeHoldUs = 700000;  // hold down to browse or log rocks, hold up to return
 constexpr int64_t kAwakeAfterPressUs = 2 * kSec;    // stay awake this long after a rocker press
 constexpr int64_t kAwakeAfterWakeUs = 40000;        // time to confirm the button that woke us
@@ -1301,7 +1302,7 @@ void pollButtons(int64_t now) {
             const bool rocker = b == board::kUp || b == board::kDown;
             const bool moves = !timeHistory.scrolling && rules().columns && b == board::kUp && raw &&
                                focus == Focus::Players;
-            if (moves && !moveHint && stoneCount > 0 && now - s.downSince >= kUndoHintUs) {
+            if (moves && !moveHint && stoneCount > 0 && now - s.downSince >= kMoveHintUs) {
                 moveHint = true;  // a press of up/down is quicker: it never shows for one
                 syncModel();
             }
