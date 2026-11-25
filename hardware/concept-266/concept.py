@@ -33,18 +33,34 @@ LAYOUTS = {
     "stack": dict(W=48.0, H=125.0, R=9.0, portrait=True, stick=(24.0, 36.0), button=(24.0, 15.0)),
     "row": dict(W=50.0, H=109.0, R=9.0, portrait=True, stick=(14.5, 15.0), button=(35.0, 15.0)),
     "landscape": dict(W=84.0, H=80.0, R=10.0, portrait=False, stick=(22.0, 19.0), button=(61.0, 19.0)),
+    # paperdiy: M5Stack's PaperDIY kit (4.7", 540 x 960) upright, the stick above the timing button.
+    # Its panel is 62.5 x 115.3 x 1.2 mm with the board (61.2 x 47.1) on the back of its lower end,
+    # 5.5 mm in all; the window is the visible area M5Stack's own enclosure shows (59.6 x 105.1), its
+    # top 1 mm below the panel's top edge (the panel's wide border, 9.7 mm, is at the board end).
+    "paperdiy": dict(W=69.0, H=163.0, R=8.0, T=15.0, portrait=True, stick=(34.5, 33.5), button=(34.5, 13.5),
+                     glass=(62.5, 115.3), window=(59.6, 105.1), glass_margin=3.3, window_top=1.0,
+                     screen="screen-paperdiy.png", broom=True),
 }
 
 
 def configure(name):
     """Sets the module's dimensions for a layout."""
-    global LAYOUT, W, H, R, SCREEN_CY, WINDOW, STICK_X, STICK_Y, BUTTON_X, BUTTON_Y, TUNNEL_YS, GLASS, ACTIVE
-    L = LAYOUTS[name]
-    LAYOUT, W, H, R = name, L["W"], L["H"], L["R"]
-    GLASS = (GLASS_SHORT, GLASS_LONG) if L["portrait"] else (GLASS_LONG, GLASS_SHORT)
-    ACTIVE = (ACTIVE_SHORT, ACTIVE_LONG) if L["portrait"] else (ACTIVE_LONG, ACTIVE_SHORT)
-    SCREEN_CY = H - 6.0 - GLASS[1] / 2       # the glass sits 6 mm below the top
-    WINDOW = (ACTIVE[0] + 1.2, ACTIVE[1] + 1.2)
+    global LAYOUT, W, H, R, T, SCREEN_CY, WINDOW, STICK_X, STICK_Y, BUTTON_X, BUTTON_Y, TUNNEL_YS, GLASS, ACTIVE
+    global GLASS_TOP, CONFIG
+    L = CONFIG = LAYOUTS[name]
+    LAYOUT, W, H, R, T = name, L["W"], L["H"], L["R"], L.get("T", 16.0)
+    if "glass" in L:
+        GLASS, WINDOW = L["glass"], L["window"]
+        ACTIVE = (WINDOW[0] - 1.2, WINDOW[1] - 1.2)
+    else:
+        GLASS = (GLASS_SHORT, GLASS_LONG) if L["portrait"] else (GLASS_LONG, GLASS_SHORT)
+        ACTIVE = (ACTIVE_SHORT, ACTIVE_LONG) if L["portrait"] else (ACTIVE_LONG, ACTIVE_SHORT)
+        WINDOW = (ACTIVE[0] + 1.2, ACTIVE[1] + 1.2)
+    GLASS_TOP = H - L.get("glass_margin", 6.0)          # the glass's top edge
+    if "window_top" in L:
+        SCREEN_CY = GLASS_TOP - L["window_top"] - WINDOW[1] / 2
+    else:
+        SCREEN_CY = GLASS_TOP - GLASS[1] / 2
     (STICK_X, STICK_Y), (BUTTON_X, BUTTON_Y) = L["stick"], L["button"]
     TUNNEL_YS = (H * 0.27, H * 0.73)
 
@@ -122,9 +138,48 @@ def button():
     ])
 
 
+# A whole broom, for scale: a 1 1/8" handle 48" (1219 mm) long, the device's top 200 mm below its
+# end (under the top hand), and a head about 203 x 82 mm on a pivot at the bottom.
+HANDLE_LEN, DEVICE_FROM_TOP = 1219.0, 200.0
+HEAD = (203.0, 82.0, 22.0)           # length (across the handle), width, thickness of the block
+PAD_T = 8.0
+
+
 def handle():
-    return Manifold.cylinder(240, HANDLE_R, circular_segments=SEG * 2).rotate((-90, 0, 0)).translate(
-        (W / 2, -90, SADDLE_DEPTH - HANDLE_R))
+    if not CONFIG.get("broom"):
+        return Manifold.cylinder(240, HANDLE_R, circular_segments=SEG * 2).rotate((-90, 0, 0)).translate(
+            (W / 2, -90, SADDLE_DEPTH - HANDLE_R))
+    top = H + DEVICE_FROM_TOP
+    return Manifold.cylinder(HANDLE_LEN, HANDLE_R, circular_segments=SEG * 2).rotate((-90, 0, 0)).translate(
+        (W / 2, top - HANDLE_LEN, SADDLE_DEPTH - HANDLE_R))
+
+
+def broom_head():
+    """The head: a block with a pad under it, on a short pivot below the handle."""
+    cz = SADDLE_DEPTH - HANDLE_R
+    bottom = H + DEVICE_FROM_TOP - HANDLE_LEN
+    L, Wd, Tk = HEAD
+    pivot = Manifold.cylinder(22, HANDLE_R + 2, circular_segments=SEG).rotate((-90, 0, 0)).translate((W / 2, bottom - 20, cz))
+    block = Manifold.cube((L, Tk, Wd), center=True).translate((W / 2, bottom - 20 - Tk / 2, cz))
+    return pivot + block
+
+
+def broom_pad():
+    cz = SADDLE_DEPTH - HANDLE_R
+    bottom = H + DEVICE_FROM_TOP - HANDLE_LEN
+    L, Wd, Tk = HEAD
+    return Manifold.cube((L - 4, PAD_T, Wd - 4), center=True).translate((W / 2, bottom - 20 - Tk - PAD_T / 2, cz))
+
+
+def internals():
+    """The PaperDIY inside, for the see-through view: the panel, the board on the back of its lower end,
+    and the 140 mAh battery (its size estimated) beside it."""
+    front = T - WINDOW_DEPTH                     # the glass's face, under the window's lip
+    gx0 = W / 2 - GLASS[0] / 2
+    panel = Manifold.cube((GLASS[0], GLASS[1], 1.2)).translate((gx0, GLASS_TOP - GLASS[1], front - 1.2))
+    board = Manifold.cube((61.15, 47.1, 4.3)).translate((W / 2 - 61.15 / 2, GLASS_TOP - GLASS[1], front - 5.5))
+    battery = Manifold.cube((20.0, 30.0, 4.0)).translate((W / 2 - 10.0, GLASS_TOP - GLASS[1] + 52.0, front - 5.2))
+    return panel, board, battery
 
 
 def strap():
@@ -156,10 +211,15 @@ if __name__ == "__main__":
     layouts = {}
     for name in sys.argv[1:] or LAYOUTS:
         configure(name)
-        for part_name, part in (("body", body()), ("glass", screen_bed()), ("stick", stick()), ("button", button()),
-                                ("handle", handle()), ("strap", strap())):
+        parts = [("body", body()), ("glass", screen_bed()), ("stick", stick()), ("button", button()),
+                 ("handle", handle()), ("strap", strap())]
+        if CONFIG.get("broom"):
+            parts += [("head", broom_head()), ("pad", broom_pad())]
+            parts += list(zip(("panel", "board", "battery"), internals()))
+        for part_name, part in parts:
             save(part, part_name)
         layouts[name] = dict(W=W, H=H, T=T, screen=[W / 2, SCREEN_CY], active=list(ACTIVE),
-                             portrait=LAYOUTS[name]["portrait"])
+                             portrait=LAYOUTS[name]["portrait"], texture=CONFIG.get("screen"),
+                             broom=bool(CONFIG.get("broom")))
         print(f"{name:9} case {W:.0f} x {H:.0f} x {T:.0f} mm; window {WINDOW[0]:.1f} x {WINDOW[1]:.1f}")
     (OUT / "layouts.json").write_text(json.dumps(layouts, indent=1))

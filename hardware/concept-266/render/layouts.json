@@ -1,4 +1,20 @@
 {
+ "paperdiy": {
+  "W": 69.0,
+  "H": 163.0,
+  "T": 15.0,
+  "screen": [
+   34.5,
+   106.14999999999999
+  ],
+  "active": [
+   58.4,
+   103.89999999999999
+  ],
+  "portrait": true,
+  "texture": "screen-paperdiy.png",
+  "broom": true
+ },
  "stack": {
   "W": 48.0,
   "H": 125.0,
@@ -11,7 +27,9 @@
    30.7,
    60.09
   ],
-  "portrait": true
+  "portrait": true,
+  "texture": null,
+  "broom": false
  },
  "row": {
   "W": 50.0,
@@ -25,7 +43,9 @@
    30.7,
    60.09
   ],
-  "portrait": true
+  "portrait": true,
+  "texture": null,
+  "broom": false
  },
  "landscape": {
   "W": 84.0,
@@ -39,6 +59,8 @@
    60.09,
    30.7
   ],
-  "portrait": false
+  "portrait": false,
+  "texture": null,
+  "broom": false
  }
 }

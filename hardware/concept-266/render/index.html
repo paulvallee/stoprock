@@ -28,20 +28,31 @@ const mat = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, rough
 const group = new THREE.Group(); scene.add(group);
 const add = async (file, material) => { const m = new THREE.Mesh(await load(file), material); group.add(m); return m; };
 const part = (n) => `model-${layout}-${n}.stl`;
-await add(part('body'), mat(0x2b2e33, { roughness: 0.8 }));
+const xray = view === 'xray';
+await add(part('body'), mat(0x2b2e33, xray ? { roughness: 0.8, transparent: true, opacity: 0.28, depthWrite: false } : { roughness: 0.8 }));
+if (xray) {
+  await add(part('panel'), mat(0xcfd2d6, { roughness: 0.4 }));
+  await add(part('board'), mat(0x2f6b3a, { roughness: 0.6 }));
+  await add(part('battery'), mat(0xc9a227, { roughness: 0.5 }));
+}
 await add(part('glass'), mat(0xdcdcd6, { roughness: 0.3 }));
 await add(part('stick'), mat(0x55595f, { roughness: 0.6 }));
 await add(part('button'), mat(0xd9542b, { roughness: 0.5 }));
 if (view.startsWith('broom') || view === 'side') {
   await add(part('handle'), mat(0xe9e6df, { roughness: 0.4 }));   // a white composite handle
   await add(part('strap'), mat(0x1c1d20, { roughness: 0.95 }));
+  if (L.broom && view === 'broom-full') {
+    await add(part('head'), mat(0x26282c, { roughness: 0.6 }));
+    await add(part('pad'), mat(0xb33a2a, { roughness: 0.9 }));
+  }
 }
-const tex = await new THREE.TextureLoader().loadAsync(L.portrait ? 'screen-portrait.png' : 'screen.png');
+const tex = await new THREE.TextureLoader().loadAsync(L.texture || (L.portrait ? 'screen-portrait.png' : 'screen.png'));
 tex.colorSpace = THREE.SRGBColorSpace;
 tex.anisotropy = 8;
+if (xray) tex.dispose();
 const scr = new THREE.Mesh(new THREE.PlaneGeometry(L.active[0], L.active[1]),
   new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9, color: 0xeeeeea }));
-scr.position.set(L.screen[0], L.screen[1], L.T - 1.6 + 0.02); group.add(scr);
+scr.position.set(L.screen[0], L.screen[1], L.T - 1.6 + 0.02); if (!xray) group.add(scr);
 group.position.set(-L.W / 2, -L.H / 2, -L.T / 2);
 const k = Math.max(L.W, L.H) / 84;   // camera distance follows the case's size
 const views = {
@@ -51,9 +62,11 @@ const views = {
   'broom-hand': [[-40, -170, 150], [0, 5, -6]],
   side: [[210, 15, 10], [0, 0, -8]],
   back: [[-60, 30, -180], [0, 0, -4]],
+  xray: [[-80, 50, -170], [0, 0, 0]],
+  'broom-full': [[1350, 250, 1900], [0, -330, -12]],
 };
 const [pos0, look] = views[view] || views.front;
-const pos = pos0.map(v => v * k);
+const pos = view === 'broom-full' ? pos0 : pos0.map(v => v * k);
 const cam = new THREE.PerspectiveCamera(30, W / H, 1, 3000);
 cam.position.set(...pos);
 cam.lookAt(...look);
