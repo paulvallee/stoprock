@@ -438,7 +438,8 @@ CARDS = {
     "h2h": ("Hog to hog only", hog_to_hog, ("Start at the near hog?", "After 7s it times H2H.")),
 }
 DECKS = {
-    "Basic": ("buttons", "stone", "h2h", "read", "basic_older", "undo_times", "off", "menu"),
+    # Basic has no switch-on shortcut (only the menu opens it), so no Skip the menu card
+    "Basic": ("buttons", "stone", "h2h", "read", "basic_older", "undo_times", "off"),
     "Competition": ("buttons", "stone", "h2h", "read", "turn", "fix", "older", "position", "undo_times", "off",
                     "menu"),
     # Older times (hold down once) before Log your shot (hold down again): the order the holds go in

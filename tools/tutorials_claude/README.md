@@ -12,7 +12,7 @@ the firmware (`firmware/lib/stoprock_ui/src/tutorial_data.cpp`), each card whole
 
 | Deck | Cards |
 |---|---|
-| Basic (8) | Timing buttons, Time a stone, Hog to hog only, Read the times, Older stones, Undo, Turn off, Skip the menu |
+| Basic (7) | Timing buttons, Time a stone, Hog to hog only, Read the times, Older stones, Undo, Turn off (no Skip the menu: Basic has no switch-on shortcut) |
 | Competition (11) | Timing buttons, Time a stone, Hog to hog only, Read the times, Who's throwing, Wrong player?, Older times, Your position, Undo, Turn off, Skip the menu |
 | League (12) | as Competition, plus Log your shot (after Older times: hold down once, then again) |
 | Coach (12) | as League, with Two pages instead of Your position, and Log a shot (a coach isn't throwing) |
