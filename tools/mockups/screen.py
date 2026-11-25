@@ -44,14 +44,22 @@ def ink(s, font):
     return _ink[key]
 
 
-def text_in_box(d, s, font, x0, x1, y0, y1, align="right", margin=4, fill=0):
+# Letter pairs that touch at small sizes once drawn in 1 bit ("cl" reads as "d"): a pixel goes between.
+LOOSE_PAIRS = ("cl",)
+
+
+def text_in_box(d, s, font, x0, x1, y0, y1, align="right", margin=4, fill=0, loosen=()):
     if isinstance(font, SegFont):
         return font.draw_in_box(d, s, x0, x1, y0, y1, align, margin)
+    cuts = [i + 1 for i in range(len(s) - 1) if s[i:i + 2] in loosen]
     l, t, r, b = ink(s, font)
-    w = r - l
+    w = r - l + len(cuts)
     x = {"right": x1 - margin - w - l, "left": x0 + margin - l}.get(align, (x0 + x1 - w) / 2 - l)
     y = (y0 + y1 - (b - t)) / 2 - t
-    d.text((round(x), round(y)), s, font=font, fill=fill)
+    start = 0
+    for k, end in enumerate(cuts + [len(s)]):
+        d.text((round(x + font.getlength(s[:start]) + k), round(y)), s[start:end], font=font, fill=fill)
+        start = end
 
 
 def dseg_number(d, val, font, x0, x1, y0, y1, margin=3, align="right", fill=0):
@@ -426,7 +434,7 @@ def position_card():
     d.fontmode = "1"
     detail = fonts()["menu_detail"]
     for label, y in (("You're playing", 19), ("Double-click the rocker", 70), ("to change position", 85)):
-        text_in_box(d, label, detail, 8, 169, y, y, align="center")
+        text_in_box(d, label, detail, 8, 169, y, y, align="center", loosen=LOOSE_PAIRS)
     return img
 
 
