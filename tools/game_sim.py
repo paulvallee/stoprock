@@ -12,7 +12,9 @@ Rules modelled (docs/SPEC.md sections 4, 7, 10), with sleep-while-timing on (the
   timed) and keeps it awake 2 s.
 - Every 10 minutes a clock-audit sample keeps it awake up to ~1 s (0.5 s on average).
 - The chip runs at 80 MHz.
-- Switching on is a full refresh. Switching off (help page) is one more, after the game.
+- Switching on draws the menu and the mode with fast whole-screen updates (as partials);
+  the first ghost-clearing full refresh follows the first stone. Switching off (the off page)
+  is one more full refresh, after the game.
 """
 
 GAME_S = 2 * 3600
@@ -40,10 +42,10 @@ BATTERY_MAH = 390
 def simulate():
     period = GAME_S / (ENDS * STONES_PER_END)
     awake = []                 # (start, end) intervals
-    partial, full = 0, 1       # switch-on is a full refresh
-    awake.append((0.0, FULL_S + 1.0))
+    partial, full = 2, 0       # switch-on: the menu and the mode, fast whole-screen updates
+    awake.append((0.0, 2 * PARTIAL_S + 1.0))
     led_s = beeps = wakes = 0
-    stones_since_clean = 0
+    stones_since_clean = STONES_PER_CLEAN - 1  # the first ghost-clean follows the first stone
     for i in range(ENDS * STONES_PER_END):
         t0 = i * period
         # timing: start, B2H, H2H; awake until the H2H update has drawn

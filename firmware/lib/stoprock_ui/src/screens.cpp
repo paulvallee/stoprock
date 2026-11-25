@@ -462,8 +462,9 @@ static void drawTimingHistory(Canvas& c, const Stone* stones, uint8_t count, uin
         const int height = pitch - 3 < maxHeight ? pitch - 3 : maxHeight;
         const SegFont digits{height, 14, 3, 2, 3, true, true};
         const SegFont longDigits{height, 11, 3, 2, 3, true, true};
-        const int limit = scroll > 0 ? columnScrollLimit(stones, count, player) : 0;
-        int skip = scroll < limit ? scroll : limit;
+        // Every column skips the same number of splits, so the rows stay a like distance back in
+        // each; a column with fewer splits runs out (blank rows) rather than holding its oldest.
+        int skip = scroll;
         int row = 0;
         for (int i = 0; i < count && row < kHistorySplits; ++i) {
             if (stones[i].player != player) continue;

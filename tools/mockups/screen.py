@@ -584,7 +584,7 @@ def timing_history(d, f, stones, players, active, end, first_column=0, scroll=0,
         height = min(pitch - 3, 23 if theirs else 24)
         digits = SegFont(h=height, w=14, t=3, gap=2, dot=3, prop=True, solid_one=True)
         long_digits = SegFont(h=height, w=11, t=3, gap=2, dot=3, prop=True, solid_one=True)
-        skip = min(scroll, max(0, len(splits) - 4))
+        skip = scroll  # every column the same distance back; one with fewer splits runs out (blank rows)
         for row, (value, half) in enumerate(splits[skip:skip + 4]):
             y = lines_top + row * pitch
             if half:

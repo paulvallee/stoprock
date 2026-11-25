@@ -197,7 +197,7 @@ async function restartIn(mode) {
     if (poweredOn) {
       status.textContent = "switching off…";
       press("side"); await sleep(3400); release("side");
-      for (let i = 0; i < 40 && poweredOn; i++) await sleep(250);  // until the help page is up
+      for (let i = 0; i < 40 && poweredOn; i++) await sleep(250);  // until the off page is up
       await sleep(600);
     }
     status.textContent = `switching on (${mode})…`;

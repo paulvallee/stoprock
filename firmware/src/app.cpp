@@ -209,6 +209,9 @@ constexpr int64_t kPageTipUs = 3 * kSec;
 int64_t singleClickAt = -1;     // the click to check, once the window has passed (-1: none)
 int64_t singleClickPress = -1;  // ... the press it was (a second press since: a double click)
 int64_t pageTipUntil = -1;
+// The position card and a press of the rocker centre: dismissed once the double-click window has
+// passed (a double click changes position and shows the card again: no blink in between).
+int64_t cardDismissAt = -1;
 bool offHint = false;            // "Keep holding to turn off": the side button held, not yet 3 s
 bool moveHint = false;           // "Keep holding to move time": rocker up (or down) held to move a time, till let go
 uint8_t stonesSinceClean = 0;
@@ -344,8 +347,13 @@ void newGame() {
     tipWaiting = mode == GameMode::Basic || rules().positions;
     basicIntroClearing = false;
     tipUntil = -1;
+    cardDismissAt = -1;
     stoneCount = 0;
     basicScroll = 0;
+    // Switching on draws with the fast waveform (no mode switch before the first click), which can
+    // leave the wake screen or menu ghosting: the first ghost-clearing refresh comes after the first
+    // stone, between stones, then every kStonesPerClean as usual.
+    stonesSinceClean = kStonesPerClean - 1;
     Serial.printf("game: new, %s mode\n", modeName(mode));
 }
 
@@ -485,8 +493,9 @@ void syncModel(board::Refresh refresh = board::Refresh::Partial) {
         m.warning = lowBattery;
         m.off = false;
         m.menu = false;
-        // Timing may update the queued frame before the display task takes it.
-        if (requestedRefresh != board::Refresh::Partial) m.refresh = requestedRefresh;
+        // Timing may update the queued frame before the display task takes it: keep the strongest
+        // refresh asked for (Partial < FastScreen < Full), so a pending ghost-clean isn't lost.
+        if (requestedRefresh > m.refresh) m.refresh = requestedRefresh;
         const Tip switchOn = mode == GameMode::Basic ? Tip::BasicIntro : Tip::SwitchOn;
         m.tip = offHint ? Tip::PowerOff : undoHint ? Tip::Undo : moveHint ? Tip::Move :
                 pageTipUntil >= 0 ? Tip::Page : tipWaiting || tipUntil >= 0 ? switchOn : Tip::None;
@@ -793,7 +802,7 @@ GameMode chooseMode() {
             m.tutorialMode = tutorialMode;
             m.tutorialPage = tutorialPage;
             m.off = false;
-            if (full) m.refresh = board::Refresh::FastScreen;
+            if (full && m.refresh < board::Refresh::FastScreen) m.refresh = board::Refresh::FastScreen;
         });
     };
     show(true);
@@ -1026,6 +1035,7 @@ void onRockerPress(ButtonState& s, int64_t t) {
             restartOrder();
             Serial.printf("position: you are %s\n", kPositionNames[myPosition]);
             tipWaiting = true;  // show the new position once the card is on screen
+            cardDismissAt = -1;  // (the first click's dismissal is off: the card stays up)
             tipUntil = -1;
         }
         syncModel();  // shows at once, even while a stone is timed
@@ -1146,10 +1156,11 @@ void releaseAction(uint8_t b) {
     else scrollBasic(b == board::kDown ? 1 : -1);  // basic: down = older stones, up = newer
 }
 
-void dismissBasicIntro() {
+// byPress: a rocker press dismissed it, so the rocker's presses are ignored until it's off the screen.
+void dismissBasicIntro(bool byPress) {
     tipWaiting = false;
     tipUntil = -1;
-    basicIntroClearing = true;
+    basicIntroClearing = byPress;
     syncModel();
 }
 
@@ -1167,18 +1178,25 @@ void onPress(uint8_t b, int64_t t) {
     if (b == board::kUp) moveSteps = 0;
     activity(t);
     if (mode == GameMode::Basic && (tipWaiting || tipUntil >= 0 || basicIntroClearing)) {
-        // The press only dismisses the tutorial: no click, hold or release action. Except that
-        // holding the side button still switches off: its hold is left to run, with no click of
-        // this press for the power-off hold to take back.
-        if (b == board::kSide) sideClick = Outcome();
-        else s.holdFired = true;
-        if (!basicIntroClearing) dismissBasicIntro();
-        return;
+        // Any press dismisses the tutorial. A timing press also clicks, as with the position card:
+        // the first stone's start isn't lost. A rocker press does nothing else (no hold or release
+        // action), nor do its presses while the tutorial is still clearing.
+        const bool timingPress = isTimingButton(b);
+        if (tipWaiting || tipUntil >= 0) dismissBasicIntro(!timingPress);
+        if (!timingPress) {
+            s.holdFired = true;
+            return;
+        }
     }
-    const bool dismissPosition = rules().positions && (tipWaiting || tipUntil >= 0);
+    // The position card: any press dismisses it and still does its usual job; the rocker centre's
+    // only once the double-click window has passed (cardDismissAt), as a double click shows it again.
+    const bool cardUp = rules().positions && (tipWaiting || tipUntil >= 0);
+    const bool dismissPosition = cardUp && b != board::kPress;
+    if (cardUp && b == board::kPress) cardDismissAt = t + kDoublePressUs;
     if (dismissPosition) {
         tipWaiting = false;
         tipUntil = -1;
+        cardDismissAt = -1;
     }
     // Rocker up/down act on release or hold. Position-card dismissal also happens on press.
     switch (b) {
@@ -1267,7 +1285,7 @@ void pollButtons(int64_t now) {
                 if (b == board::kUp) {
                     focusTo(Focus::Players);
                     rocksFocusAt = -1;
-                    if (!timing.active() && followAt >= 0) {
+                    if (!timing.active()) {  // re-aim: the order may have moved on, or restarted (a new position)
                         cursorToNext(now);
                         planFollow(now);
                     }
@@ -1475,10 +1493,18 @@ void loop() {
         tipUntil = now + (mode == GameMode::Basic ? kBasicIntroUs : kTipUs);
     }
     if (tipUntil >= 0 && now >= tipUntil) {
-        if (mode == GameMode::Basic) dismissBasicIntro();
+        if (mode == GameMode::Basic) dismissBasicIntro(false);
         else {
             tipUntil = -1;
             if (!timing.active()) syncModel();
+        }
+    }
+    if (cardDismissAt >= 0 && now >= cardDismissAt) {  // a single click of the centre: the card goes
+        cardDismissAt = -1;
+        if (tipWaiting || tipUntil >= 0) {
+            tipWaiting = false;
+            tipUntil = -1;
+            syncModel();
         }
     }
     if (h2hSwitchAt >= 0 && now >= h2hSwitchAt) {  // no B2H in time: it's an H2H under way
@@ -1548,6 +1574,7 @@ void loop() {
         if (h2hSwitchAt >= 0 && h2hSwitchAt < wake) wake = h2hSwitchAt;
         if (singleClickAt >= 0 && singleClickAt < wake) wake = singleClickAt;
         if (pageTipUntil >= 0 && pageTipUntil < wake) wake = pageTipUntil;
+        if (cardDismissAt >= 0 && cardDismissAt < wake) wake = cardDismissAt;
         if (nextAuditAt < wake) wake = nextAuditAt;
         if (timing.active() && timing.deadline() + 1000 < wake) wake = timing.deadline() + 1000;
         const int64_t before = esp_timer_get_time();

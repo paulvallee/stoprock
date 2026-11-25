@@ -111,7 +111,7 @@ public:
     uint32_t count() const { return next_ - first_; }
     bool load(uint32_t id, GameRecord& out);
 
-    // The most recent stored game with something in it (for the help page). False if none.
+    // The most recent stored game with something in it. False if none.
     bool lastGame(GameRecord& out);
 
     // Sync: the app reads games after syncedId(), then acknowledges the last one it kept.
