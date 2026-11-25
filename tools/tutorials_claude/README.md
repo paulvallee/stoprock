@@ -12,12 +12,12 @@ the firmware (`firmware/lib/stoprock_ui/src/tutorial_data.cpp`), each card whole
 
 | Deck | Cards |
 |---|---|
-| Basic (8) | Timing buttons, Time a stone, Read the times, Older stones, Undo, Turn off, Skip the menu, Hog to hog only |
-| Competition (11) | Timing buttons, Time a stone, Read the times, Who's throwing, Wrong player?, Older times, Your position, Undo, Turn off, Skip the menu, Hog to hog only |
+| Basic (8) | Timing buttons, Time a stone, Hog to hog only, Read the times, Older stones, Undo, Turn off, Skip the menu |
+| Competition (11) | Timing buttons, Time a stone, Hog to hog only, Read the times, Who's throwing, Wrong player?, Older times, Your position, Undo, Turn off, Skip the menu |
 | League (12) | as Competition, plus Log your shot |
 | Coach (12) | as League, with Two pages instead of Your position |
 
-The essentials come first; the last two cards are for when you want more.
+Timing first (Hog to hog only right after Time a stone, as a way to time one), then reading and the rocker, then power.
 
 ## Copy
 

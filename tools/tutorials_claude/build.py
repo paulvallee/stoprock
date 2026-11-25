@@ -434,11 +434,11 @@ CARDS = {
     "h2h": ("Hog to hog only", hog_to_hog, ("Start at the near hog?", "After 7 s it times H2H.")),
 }
 DECKS = {
-    "Basic": ("buttons", "stone", "read", "basic_older", "undo_times", "off", "menu", "h2h"),
-    "Competition": ("buttons", "stone", "read", "turn", "fix", "older", "position", "undo_times", "off", "menu",
-                    "h2h"),
-    "League": ("buttons", "stone", "read", "turn", "fix", "rocks", "older", "position", "undo", "off", "menu", "h2h"),
-    "Coach": ("buttons", "stone", "read", "turn", "fix", "rocks", "older", "pages", "undo", "off", "menu", "h2h"),
+    "Basic": ("buttons", "stone", "h2h", "read", "basic_older", "undo_times", "off", "menu"),
+    "Competition": ("buttons", "stone", "h2h", "read", "turn", "fix", "older", "position", "undo_times", "off",
+                    "menu"),
+    "League": ("buttons", "stone", "h2h", "read", "turn", "fix", "rocks", "older", "position", "undo", "off", "menu"),
+    "Coach": ("buttons", "stone", "h2h", "read", "turn", "fix", "rocks", "older", "pages", "undo", "off", "menu"),
 }
 
 
