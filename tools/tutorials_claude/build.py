@@ -235,24 +235,30 @@ def timing_buttons(c):
 
 
 def time_a_stone(c):
-    # the sheet: three lines, the stone heading for the far hog, the presses and what they measure
-    xs = (20, 100, 178)
-    for x, name, anchor in zip(xs, ("Back line", "Near hog", "Far hog"), ("la", "ma", "ra")):
-        c.rect(x - 1, 60, x + 1, 90)
-        label(c, name, {"la": 6, "ma": x, "ra": 194}[anchor], 45, size=12, anchor=anchor)
+    # the sheet: back line and tee (the house round it), the two hogs; the stone heading down the ice.
+    # The first press is at the back line or the tee, your choice (1 or 1); then one at each hog line.
+    back, tee, near, far = 14, 52, 108, 180
+    label(c, "Back", 6, 45, size=12)
+    label(c, "Tee", tee, 45, size=12, anchor="ma")
+    label(c, "Near hog", near, 45, size=12, anchor="ma")
+    label(c, "Far hog", 194, 45, size=12, anchor="ra")
     c.rrect(6, 66, 194, 84, 9, fill=None, outline=0, width=1.4)
-    for x in xs:  # the lines cross the ice
-        c.rect(x - 1, 66, x + 1, 84)
-    for dx in (0, 6, 12):                               # the stone, moving right
-        c.line([(112 + dx, 75), (116 + dx, 75)], 1.4)
-    c.disc(138, 75, 6.5)
-    c.rrect(135.5, 66.8, 140.5, 69.5, 1, fill=0, outline=None)
-    for i, x in enumerate(xs):                          # the presses: 1, 2, 3
-        badge(c, x, 99, str(i + 1), r=7.5)
+    c.ring(tee, 75, 8, width=1.3)                       # the house
+    c.ring(tee, 75, 3.5, width=1.3)
+    for x in (back, tee, near, far):                    # the lines across the ice
+        c.rect(x - 1, 60, x + 1, 90)
+    for dx in (0, 6, 12):                               # the stone, moving down the ice
+        c.line([(124 + dx, 75), (128 + dx, 75)], 1.4)
+    c.disc(150, 75, 6.5)
+    c.rrect(147.5, 66.8, 152.5, 69.5, 1, fill=0, outline=None)
+    badge(c, back, 99, "1", r=7.5)
+    label(c, "or", (back + tee) / 2, 92, size=11, anchor="ma", weight="Bold")
+    badge(c, tee, 99, "1", r=7.5)
+    badge(c, near, 99, "2", r=7.5)
+    badge(c, far, 99, "3", r=7.5)
     f = nunito(12, "ExtraBold")
-    pill(c, xs[0] + 11, 110, xs[1] - 11, 128, "B2H", f, black=False, r=9)
-    pill(c, xs[1] + 11, 110, xs[2] - 11, 128, "H2H", f, black=True, r=9)
-
+    pill(c, back + 4, 110, near - 11, 128, "B2H", f, black=False, r=9)
+    pill(c, near + 11, 110, far - 11, 128, "H2H", f, black=True, r=9)
 
 def read_the_times(c):
     # the top of the timing screen, as drawn on the device, and what each half is
@@ -412,7 +418,7 @@ def hog_to_hog(c):
 # --------------------------------------------------------------------------- the cards
 CARDS = {
     "buttons": ("Timing buttons", timing_buttons, ("Press the top or side", "button at each line.")),
-    "stone": ("Time a stone", time_a_stone, ("Press at the back line,", "then at each hog line.")),
+    "stone": ("Time a stone", time_a_stone, ("Press at back or tee line,", "then at each hog line.")),
     "read": ("Read the times", read_the_times, ("The big numbers show the", "last stone you timed.")),
     "turn": ("Who's throwing", whose_turn, ("The highlight moves by", "itself. Times go there.")),
     "fix": ("Wrong player?", move_time, ("Hold up to move the", "last time one player left.")),

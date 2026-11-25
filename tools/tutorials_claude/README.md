@@ -24,7 +24,7 @@ The essentials come first; the last two cards are for when you want more.
 | Card | Lines |
 |---|---|
 | Timing buttons | Press the top or side / button at each line. |
-| Time a stone | Press at the back line, / then at each hog line. |
+| Time a stone | Press at back or tee line, / then at each hog line. |
 | Read the times | The big numbers show the / last stone you timed. |
 | Who's throwing | The highlight moves by / itself. Times go there. |
 | Wrong player? | Hold up to move the / last time one player left. |
