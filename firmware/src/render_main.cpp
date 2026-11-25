@@ -6,6 +6,7 @@
 
 #include "screens.h"
 #include "startup_menu.h"
+#include "tutorials.h"
 
 using namespace stoprock;
 
@@ -48,6 +49,16 @@ int main(int argc, char** argv) {
         writePbm(c, path);
     }
 
+    drawLeague(c, league, nl, shots, 1, 3, false, Tip::None, Waiting::None, Focus::Players, {1, 2, true});
+    snprintf(path, sizeof path, "%s/league-history.pbm", dir);
+    writePbm(c, path);
+
+    ShotLog coachShots(ShotLog::kCoachSlots);
+    for (bool made : {true, false, true, true, false, true}) coachShots.add(made);
+    drawCoachTimer(c, many, 12, coachShots, Waiting::None, 4, Tip::None, Focus::Players, {2, 2, true});
+    snprintf(path, sizeof path, "%s/coach1-history.pbm", dir);
+    writePbm(c, path);
+
     drawCompetition(c, league, nl, 1, 1, false);
     snprintf(path, sizeof path, "%s/competition.pbm", dir);
     writePbm(c, path);
@@ -57,13 +68,13 @@ int main(int argc, char** argv) {
     drawCompetition(c, league, nl, 1, 3, false);
     snprintf(path, sizeof path, "%s/competition-them-right.pbm", dir);
     writePbm(c, path);
-    drawCompetition(c, league, nl, 1, 1, false, Tip::None, Waiting::None, 1);
+    drawCompetition(c, league, nl, 1, 1, false, Tip::None, Waiting::None, {1});
     snprintf(path, sizeof path, "%s/competition-columns-right.pbm", dir);
     writePbm(c, path);
-    drawCompetition(c, league, nl, 1, 3, false, Tip::None, Waiting::None, 1, 2, true);
+    drawCompetition(c, league, nl, 1, 3, false, Tip::None, Waiting::None, {1, 2, true});
     snprintf(path, sizeof path, "%s/competition-history.pbm", dir);
     writePbm(c, path);
-    drawCompetition(c, league, nl, 1, 3, false, Tip::None, Waiting::None, 1, 0, true);
+    drawCompetition(c, league, nl, 1, 3, false, Tip::None, Waiting::None, {1, 0, true});
     snprintf(path, sizeof path, "%s/competition-history-top.pbm", dir);
     writePbm(c, path);
     for (uint8_t me = 0; me < 4; ++me) {  // each position as yours, the cursor on each column
@@ -89,6 +100,20 @@ int main(int argc, char** argv) {
         drawStartupMenu(c, kStartupMenuItems, kStartupMenuCount, menuSelection);
         snprintf(path, sizeof path, "%s/menu%d.pbm", dir, i);
         writePbm(c, path);
+    }
+    menuSelection = {};
+    for (int i = 0; i < kTutorialMenuCount; ++i) {
+        menuSelection.select(i, kTutorialMenuCount);
+        drawStartupMenu(c, kTutorialMenuItems, kTutorialMenuCount, menuSelection, kTutorialsHeading);
+        snprintf(path, sizeof path, "%s/tutorial-menu%d.pbm", dir, i);
+        writePbm(c, path);
+    }
+    for (const auto mode : {GameMode::Basic, GameMode::Competition, GameMode::League, GameMode::Coach}) {
+        for (uint8_t page = 0; page < tutorialPageCount(mode); ++page) {
+            drawTutorial(c, mode, page);
+            snprintf(path, sizeof path, "%s/tutorial-%s-%02u.pbm", dir, modeName(mode), page + 1u);
+            writePbm(c, path);
+        }
     }
 
     // switch-on: no stones yet, the position tip over the times

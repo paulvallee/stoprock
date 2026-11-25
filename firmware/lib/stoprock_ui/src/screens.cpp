@@ -64,19 +64,7 @@ struct SegFont {
     }
 };
 
-constexpr SegFont kRowFont{12, 7, 2, 2, 2, false};  // older results
 constexpr SegFont kEndFont{9, 5, 1, 1, 1, false};   // end numbers: equal-width cells, a "1" sits on the right
-constexpr SegFont kNarrowFont{12, 6, 2, 1, 2, true};  // coach's five columns: a narrow "1"
-// The cursor's column, zoomed (playerColumns()): the biggest digits 4 lines fit in each mode's column
-// height and 1.3 columns' width (a white-on-black cell keeping 1 px of black round them), a narrow
-// solid "1"; longFont: narrower, for 20.00, the one time with no "1" to spare.
-struct Zoom { SegFont font, longFont; };
-constexpr Zoom kZoomLeague{{22, 13, 3, 2, 3, true, true}, {22, 11, 3, 2, 3, true, true}};
-constexpr Zoom kCompetitionDigits{{24, 14, 3, 2, 3, true, true}, {24, 11, 3, 2, 3, true, true}};
-constexpr Zoom kCompetitionThemDigits{{23, 14, 3, 2, 3, true, true}, {23, 11, 3, 2, 3, true, true}};
-constexpr Zoom kZoomCoach{{18, 11, 2, 2, 2, true, true}, {18, 8, 2, 2, 2, true, true}};
-constexpr int kZoomLines = 4;      // filling the column's height
-constexpr double kZoomSpread = 1.3;  // its width, in columns: over 15% of each neighbour (30% of one at an edge)
 
 enum Align { kLeft, kCentre, kRight };
 
@@ -224,7 +212,6 @@ constexpr int COMP_MID = 92;
 // No labels: B2H is black on white, H2H white on black, as in the columns.
 constexpr int kTimesY1 = 44;  // the newest stone large in y 0-44 (2 px line under it)
 constexpr int GRID_LABEL_Y0 = 46, GRID_LABEL_Y1 = 57;
-constexpr int GRID_PITCH = 14;  // a line of the other columns' times
 constexpr int kLinesTop = 59;   // the columns' first line
 constexpr int kCoachTimesY0 = 4;  // coach: the newest stone's digits start under the page marks (y 1-4)
 
@@ -326,90 +313,6 @@ static void moveTip(Canvas& c, int top, int bottom) {
     tooltip(c, lines, 1, top, bottom);
 }
 
-// The zoomed column's edges (za, zb): kZoomSpread columns wide, centred on the cursor's column, kept
-// inside x0..x1 (at an edge it takes all the extra from its one neighbour).
-static void zoomSpan(int x0, int x1, int n, int active, int& za, int& zb) {
-    const int zw = pyRound(kZoomSpread * (x1 - x0) / n);
-    za = pyRound(x0 + static_cast<double>((x1 - x0) * (2 * active + 1)) / (2 * n) - zw / 2.0);
-    if (za > x1 - zw) za = x1 - zw;
-    if (za < x0) za = x0;
-    zb = za + zw;
-}
-
-// A column per player between x0 and x1 (n columns: your teammates or, for a coach (me kCoachSeat),
-// every position, then THEM), equal widths, headed with the position or THEM. The cursor's (active)
-// is zoomed, drawn over its neighbours (zoomSpan): its header highlighted, its newest 4 times in the
-// biggest digits that fit, filling the column's height. The others list theirs newest first, a time
-// a line, in the part the zoom leaves them (narrower digits when it leaves too little). B2H black on
-// white, H2H white on black.
-static void playerColumns(Canvas& c, const Stone* stones, int count, uint8_t me, int x0, int x1, int n,
-                          uint8_t active, int bottom, const SegFont& font, const Zoom& zoom) {
-    int xs[kCoachColumns + 1];
-    for (int k = 0; k <= n; ++k) xs[k] = pyRound(x0 + static_cast<double>((x1 - x0) * k) / n);
-    int za, zb;
-    zoomSpan(x0, x1, n, active, za, zb);
-    auto nameOf = [&](int k) {
-        const uint8_t player = columnPlayer(me, static_cast<uint8_t>(k));
-        return player == kThem ? "THEM" : kPositions[player];
-    };
-    // column k's times, newest first, up to most: each a value and whether it's an H2H
-    char buf[12];
-    auto times = [&](int k, int most, int32_t* vals, bool* hh) {
-        int shown = 0;
-        for (int i = 0; i < count && shown < most; ++i) {
-            if (playerColumn(me, stones[i].player) != k) continue;
-            const int32_t v[2] = {stones[i].bh, stones[i].hh};
-            for (int half = 0; half < 2 && shown < most; ++half) {
-                if (v[half] < 0) continue;
-                vals[shown] = v[half];
-                hh[shown++] = half == 1;
-            }
-        }
-        return shown;
-    };
-    auto cell = [&](const SegFont& cf, int32_t val, bool inverted, int a, int b, int y, int pitch) {
-        if (inverted) c.fillRect(a + 1, y, b - 1, y + pitch - 2);
-        formatTime(val, buf, sizeof buf);
-        segInBox(c, cf, buf, a, b, y, y + pitch - 1, kCentre, 0, !inverted);
-    };
-    constexpr int kMostLines = 16;
-    int32_t vals[kMostLines];
-    bool hh[kMostLines];
-    int most = (bottom - kLinesTop) / GRID_PITCH;
-    if (most > kMostLines) most = kMostLines;
-    for (int k = 0; k < n; ++k) {
-        if (k == active) continue;
-        const int a = k > active && zb > xs[k] ? zb : xs[k];  // the part the zoom leaves
-        const int b = k < active && za < xs[k + 1] ? za : xs[k + 1];
-        if (k) vline(c, a, GRID_LABEL_Y0, bottom - 1);
-        const char* name = nameOf(k);
-        c.text(kFontSpleen6x12, (a + b - 6 * static_cast<int>(strlen(name))) / 2, GRID_LABEL_Y0, name);
-        const int shown = times(k, most, vals, hh);
-        int widest = 0;
-        for (int i = 0; i < shown; ++i) {
-            formatTime(vals[i], buf, sizeof buf);
-            if (font.width(buf) > widest) widest = font.width(buf);
-        }
-        const SegFont& cf = widest + 4 <= b - a - 2 ? font : kNarrowFont;
-        for (int i = 0; i < shown; ++i) cell(cf, vals[i], hh[i], a + 1, b - 1, kLinesTop + i * GRID_PITCH, GRID_PITCH);
-    }
-    // the zoom: lines at its edges (none at the outer ones), the header highlighted
-    if (za > x0) vline(c, za, GRID_LABEL_Y0, bottom - 1);
-    if (zb < x1) vline(c, zb, GRID_LABEL_Y0, bottom - 1);
-    c.fillRect(za + (za > x0 ? 1 : 0), GRID_LABEL_Y0, zb - 1, GRID_LABEL_Y1);
-    const char* name = nameOf(active);
-    c.text(kFontSpleen6x12, (za + zb - 6 * static_cast<int>(strlen(name))) / 2, GRID_LABEL_Y0, name, false);
-    const int pitch = (bottom - kLinesTop) / kZoomLines;
-    const int shown = times(active, kZoomLines, vals, hh);
-    for (int i = 0; i < shown; ++i)
-        cell(vals[i] >= 2000 ? zoom.longFont : zoom.font, vals[i], hh[i], za + 1, zb - 1, kLinesTop + i * pitch, pitch);
-}
-
-static void leagueTimes(Canvas& c, const Stone* stones, int count, uint8_t me, uint8_t active, int bottom,
-                        const Zoom& zoom) {
-    playerColumns(c, stones, count, me, 2, 198, kLeagueColumns, active, bottom, kRowFont, zoom);
-}
-
 // The top of the times, every mode: the newest stone large, B2H on white left of mid, H2H on black
 // right of it (no labels: as in the columns), a stopwatch where an awaited time will appear.
 // y0: the digits' box starts lower (coach: under the page marks).
@@ -417,13 +320,6 @@ static void timesTop(Canvas& c, const Stone* stones, int count, Waiting waiting,
     c.fillRect(mid, 0, W - 1, kTimesY1 - 1);
     newestRow(c, stones, count, waiting, mid, kFontDseg37, kFontDseg33, y0, kTimesY1, kStopwatch, (y0 + kTimesY1) / 2);
     hline(c, 0, W - 1, kTimesY1, 2);
-}
-
-// League: the newest stone large, then the four columns down to bottom.
-static void fourColumns(Canvas& c, const Stone* stones, int count, uint8_t me, uint8_t active, int bottom,
-                        Waiting waiting, const Zoom& zoom) {
-    timesTop(c, stones, count, waiting, COMP_MID);
-    leagueTimes(c, stones, count, me, active, bottom, zoom);
 }
 
 // The bottom TIP_H px, white on black, for an umpire: the logo on the left, the mode's name and
@@ -484,60 +380,66 @@ void drawBasic(Canvas& c, const Stone* stones, uint8_t count, bool lowBattery, T
     if (tip == Tip::Undo || tip == Tip::PowerOff) undoTip(c, kHintTop, strip, tip);
 }
 
-constexpr int kCompetitionSplits = 4;
-constexpr int kCompetitionMargin = 4;
-constexpr int kCompetitionBarHeight = 3;
+constexpr int kHistorySplits = 4;
+constexpr int kHistoryMargin = 4;
+constexpr int kHistoryBarHeight = 3;
 constexpr int kThemLinesTop = 67;
 
-static int competitionColumnLimit(const Stone* stones, int count, uint8_t player) {
+static int columnScrollLimit(const Stone* stones, int count, uint8_t player) {
     int splits = 0;
     for (int i = 0; i < count; ++i) {
         if (stones[i].player == player) splits += (stones[i].bh >= 0) + (stones[i].hh >= 0);
     }
-    return splits > kCompetitionSplits ? splits - kCompetitionSplits : 0;
+    return splits > kHistorySplits ? splits - kHistorySplits : 0;
 }
 
-int competitionHistoryLimit(const Stone* stones, uint8_t count, uint8_t me, uint8_t firstColumn) {
+int historyScrollLimit(const Stone* stones, uint8_t count, uint8_t me, uint8_t firstColumn) {
     int limit = 0;
-    for (uint8_t slot = 0; slot < kCompetitionVisibleColumns; ++slot) {
+    for (uint8_t slot = 0; slot < kVisibleTimeColumns; ++slot) {
         const uint8_t player = columnPlayer(me, firstColumn + slot);
-        const int columnLimit = competitionColumnLimit(stones, count, player);
+        const int columnLimit = columnScrollLimit(stones, count, player);
         if (columnLimit > limit) limit = columnLimit;
     }
     return limit;
 }
 
-static void competitionColumnBar(Canvas& c, uint8_t firstColumn, int top) {
-    constexpr int part = (W - 2 * kCompetitionMargin) / kLeagueColumns;
-    for (int column = 0; column < kLeagueColumns; ++column) {
-        const int left = kCompetitionMargin + column * part;
-        const int right = left + part - 3;
-        if (column >= firstColumn && column < firstColumn + kCompetitionVisibleColumns)
-            c.fillRect(left, top, right, top + kCompetitionBarHeight - 1);
+static void timingColumnBar(Canvas& c, uint8_t firstColumn, uint8_t columns, int top) {
+    constexpr int width = W - 2 * kHistoryMargin;
+    for (int column = 0; column < columns; ++column) {
+        const int left = kHistoryMargin + column * width / columns;
+        const int right = kHistoryMargin + (column + 1) * width / columns - 3;
+        if (column >= firstColumn && column < firstColumn + kVisibleTimeColumns)
+            c.fillRect(left, top, right, top + kHistoryBarHeight - 1);
         else
             hline(c, left, right, top + 1);
     }
 }
 
-static void competitionHistory(Canvas& c, const Stone* stones, uint8_t count, uint8_t me,
-                               uint8_t active, uint8_t firstColumn, int bottom, int scroll, bool scrolling) {
-    constexpr int columnWidth = (W - 2 * kCompetitionMargin) / kCompetitionVisibleColumns;
-    if (scrolling) {
-        const int limit = competitionHistoryLimit(stones, count, me, firstColumn);
+static void drawTimingHistory(Canvas& c, const Stone* stones, uint8_t count, uint8_t me,
+                              uint8_t active, TimeHistoryView history, int end, bool framed = false) {
+    constexpr int columnWidth = (W - 2 * kHistoryMargin) / kVisibleTimeColumns;
+    const uint8_t total = columnCount(me);
+    const uint8_t firstColumn = firstVisibleTimeColumn(history.first, active, total);
+    const int bottom = end - kHistoryBarHeight;
+    int scroll = history.scrolling ? history.offset : 0;
+    if (history.scrolling) {
+        const int limit = historyScrollLimit(stones, count, me, firstColumn);
         if (scroll > limit) scroll = limit;
+        const int trackTop = kLinesTop + 2, trackBottom = bottom - 4;
+        const int track = framed ? 3 : W - 2;
         if (limit > 0) {
             constexpr int thumbHeight = 10;
-            const int trackTop = kLinesTop + 2, trackBottom = bottom - 4;
             const int thumbTop = trackTop + scroll * (trackBottom - trackTop + 1 - thumbHeight) / limit;
-            const int track = W - 2;
             vline(c, track, trackTop, trackBottom);
-            c.fillRect(track - 1, thumbTop, track + 1, thumbTop + thumbHeight - 1);
+            c.fillRect(track - 1, thumbTop, framed ? track : track + 1, thumbTop + thumbHeight - 1);
+        } else if (framed) {
+            c.fillRect(track - 1, trackTop, track, trackBottom);
         }
     }
 
-    for (uint8_t slot = 0; slot < kCompetitionVisibleColumns; ++slot) {
+    for (uint8_t slot = 0; slot < kVisibleTimeColumns; ++slot) {
         const uint8_t column = firstColumn + slot;
-        const int left = kCompetitionMargin + slot * columnWidth;
+        const int left = kHistoryMargin + slot * columnWidth;
         const int right = left + columnWidth;
         const uint8_t player = columnPlayer(me, column);
         const bool theirs = player == kThem;
@@ -555,15 +457,18 @@ static void competitionHistory(Canvas& c, const Stone* stones, uint8_t count, ui
         if (slot > 0) vline(c, left, GRID_LABEL_Y0, bottom - 1);
 
         const int linesTop = theirs ? kThemLinesTop : kLinesTop;
-        const int pitch = (bottom - linesTop) / kCompetitionSplits;
-        const Zoom& zoom = theirs ? kCompetitionThemDigits : kCompetitionDigits;
-        const int limit = scroll > 0 ? competitionColumnLimit(stones, count, player) : 0;
+        const int pitch = (bottom - linesTop) / kHistorySplits;
+        const int maxHeight = theirs ? 23 : 24;
+        const int height = pitch - 3 < maxHeight ? pitch - 3 : maxHeight;
+        const SegFont digits{height, 14, 3, 2, 3, true, true};
+        const SegFont longDigits{height, 11, 3, 2, 3, true, true};
+        const int limit = scroll > 0 ? columnScrollLimit(stones, count, player) : 0;
         int skip = scroll < limit ? scroll : limit;
         int row = 0;
-        for (int i = 0; i < count && row < kCompetitionSplits; ++i) {
+        for (int i = 0; i < count && row < kHistorySplits; ++i) {
             if (stones[i].player != player) continue;
             const int32_t values[] = {stones[i].bh, stones[i].hh};
-            for (int half = 0; half < 2 && row < kCompetitionSplits; ++half) {
+            for (int half = 0; half < 2 && row < kHistorySplits; ++half) {
                 const int32_t value = values[half];
                 if (value < 0) continue;
                 if (skip > 0) { --skip; continue; }
@@ -571,23 +476,21 @@ static void competitionHistory(Canvas& c, const Stone* stones, uint8_t count, ui
                 if (half == 1) c.fillRect(left + 2, y, right - 2, y + pitch - 2);
                 char label[12];
                 formatTime(value, label, sizeof label);
-                const SegFont& digits = zoom.font.width(label) <= columnWidth - 6 ? zoom.font : zoom.longFont;
-                segInBox(c, digits, label, left + 1, right - 1, y, y + pitch - 1, kCentre, 0, half == 0);
+                const SegFont& font = digits.width(label) <= columnWidth - 6 ? digits : longDigits;
+                segInBox(c, font, label, left + 1, right - 1, y, y + pitch - 1, kCentre, 0, half == 0);
             }
         }
     }
+    timingColumnBar(c, firstColumn, total, bottom);
 }
 
 void drawCompetition(Canvas& c, const Stone* stones, uint8_t count, uint8_t me, uint8_t activeCol,
-                     bool lowBattery, Tip tip, Waiting waiting, uint8_t firstColumn, int scroll, bool scrolling) {
+                     bool lowBattery, Tip tip, Waiting waiting, TimeHistoryView history) {
     c.clear();
     const int strip = H - TIP_H;
     timesTop(c, stones, count, waiting, COMP_MID);
-    const uint8_t first = competitionFirstColumn(firstColumn, activeCol);
-    const int barTop = strip - kCompetitionBarHeight;
-    competitionHistory(c, stones, count, me, activeCol, first, barTop, scrolling ? scroll : 0, scrolling);
-    competitionColumnBar(c, first, barTop);
-    badgeStrip(c, "COMPETITION", lowBattery, scrolling ? "SCROLL MODE" : nullptr);
+    drawTimingHistory(c, stones, count, me, activeCol, history, strip);
+    badgeStrip(c, "COMPETITION", lowBattery, history.scrolling ? "SCROLL MODE" : nullptr);
     c.fillRect(0, strip, W - 1, strip, false);
     if (tip == Tip::SwitchOn) switchOnTip(c, me);
     if (tip == Tip::Undo || tip == Tip::PowerOff) undoTip(c, kHintTop, strip, tip);
@@ -595,11 +498,12 @@ void drawCompetition(Canvas& c, const Stone* stones, uint8_t count, uint8_t me, 
 }
 
 void drawLeague(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& shots, uint8_t me, uint8_t activeCol,
-                bool lowBattery, Tip tip, Waiting waiting, Focus focus) {
+                bool lowBattery, Tip tip, Waiting waiting, Focus focus, TimeHistoryView history) {
     c.clear();
     const int top = 159;    // 2 px line under the times
     const int split = 149;  // 2 px divider left of the percentage: in line with the THEM column's
-    fourColumns(c, stones, count, me, activeCol, top, waiting, kZoomLeague);
+    timesTop(c, stones, count, waiting, COMP_MID);
+    drawTimingHistory(c, stones, count, me, activeCol, history, top - 1, true);
     hline(c, 0, W - 1, top);  // 1 px like the columns: only the focus border is bold
     vline(c, split, top, H - 1);
     // your rocks like a scoreboard: ends across, rock 1 over rock 2
@@ -633,13 +537,13 @@ void drawLeague(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& sh
 }
 
 void drawCoachTimer(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& shots, Waiting waiting,
-                    uint8_t activeCol, Tip tip, Focus focus) {
+                    uint8_t activeCol, Tip tip, Focus focus, TimeHistoryView history) {
     c.clear();
     const Font& label = kFontSpleen6x12;
     const int bottom = 150;
     timesTop(c, stones, count, waiting, WIDE_MID, kCoachTimesY0);  // the digits under the page marks
     pageMarks(c, 0);
-    playerColumns(c, stones, count, kCoachSeat, 0, W, kCoachColumns, activeCol, bottom, kNarrowFont, kZoomCoach);
+    drawTimingHistory(c, stones, count, kCoachSeat, activeCol, history, bottom - 1, true);
     hline(c, 0, W - 1, bottom, 2);
     for (int p = 0; p < 4; ++p) {
         if (p) vline(c, COACH_GX[p], bottom, H - 1);

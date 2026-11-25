@@ -86,25 +86,29 @@ static void test_startup_menu_scrolls_and_wraps_with_more_entries() {
     TEST_ASSERT_EQUAL_INT(3, selection.firstVisible);
 }
 
-static void test_competition_window_stays_put_until_cursor_leaves() {
-    TEST_ASSERT_EQUAL_UINT8(0, competitionFirstColumn(0, 1));
-    TEST_ASSERT_EQUAL_UINT8(0, competitionFirstColumn(0, 2));
-    TEST_ASSERT_EQUAL_UINT8(1, competitionFirstColumn(0, 3));
-    TEST_ASSERT_EQUAL_UINT8(1, competitionFirstColumn(1, 2));
-    TEST_ASSERT_EQUAL_UINT8(1, competitionFirstColumn(1, 1));
-    TEST_ASSERT_EQUAL_UINT8(0, competitionFirstColumn(1, 0));
+static void test_window_stays_put_until_cursor_leaves() {
+    TEST_ASSERT_EQUAL_UINT8(0, firstVisibleTimeColumn(0, 1, kLeagueColumns));
+    TEST_ASSERT_EQUAL_UINT8(0, firstVisibleTimeColumn(0, 2, kLeagueColumns));
+    TEST_ASSERT_EQUAL_UINT8(1, firstVisibleTimeColumn(0, 3, kLeagueColumns));
+    TEST_ASSERT_EQUAL_UINT8(1, firstVisibleTimeColumn(1, 2, kLeagueColumns));
+    TEST_ASSERT_EQUAL_UINT8(1, firstVisibleTimeColumn(1, 1, kLeagueColumns));
+    TEST_ASSERT_EQUAL_UINT8(0, firstVisibleTimeColumn(1, 0, kLeagueColumns));
+    TEST_ASSERT_EQUAL_UINT8(1, firstVisibleTimeColumn(0, 3, kCoachColumns));
+    TEST_ASSERT_EQUAL_UINT8(2, firstVisibleTimeColumn(1, 4, kCoachColumns));
+    TEST_ASSERT_EQUAL_UINT8(2, firstVisibleTimeColumn(2, 2, kCoachColumns));
+    TEST_ASSERT_EQUAL_UINT8(1, firstVisibleTimeColumn(2, 1, kCoachColumns));
 }
 
-static void test_competition_history_counts_only_visible_recorded_splits() {
+static void test_history_counts_only_visible_recorded_splits() {
     const Stone stones[] = {{345, 1390, kThem}, {334, -1, kThem}, {-1, 1412, kThem},
                             {356, 1401, kThem}, {352, 1378, 1}};
     const uint8_t count = sizeof stones / sizeof stones[0];
-    TEST_ASSERT_EQUAL_INT(0, competitionHistoryLimit(stones, count, 0, 0));
-    TEST_ASSERT_EQUAL_INT(2, competitionHistoryLimit(stones, count, 0, 1));
+    TEST_ASSERT_EQUAL_INT(0, historyScrollLimit(stones, count, 0, 0));
+    TEST_ASSERT_EQUAL_INT(2, historyScrollLimit(stones, count, 0, 1));
     const Stone left[] = {{341, -1, 3}, {345, 1390, 1}, {334, 1412, 1}, {356, 1401, 1}};
     const uint8_t leftCount = sizeof left / sizeof left[0];
-    TEST_ASSERT_EQUAL_INT(2, competitionHistoryLimit(left, leftCount, 0, 0));
-    TEST_ASSERT_EQUAL_INT(0, competitionHistoryLimit(left, leftCount, 0, 1));
+    TEST_ASSERT_EQUAL_INT(2, historyScrollLimit(left, leftCount, 0, 0));
+    TEST_ASSERT_EQUAL_INT(0, historyScrollLimit(left, leftCount, 0, 1));
 }
 
 int main() {
@@ -114,7 +118,7 @@ int main() {
     RUN_TEST(test_every_player_keeps_a_screenful);
     RUN_TEST(test_teammates);
     RUN_TEST(test_startup_menu_scrolls_and_wraps_with_more_entries);
-    RUN_TEST(test_competition_window_stays_put_until_cursor_leaves);
-    RUN_TEST(test_competition_history_counts_only_visible_recorded_splits);
+    RUN_TEST(test_window_stays_put_until_cursor_leaves);
+    RUN_TEST(test_history_counts_only_visible_recorded_splits);
     return UNITY_END();
 }

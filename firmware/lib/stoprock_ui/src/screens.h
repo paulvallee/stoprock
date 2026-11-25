@@ -41,32 +41,31 @@ void drawOffPage(Canvas& c, int battery = -1, int gamesLeft = -1);
 void drawBasic(Canvas& c, const Stone* stones, uint8_t count, bool lowBattery, Tip tip = Tip::None,
                Waiting waiting = Waiting::None, int scroll = 0);
 
-// Three adjacent columns of teammates followed by THEM. Shift only when the cursor leaves the window.
-constexpr uint8_t kCompetitionVisibleColumns = 3;
-constexpr uint8_t competitionFirstColumn(uint8_t first, uint8_t activeCol) {
-    if (activeCol == 0) return 0;
-    if (activeCol >= kCompetitionVisibleColumns) return 1;
-    return first > 0 ? 1 : 0;
+// Three adjacent player columns, with a separate offset for older split rows.
+struct TimeHistoryView {
+    uint8_t first = 0;
+    int offset = 0;
+    bool scrolling = false;
+};
+constexpr uint8_t kVisibleTimeColumns = 3;
+constexpr uint8_t firstVisibleTimeColumn(uint8_t first, uint8_t active, uint8_t total) {
+    const uint8_t last = total - kVisibleTimeColumns;
+    if (first > last) first = last;
+    if (active < first) return active;
+    if (active >= first + kVisibleTimeColumns) return active + 1 - kVisibleTimeColumns;
+    return first;
 }
 constexpr uint8_t kGridRows = 8;  // stones kept per player (addStone)
-// Maximum offset, in split rows, among the three visible columns.
-int competitionHistoryLimit(const Stone* stones, uint8_t count, uint8_t me, uint8_t firstColumn);
+int historyScrollLimit(const Stone* stones, uint8_t count, uint8_t seat, uint8_t first);
 void drawCompetition(Canvas& c, const Stone* stones, uint8_t count, uint8_t me, uint8_t activeCol,
                      bool lowBattery, Tip tip = Tip::None, Waiting waiting = Waiting::None,
-                     uint8_t firstColumn = 0, int scroll = 0, bool scrolling = false);
+                     TimeHistoryView history = {});
 
-// League (side button + rocker down): the newest stone large, then four columns: your three
-// teammates in throwing order and the other team (THEM), each listing its stones newest first, a
-// time a line (7 lines): B2H black on white, H2H white on black. Below, your own 16 rocks like a
-// scoreboard (ends across, rock 1 over rock 2) and your percentage. activeCol (0-3) has its header
-// highlighted. lowBattery puts a "Low bat" bar over the percentage.
-// Columns and who's in them: seats.h (kLeagueColumns, columnPlayer, playerColumn).
-// The cursor's column is zoomed: bigger digits, 4 lines, as wide as they need; the others share the rest.
-// focus: the half the rocker works on, shown by a bold border: the players' columns (up = next,
-// down = previous) or your rocks (made/missed).
+// League: timing history above the player's 16 rocks and their percentage.
 enum class Focus : uint8_t { Rocks, Players };
 void drawLeague(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& shots, uint8_t me, uint8_t activeCol,
-                bool lowBattery, Tip tip = Tip::None, Waiting waiting = Waiting::None, Focus focus = Focus::Players);
+                bool lowBattery, Tip tip = Tip::None, Waiting waiting = Waiting::None, Focus focus = Focus::Players,
+                TimeHistoryView history = {});
 
 // Put a stone at the front of a newest-first list. When the list is full, the stone dropped is
 // the oldest of a player (or THEM) with more than kGridRows, so a player who has thrown less
@@ -74,13 +73,10 @@ void drawLeague(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& sh
 void addStone(Stone* list, uint8_t& count, uint8_t capacity, const Stone& s);
 
 // Coach (side button + rocker up), 64 rocks: 8 ends x 4 positions x 2.
-// Page 1, timer priority: the newest stone large, a column per position and THEM (6 lines, narrow
-// digits; activeCol 0-4 highlighted), % per position, the previous and current end. tip: the
-// switch-on tip (double click to switch page, the holds). focus: as in league, a bold border
-// round the times or the rocks (on both pages).
+// Page 1: timing history above percentages and the previous and current ends.
 void drawCoachTimer(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& shots,
                     Waiting waiting = Waiting::None, uint8_t activeCol = 0, Tip tip = Tip::None,
-                    Focus focus = Focus::Players);
+                    Focus focus = Focus::Players, TimeHistoryView history = {});
 // Page 2, rock priority: the newest times only, all 64 rocks, a pie and % per position.
 void drawCoachRocks(Canvas& c, const Stone* stones, uint8_t count, const ShotLog& shots,
                     Waiting waiting = Waiting::None, Tip tip = Tip::None, Focus focus = Focus::Players);
