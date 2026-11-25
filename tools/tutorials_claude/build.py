@@ -413,7 +413,7 @@ def hog_to_hog(c):
 CARDS = {
     "buttons": ("Timing buttons", timing_buttons, ("Press the top or side", "button at each line.")),
     "stone": ("Time a stone", time_a_stone, ("Press at the back line,", "then at each hog line.")),
-    "read": ("Read the times", read_the_times, ("The newest stone, big:", "back to hog, hog to hog.")),
+    "read": ("Read the times", read_the_times, ("The big numbers show the", "last stone you timed.")),
     "turn": ("Who's throwing", whose_turn, ("The highlight moves by", "itself. Times go there.")),
     "fix": ("Wrong player?", move_time, ("Hold up to move the", "last time one player left.")),
     "rocks": ("Log your shot", log_shot, ("Hold down twice for rocks:", "Up: made. Down: missed.")),

@@ -828,8 +828,9 @@ GameMode chooseMode() {
                 if (rocker[i] == board::kPress) page = MenuPage::Tutorials;
                 else {
                     const int next = tutorialPage + dir;
-                    if (next < 0 || next >= tutorialPageCount(tutorialMode)) continue;
-                    tutorialPage = next;
+                    // past either end (the first card shows no Back, the last no Next): the list
+                    if (next < 0 || next >= tutorialPageCount(tutorialMode)) page = MenuPage::Tutorials;
+                    else tutorialPage = next;
                 }
                 show(false);
                 continue;

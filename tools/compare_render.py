@@ -36,7 +36,7 @@ def main():
     for i in range(len(screen.TUTORIAL_MENU_ITEMS)):
         refs[f"tutorial-menu{i}"] = screen.mode_menu(i, tutorials=True)
     for mode, name in enumerate(tutorials.MODES):
-        for page in range(len(tutorials.DECKS[mode])):
+        for page in range(tutorials.page_count(mode)):
             refs[f"tutorial-{name.lower()}-{page + 1:02d}"] = tutorials.page_image(mode, page)
     refs["coach1-tip"] = screen.coach_timer_screen([], [], tip=True)
     refs["competition-undo"] = screen.competition_screen(ls, lme, lact, tip="undo")

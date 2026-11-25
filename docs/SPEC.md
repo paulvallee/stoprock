@@ -58,7 +58,7 @@ Timing clicks are timestamped in the interrupt handler, so screen activity never
 
 Switching on with the side button alone shows the **mode menu**: the 176 px logo stays fixed above a scrollable window with three visible cards. Each card shows a mode and a short description. The last-used mode is selected. Rocker up/down moves the selection and wraps at the ends. Press the rocker centre to open the selected mode. To skip it, hold the rocker while switching on (middle competition, down league, up coach). At the menu the side button held 3 s still switches off, and 5 minutes untouched switches off too.
 
-**Tutorials** in the mode menu opens a second picker headed Tutorials. Choose Basic, Competition, League or Coach. Use rocker up/down to go back or forward through the illustrated pages, and centre to return to the Tutorials picker. Choose Back to return to the mode menu.
+**Tutorials** in the mode menu opens a second picker headed Tutorials. Choose Basic, Competition, League or Coach. Use rocker up/down to go back or forward through the illustrated cards (Basic 8, Competition 11, League 12, Coach 12: one idea a card, the essentials first), and centre to return to the Tutorials picker; up on the first card or down on the last also returns to it. The cards are drawn by `tools/tutorials_claude/build.py` and stored whole in the firmware (`tools/tutorials.py`). Choose Back to return to the mode menu.
 
 | Switch on with | Mode | Screen | Rocker |
 |---|---|---|---|

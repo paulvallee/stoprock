@@ -1,7 +1,7 @@
 # Tutorial cards: Claude's proposal
 
-A revised set of tutorial cards, for comparison with the current ones (`tools/tutorials.py`) and an
-alternative set. Nothing here is wired into the firmware yet.
+The tutorial cards shown by the device's Tutorials menu. `python3 tools/tutorials.py` stores them in
+the firmware (`firmware/lib/stoprock_ui/src/tutorial_data.cpp`), each card whole, about 5 KB.
 
     python3 tools/tutorials_claude/build.py
 
@@ -25,7 +25,7 @@ The essentials come first; the last two cards are for when you want more.
 |---|---|
 | Timing buttons | Press the top or side / button at each line. |
 | Time a stone | Press at the back line, / then at each hog line. |
-| Read the times | The newest stone, big: / back to hog, hog to hog. |
+| Read the times | The big numbers show the / last stone you timed. |
 | Who's throwing | The highlight moves by / itself. Times go there. |
 | Wrong player? | Hold up to move the / last time one player left. |
 | Log your shot | Hold down twice for rocks: / Up: made. Down: missed. |
@@ -49,11 +49,6 @@ The essentials come first; the last two cards are for when you want more.
 - Shapes and arrows drawn at 4x and reduced to 1 bit (smooth curves); text drawn at 1x in 1 bit (crisp).
 - Header: the deck, "3/12", the title. Footer: ▲ Back (not on the first card),
   ● Done, ▼ Next (not on the last).
-
-## Firmware changes these assume
-
-- Down on the last card should do nothing visible (or return to the list), since there's no Next.
-- "Who's throwing" and "Wrong player?" describe up as left (as the firmware now does).
 
 ## Ideas taken from the alternative set (assets/screens/codex)
 
