@@ -115,15 +115,15 @@ static void test_history_counts_only_visible_recorded_splits() {
 // Competition's timeline: [left, THEM, right]; the fourth column slides the window the way you went.
 static void test_timeline_columns() {
     uint8_t out[kVisibleTimeColumns];
-    timelineColumns(1, 0, 1, 3, true, out);  // the cursor on THEM: our last, THEM, our next
+    TEST_ASSERT_EQUAL_INT8(1, timelineColumns(1, 0, 1, 3, true, out));  // on THEM: last, THEM, next; the fourth right
     TEST_ASSERT_EQUAL_UINT8(0, out[0]);
     TEST_ASSERT_EQUAL_UINT8(3, out[1]);
     TEST_ASSERT_EQUAL_UINT8(1, out[2]);
-    timelineColumns(1, 0, 1, 2, true, out);  // on the fourth, forward: THEM, right, it
+    TEST_ASSERT_EQUAL_INT8(-1, timelineColumns(1, 0, 1, 2, true, out));  // on the fourth, forward: THEM, right, it
     TEST_ASSERT_EQUAL_UINT8(3, out[0]);
     TEST_ASSERT_EQUAL_UINT8(1, out[1]);
     TEST_ASSERT_EQUAL_UINT8(2, out[2]);
-    timelineColumns(1, 0, 1, 2, false, out);  // back: it, left, THEM
+    TEST_ASSERT_EQUAL_INT8(1, timelineColumns(1, 0, 1, 2, false, out));  // back: it, left, THEM
     TEST_ASSERT_EQUAL_UINT8(2, out[0]);
     TEST_ASSERT_EQUAL_UINT8(0, out[1]);
     TEST_ASSERT_EQUAL_UINT8(3, out[2]);

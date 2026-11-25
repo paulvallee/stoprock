@@ -482,7 +482,8 @@ void syncModel(board::Refresh refresh = board::Refresh::Partial) {
         if (activeCol != timelineOther) timelineSide = 0;
         const bool forward = timelineSide != 0 ? timelineSide > 0 : timelineOther > timelineRight;
         timeHistory.timeline = true;
-        timelineColumns(seat(), timelineLeft, timelineRight, activeCol, forward, timeHistory.visible);
+        timeHistory.hiddenSide = timelineColumns(seat(), timelineLeft, timelineRight, activeCol, forward,
+                                                 timeHistory.visible);
     }
     if (rules().columns) {
         timeHistory.first = firstVisibleTimeColumn(timeHistory.first, activeCol, columns());

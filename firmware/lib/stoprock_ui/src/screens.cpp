@@ -393,16 +393,19 @@ static int columnScrollLimit(const Stone* stones, int count, uint8_t player) {
     return splits > kHistorySplits ? splits - kHistorySplits : 0;
 }
 
-void timelineColumns(uint8_t me, uint8_t left, uint8_t right, uint8_t active, bool forward,
-                     uint8_t out[kVisibleTimeColumns]) {
+int8_t timelineColumns(uint8_t me, uint8_t left, uint8_t right, uint8_t active, bool forward,
+                       uint8_t out[kVisibleTimeColumns]) {
     const uint8_t them = themColumn(me);
     if (active == left || active == them || active == right) {
         out[0] = left, out[1] = them, out[2] = right;
-    } else if (forward) {
-        out[0] = them, out[1] = right, out[2] = active;
-    } else {
-        out[0] = active, out[1] = left, out[2] = them;
+        return forward ? 1 : -1;  // the fourth: ahead (on the right) or behind (on the left)
     }
+    if (forward) {
+        out[0] = them, out[1] = right, out[2] = active;
+        return -1;  // left is the one not shown, before THEM
+    }
+    out[0] = active, out[1] = left, out[2] = them;
+    return 1;  // right is the one not shown, after THEM
 }
 
 void historyColumns(const TimeHistoryView& view, uint8_t active, uint8_t total, uint8_t out[kVisibleTimeColumns]) {
@@ -507,7 +510,10 @@ static void drawTimingHistory(Canvas& c, const Stone* stones, uint8_t count, uin
             }
         }
     }
-    if (!timeline) timingColumnBar(c, shown[0], total, bottom);
+    // the bar: a segment a column, thick for the three shown; the timeline's thin one is the side the
+    // fourth column is on (press that way to show it)
+    if (timeline) timingColumnBar(c, history.hiddenSide > 0 ? 0 : 1, total, bottom);
+    else timingColumnBar(c, shown[0], total, bottom);
 }
 
 void drawCompetition(Canvas& c, const Stone* stones, uint8_t count, uint8_t me, uint8_t activeCol,
@@ -518,7 +524,8 @@ void drawCompetition(Canvas& c, const Stone* stones, uint8_t count, uint8_t me, 
     if (!history.timeline) {  // no arrangement given (the render samples): the cursor's teammate and the next
         const uint8_t them = themColumn(me);
         const uint8_t left = activeCol == them ? 0 : activeCol;
-        timelineColumns(me, left, static_cast<uint8_t>((left + 1) % them), activeCol, true, history.visible);
+        history.hiddenSide = timelineColumns(me, left, static_cast<uint8_t>((left + 1) % them), activeCol, true,
+                                             history.visible);
         history.timeline = true;
     }
     drawTimingHistory(c, stones, count, me, activeCol, history, strip);

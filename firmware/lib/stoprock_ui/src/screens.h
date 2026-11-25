@@ -51,6 +51,7 @@ struct TimeHistoryView {
     bool scrolling = false;
     bool timeline = false;
     uint8_t visible[kVisibleTimeColumns] = {0, 0, 0};
+    int8_t hiddenSide = 1;  // timeline: which side the fourth column is on (-1 left, 1 right), for the bar
 };
 constexpr uint8_t firstVisibleTimeColumn(uint8_t first, uint8_t active, uint8_t total) {
     const uint8_t last = total - kVisibleTimeColumns;
@@ -61,9 +62,10 @@ constexpr uint8_t firstVisibleTimeColumn(uint8_t first, uint8_t active, uint8_t 
 }
 // Competition's timeline: left (the teammate column of our last thrower), THEM, right (our next). With
 // the cursor (active) on the fourth column, the window slides to it: forward [THEM, right, it] or
-// back [it, left, THEM]. me: your position (THEM is column 3).
-void timelineColumns(uint8_t me, uint8_t left, uint8_t right, uint8_t active, bool forward,
-                     uint8_t out[kVisibleTimeColumns]);
+// back [it, left, THEM]. me: your position (THEM is column 3). Returns the side the column not shown
+// is on (-1 left, 1 right), going round [left, THEM, right, the fourth].
+int8_t timelineColumns(uint8_t me, uint8_t left, uint8_t right, uint8_t active, bool forward,
+                       uint8_t out[kVisibleTimeColumns]);
 // The columns a view shows, left to right.
 void historyColumns(const TimeHistoryView& view, uint8_t active, uint8_t total, uint8_t out[kVisibleTimeColumns]);
 constexpr uint8_t kGridRows = 8;  // stones kept per player (addStone)

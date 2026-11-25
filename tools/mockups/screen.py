@@ -552,8 +552,15 @@ def timeline_columns(me, left, right, active, forward):
     return [them, right, active] if forward else [active, left, them]
 
 
+def timeline_hidden_side(left, right, active, forward):
+    """Which side the column not shown is on (-1 left, 1 right), going round [left, THEM, right, the fourth]."""
+    if active in (left, 3, right):
+        return 1 if forward else -1
+    return -1 if forward else 1
+
+
 def timing_history(d, f, stones, players, active, end, first_column=0, scroll=0, scrolling=False, framed=False,
-                   visible=None):
+                   visible=None, hidden_side=1):
     """visible: the columns to show, left to right (competition's timeline: every header alike, in bold
     Spleen 12x24, no column bar); otherwise three adjacent from first_column."""
     total = len(players)
@@ -614,8 +621,8 @@ def timing_history(d, f, stones, players, active, end, first_column=0, scroll=0,
             label = f"{value:.2f}"
             font = digits if digits.width(label) <= column_width - 6 else long_digits
             font.draw_in_box(d, label, left + 1, right - 1, y, y + pitch - 1, align="center", fill=half)
-    if timeline:
-        return
+    if timeline:  # the bar: thin on the side the fourth column is on
+        first = 0 if hidden_side > 0 else 1
     width = W - 2 * margin
     for column in range(total):
         left = margin + column * width // total
@@ -636,10 +643,13 @@ def competition_screen(stones, me=0, active=0, low_battery=False, tip=False, wai
     d.fontmode = "1"
     strip = H - TIP_H
     times_top(d, f, stones, waiting, COMP_MID)
+    hidden_side = 1
     if visible is None:
         left = 0 if active == 3 else active
         visible = timeline_columns(me, left, (left + 1) % 3, active, True)
-    timing_history(d, f, stones, league_columns(me), active, strip, first_column, scroll, scrolling, visible=visible)
+        hidden_side = timeline_hidden_side(left, (left + 1) % 3, active, True)
+    timing_history(d, f, stones, league_columns(me), active, strip, first_column, scroll, scrolling, visible=visible,
+                   hidden_side=hidden_side)
     badge_strip(img, d, f, "COMPETITION", low_battery, "SCROLL MODE" if scrolling else None)
     d.line((0, strip, W - 1, strip), fill=1)
     if tip in ("undo", "off"):
