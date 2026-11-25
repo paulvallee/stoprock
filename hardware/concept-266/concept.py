@@ -37,9 +37,13 @@ LAYOUTS = {
     # Its panel is 62.5 x 115.3 x 1.2 mm with the board (61.2 x 47.1) on the back of its lower end,
     # 5.5 mm in all; the window is the visible area M5Stack's own enclosure shows (59.6 x 105.1), its
     # top 1 mm below the panel's top edge (the panel's wide border, 9.7 mm, is at the board end).
-    "paperdiy": dict(W=69.0, H=163.0, R=8.0, T=15.0, portrait=True, stick=(34.5, 33.5), button=(34.5, 13.5),
+    # Below the screen the case narrows to a tail the width of the handle for the stick and the button.
+    # The kit's board sticks out 4.76 mm below the panel in two corner tabs (0-14.1 and 48-62.5 mm from
+    # the panel's left edge, seen from the front) with USB-C in the left one and the power button in the
+    # right, both facing down: the tail fits between them, so both face down onto open shoulders.
+    "paperdiy": dict(W=69.0, H=160.0, R=8.0, T=15.0, portrait=True, stick=(34.5, 32.5), button=(34.5, 13.0),
                      glass=(62.5, 115.3), window=(59.6, 105.1), glass_margin=3.3, window_top=1.0,
-                     screen="screen-paperdiy.png", broom=True),
+                     screen="screen-paperdiy.png", broom=True, tail=30.0),
 }
 
 
@@ -63,6 +67,9 @@ def configure(name):
         SCREEN_CY = GLASS_TOP - GLASS[1] / 2
     (STICK_X, STICK_Y), (BUTTON_X, BUTTON_Y) = L["stick"], L["button"]
     TUNNEL_YS = (H * 0.27, H * 0.73)
+    if L.get("tail"):  # both tunnels in the wide part, clear of the shoulders
+        pb = GLASS_TOP - GLASS[1]
+        TUNNEL_YS = (pb + 16.0, H - 24.0)
 
 
 # ------------------------------------------------------------------ the broom
@@ -81,11 +88,40 @@ def _round():
     return JoinType.Round
 
 
+# The PaperDIY's bottom edge (front view, from the panel's left edge): the board's two tabs, and the
+# USB-C port and power button in them, facing down.
+TAB_DROP = 4.76
+TABS = ((0.0, 14.1), (48.0, 62.5))
+USB_X, USB_W, USB_H = (2.0, 12.6), 8.94, 3.3     # the port's span, and the receptacle's size
+POWER_X = 58.5                                   # the power button's centre
+SHOULDER_WALL = 1.5                              # under the tabs
+
+
+def rounded_piece(w, h, r, cx, cy):
+    """A rounded-edged slab: the plan's outline, its front edge eased by EDGE."""
+    lower = rounded_rect(w, h, r, cx, cy).extrude(T - EDGE)
+    top = rounded_rect(w - 2 * EDGE, h - 2 * EDGE, r - EDGE, cx, cy).extrude(0.01).translate((0, 0, T - 0.01))
+    return Manifold.batch_hull([lower, top])
+
+
+def panel_bottom():
+    return GLASS_TOP - GLASS[1]
+
+
 def body():
-    plan = rounded_rect(W, H, R, W / 2, H / 2)
-    lower = plan.extrude(T - EDGE)
-    top = rounded_rect(W - 2 * EDGE, H - 2 * EDGE, R - EDGE, W / 2, H / 2).extrude(0.01).translate((0, 0, T - 0.01))
-    shell = Manifold.batch_hull([lower, top])
+    tail = CONFIG.get("tail")
+    if not tail:
+        shell = rounded_piece(W, H, R, W / 2, H / 2)
+    else:
+        shoulder = panel_bottom() - TAB_DROP - SHOULDER_WALL        # the wide part's bottom face
+        wide = rounded_piece(W, H - shoulder, R, W / 2, (H + shoulder) / 2)
+        neck = rounded_piece(tail, shoulder + R + 2, tail / 2 - 1, W / 2, (shoulder + R + 2) / 2)
+        # concave fillets where the tail meets the shoulders
+        plan = (rounded_rect(W, H - shoulder, R, W / 2, (H + shoulder) / 2)
+                + rounded_rect(tail, shoulder + R + 2, tail / 2 - 1, W / 2, (shoulder + R + 2) / 2))
+        closed = plan.offset(3.0, join_type=_round(), circular_segments=SEG).offset(-3.0, join_type=_round(), circular_segments=SEG)
+        fillets = (closed - plan).extrude(T - EDGE)
+        shell = wide + neck + fillets
     # the screen window, recessed, with a 45-degree lead-in
     win = rounded_rect(*WINDOW, 2.0, W / 2, SCREEN_CY)
     pocket = Manifold.batch_hull([
@@ -105,9 +141,17 @@ def body():
     # two strap tunnels, across the back, open at both sides
     tunnels = [Manifold.cube((W + 2, STRAP_W + 1, TUNNEL_Z[1] - TUNNEL_Z[0])).translate((-1, y - (STRAP_W + 1) / 2, TUNNEL_Z[0]))
                for y in TUNNEL_YS]
-    # USB-C at the top end, for charging
-    usb = Manifold.cube((9.5, 6, 3.6)).translate((W / 2 - 4.75, H - 4, T / 2 - 1.8))
-    return shell - pocket - sum(wells[1:], wells[0]) - saddle - tunnels[0] - tunnels[1] - usb
+    if not tail:  # USB-C at the top end, for charging
+        usb = Manifold.cube((9.5, 6, 3.6)).translate((W / 2 - 4.75, H - 4, T / 2 - 1.8))
+        return shell - pocket - sum(wells[1:], wells[0]) - saddle - tunnels[0] - tunnels[1] - usb
+    # the kit's bottom edge faces down onto the shoulders: an opening for USB-C, a hole for the power button
+    gx0 = W / 2 - GLASS[0] / 2
+    port_z = T - WINDOW_DEPTH - 1.2 - 2.4                          # behind the glass, on the board
+    y0 = panel_bottom() - TAB_DROP - SHOULDER_WALL - 0.5
+    usb = rounded_rect(USB_W + 0.8, USB_H + 0.8, 1.6).extrude(SHOULDER_WALL + 1.0)
+    usb = usb.rotate((-90, 0, 0)).translate((gx0 + sum(USB_X) / 2, y0, port_z))
+    power = Manifold.cylinder(SHOULDER_WALL + 1.0, 1.9, circular_segments=SEG).rotate((-90, 0, 0)).translate((gx0 + POWER_X, y0, port_z))
+    return shell - pocket - sum(wells[1:], wells[0]) - saddle - tunnels[0] - tunnels[1] - usb - power
 
 
 def screen_bed():
@@ -177,7 +221,12 @@ def internals():
     front = T - WINDOW_DEPTH                     # the glass's face, under the window's lip
     gx0 = W / 2 - GLASS[0] / 2
     panel = Manifold.cube((GLASS[0], GLASS[1], 1.2)).translate((gx0, GLASS_TOP - GLASS[1], front - 1.2))
-    board = Manifold.cube((61.15, 47.1, 4.3)).translate((W / 2 - 61.15 / 2, GLASS_TOP - GLASS[1], front - 5.5))
+    pb = GLASS_TOP - GLASS[1]
+    board = Manifold.cube((61.15, 47.1, 4.3)).translate((W / 2 - 61.15 / 2, pb, front - 5.5))
+    for a, b in TABS:   # the tabs below the panel, with USB-C in the left one
+        board = board + Manifold.cube((b - a, TAB_DROP + 0.5, 3.0)).translate((gx0 + a, pb - TAB_DROP, front - 4.4))
+    port_z = front - 1.2 - 2.4
+    board = board + Manifold.cube((USB_W, 7.3, USB_H)).translate((gx0 + sum(USB_X) / 2 - USB_W / 2, pb - TAB_DROP, port_z - USB_H / 2))
     battery = Manifold.cube((20.0, 30.0, 4.0)).translate((W / 2 - 10.0, GLASS_TOP - GLASS[1] + 52.0, front - 5.2))
     return panel, board, battery
 
@@ -208,7 +257,8 @@ if __name__ == "__main__":
     import json
     import sys
     OUT.mkdir(exist_ok=True)
-    layouts = {}
+    index = OUT / "layouts.json"   # kept for every layout built, so one can be rebuilt alone
+    layouts = json.loads(index.read_text()) if index.exists() else {}
     for name in sys.argv[1:] or LAYOUTS:
         configure(name)
         parts = [("body", body()), ("glass", screen_bed()), ("stick", stick()), ("button", button()),
@@ -222,4 +272,4 @@ if __name__ == "__main__":
                              portrait=LAYOUTS[name]["portrait"], texture=CONFIG.get("screen"),
                              broom=bool(CONFIG.get("broom")))
         print(f"{name:9} case {W:.0f} x {H:.0f} x {T:.0f} mm; window {WINDOW[0]:.1f} x {WINDOW[1]:.1f}")
-    (OUT / "layouts.json").write_text(json.dumps(layouts, indent=1))
+    index.write_text(json.dumps(layouts, indent=1))

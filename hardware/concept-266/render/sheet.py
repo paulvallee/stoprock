@@ -64,9 +64,10 @@ def grid(lay, views, out, title, sub, cols=4, scale=2, captions=None):
     print("wrote", out)
 
 
-grid("paperdiy", ["face", "front", "broom", "broom-hand", "side", "back", "xray", "broom-full"], "concept-paperdiy.png",
+grid("paperdiy", ["face", "front", "under", "broom-hand", "side", "back", "xray", "broom-full"], "concept-paperdiy.png",
      "stoprock on M5Stack's PaperDIY, upright on the broom",
-     "Real sizes: the kit's panel 62.5 x 115.3 mm, its board (61 x 47) and 140 mAh battery behind, no front window;"
+     "Real sizes: the kit's panel 62.5 x 115.3 mm, its board and 140 mAh battery behind, no front window; a 30 mm tail;"
      " 1 1/8\" handle, 48\" long; head about 203 x 82 mm.",
-     captions=["Straight on", "The face", "Strapped on", "From the hand", "Side: 15 mm on the handle",
+     captions=["Straight on: the tail as wide as the handle", "The face", "From below: USB-C under the left shoulder",
+               "From the hand", "Side: 15 mm on the handle",
                "Back: the saddle", "Inside: panel, board, battery", "The whole broom"])

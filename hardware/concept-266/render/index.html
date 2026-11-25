@@ -30,6 +30,7 @@ const add = async (file, material) => { const m = new THREE.Mesh(await load(file
 const part = (n) => `model-${layout}-${n}.stl`;
 const xray = view === 'xray';
 await add(part('body'), mat(0x2b2e33, xray ? { roughness: 0.8, transparent: true, opacity: 0.28, depthWrite: false } : { roughness: 0.8 }));
+if (view === 'under') await add(part('board'), mat(0x2f6b3a, { roughness: 0.6 }));   // the port, in its opening
 if (xray) {
   await add(part('panel'), mat(0xcfd2d6, { roughness: 0.4 }));
   await add(part('board'), mat(0x2f6b3a, { roughness: 0.6 }));
@@ -63,6 +64,7 @@ const views = {
   side: [[210, 15, 10], [0, 0, -8]],
   back: [[-60, 30, -180], [0, 0, -4]],
   xray: [[-80, 50, -170], [0, 0, 0]],
+  under: [[-34, -66, 14], [-20, -44, 1]],
   'broom-full': [[1350, 250, 1900], [0, -330, -12]],
 };
 const [pos0, look] = views[view] || views.front;
