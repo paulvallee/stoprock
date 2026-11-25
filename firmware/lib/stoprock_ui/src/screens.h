@@ -41,9 +41,10 @@ void drawOffPage(Canvas& c, int battery = -1, int gamesLeft = -1);
 void drawBasic(Canvas& c, const Stone* stones, uint8_t count, bool lowBattery, Tip tip = Tip::None,
                Waiting waiting = Waiting::None, int scroll = 0);
 
-// Three player columns, with a separate offset for older split rows. League and coach show three
-// adjacent columns from first. Competition shows them in throw order (timeline): our last thrower,
-// THEM, our next (visible, from timelineColumns()); all headers alike, in bold Spleen 12x24.
+// Three player columns, with a separate offset for older split rows, in throw order (timeline):
+// the teammate before, THEM, the teammate whose pair is under way or next (visible, from
+// timelineColumns()); all headers alike, in bold Spleen 12x24. Without a timeline, three adjacent
+// columns from first.
 constexpr uint8_t kVisibleTimeColumns = 3;
 struct TimeHistoryView {
     uint8_t first = 0;
@@ -51,7 +52,7 @@ struct TimeHistoryView {
     bool scrolling = false;
     bool timeline = false;
     uint8_t visible[kVisibleTimeColumns] = {0, 0, 0};
-    int8_t hiddenSide = 1;  // timeline: which side the fourth column is on (-1 left, 1 right), for the bar
+    int8_t hiddenSide = 1;  // timeline, four columns: which side the fourth is on (-1 left, 1 right), for the bar
 };
 constexpr uint8_t firstVisibleTimeColumn(uint8_t first, uint8_t active, uint8_t total) {
     const uint8_t last = total - kVisibleTimeColumns;
@@ -60,12 +61,15 @@ constexpr uint8_t firstVisibleTimeColumn(uint8_t first, uint8_t active, uint8_t 
     if (active >= first + kVisibleTimeColumns) return active + 1 - kVisibleTimeColumns;
     return first;
 }
-// Competition's timeline: left (the teammate column of our last thrower), THEM, right (our next). With
-// the cursor (active) on the fourth column, the window slides to it: forward [THEM, right, it] or
-// back [it, left, THEM]. me: your position (THEM is column 3). Returns the side the column not shown
-// is on (-1 left, 1 right), going round [left, THEM, right, the fourth].
-int8_t timelineColumns(uint8_t me, uint8_t left, uint8_t right, uint8_t active, bool forward,
-                       uint8_t out[kVisibleTimeColumns]);
+// The timeline for a seat (a player: four columns; a coach: five): round the cycle [the teammate
+// before right, THEM, right, the teammates after right...], the three shown are [before, THEM, right]
+// while the cursor (active) is on one of them. On another, the window slides to it: side > 0 (you
+// went down) ends at it, side < 0 starts at it, side 0 (the clock put it there) the nearer way.
+// Returns, for four columns, the side the one not shown is on (-1 left, 1 right); 0 for five (one
+// hidden each side).
+int8_t timelineColumns(uint8_t seat, uint8_t right, uint8_t active, int8_t side, uint8_t out[kVisibleTimeColumns]);
+// The timeline's cycle (columnCount(seat) entries), as above: the order the rocker steps round.
+void timelineCycle(uint8_t seat, uint8_t right, uint8_t* cycle);
 // The columns a view shows, left to right.
 void historyColumns(const TimeHistoryView& view, uint8_t active, uint8_t total, uint8_t out[kVisibleTimeColumns]);
 constexpr uint8_t kGridRows = 8;  // stones kept per player (addStone)

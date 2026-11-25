@@ -112,21 +112,31 @@ static void test_history_counts_only_visible_recorded_splits() {
     TEST_ASSERT_EQUAL_INT(0, historyScrollLimit(left, leftCount, 0, second));
 }
 
-// Competition's timeline: [left, THEM, right]; the fourth column slides the window the way you went.
+// The timeline: [before, THEM, right]; beyond them the window slides the way you went.
 static void test_timeline_columns() {
     uint8_t out[kVisibleTimeColumns];
-    TEST_ASSERT_EQUAL_INT8(1, timelineColumns(1, 0, 1, 3, true, out));  // on THEM: last, THEM, next; the fourth right
+    // a player (2nd: Lead 0, 3rd 1, Skip 2, THEM 3), the 3rd's pair under way
+    TEST_ASSERT_EQUAL_INT8(1, timelineColumns(1, 1, 3, 0, out));  // on THEM: Lead | THEM | 3rd, Skip to the right
     TEST_ASSERT_EQUAL_UINT8(0, out[0]);
     TEST_ASSERT_EQUAL_UINT8(3, out[1]);
     TEST_ASSERT_EQUAL_UINT8(1, out[2]);
-    TEST_ASSERT_EQUAL_INT8(-1, timelineColumns(1, 0, 1, 2, true, out));  // on the fourth, forward: THEM, right, it
+    TEST_ASSERT_EQUAL_INT8(-1, timelineColumns(1, 1, 2, 1, out));  // down onto Skip: THEM | 3rd | Skip
     TEST_ASSERT_EQUAL_UINT8(3, out[0]);
     TEST_ASSERT_EQUAL_UINT8(1, out[1]);
     TEST_ASSERT_EQUAL_UINT8(2, out[2]);
-    TEST_ASSERT_EQUAL_INT8(1, timelineColumns(1, 0, 1, 2, false, out));  // back: it, left, THEM
+    TEST_ASSERT_EQUAL_INT8(1, timelineColumns(1, 1, 2, -1, out));  // up onto Skip: Skip | Lead | THEM
     TEST_ASSERT_EQUAL_UINT8(2, out[0]);
     TEST_ASSERT_EQUAL_UINT8(0, out[1]);
     TEST_ASSERT_EQUAL_UINT8(3, out[2]);
+    // a coach (Lead 0 .. Skip 3, THEM 4), the skip's pair: 3rd | THEM | Skip, one hidden each side
+    TEST_ASSERT_EQUAL_INT8(0, timelineColumns(kCoachSeat, 3, 3, 0, out));
+    TEST_ASSERT_EQUAL_UINT8(2, out[0]);
+    TEST_ASSERT_EQUAL_UINT8(4, out[1]);
+    TEST_ASSERT_EQUAL_UINT8(3, out[2]);
+    timelineColumns(kCoachSeat, 3, 1, 0, out);  // the cursor on the 2nd, by the clock: the nearer way, back
+    TEST_ASSERT_EQUAL_UINT8(1, out[0]);
+    TEST_ASSERT_EQUAL_UINT8(2, out[1]);
+    TEST_ASSERT_EQUAL_UINT8(4, out[2]);
 }
 
 int main() {

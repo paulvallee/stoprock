@@ -542,21 +542,30 @@ def times_top(d, f, stones, waiting, mid, y0=0):
 
 
 
-def timeline_columns(me, left, right, active, forward):
-    """Competition's columns in throw order: left (the teammate column of our last thrower), THEM, right
-    (our next). With the cursor (active) on the fourth column, the window slides to it: forward
-    [THEM, right, it] or back [it, left, THEM]."""
-    them = 3
-    if active in (left, them, right):
-        return [left, them, right]
-    return [them, right, active] if forward else [active, left, them]
+def timeline_cycle(n, right):
+    """The timeline's cycle for n columns (a player 4, a coach 5): [the teammate before right, THEM,
+    right, the teammates after right...]: the order the rocker steps round."""
+    mates = n - 1
+    return [(right + mates - 1) % mates, mates] + [(right + j) % mates for j in range(mates - 1)]
 
 
-def timeline_hidden_side(left, right, active, forward):
-    """Which side the column not shown is on (-1 left, 1 right), going round [left, THEM, right, the fourth]."""
-    if active in (left, 3, right):
-        return 1 if forward else -1
-    return -1 if forward else 1
+def timeline_columns(n, right, active, side=0):
+    """The three columns shown, and for four columns the side the one not shown is on (-1 left,
+    1 right; 0 for five). [before, THEM, right] while the cursor (active) is on one of them; on
+    another the window slides to it: side > 0 (you went down) ends at it, side < 0 starts at it,
+    side 0 (the clock put it there) the nearer way."""
+    cycle = timeline_cycle(n, right)
+    k = cycle.index(active)
+    forward = side > 0 if side else (k - 2 < n - k or (k - 2 == n - k and cycle[k] > right))
+    start = 0 if k <= 2 else (k - 2 if forward else k)
+    shown = [cycle[(start + i) % n] for i in range(3)]
+    if n != 4:
+        hidden = 0
+    elif start == 0:
+        hidden = 1 if cycle[3] > right else -1
+    else:
+        hidden = -1 if start == 1 else 1
+    return shown, hidden
 
 
 def timing_history(d, f, stones, players, active, end, first_column=0, scroll=0, scrolling=False, framed=False,
@@ -564,7 +573,10 @@ def timing_history(d, f, stones, players, active, end, first_column=0, scroll=0,
     """visible: the columns to show, left to right (competition's timeline: every header alike, in bold
     Spleen 12x24, no column bar); otherwise three adjacent from first_column."""
     total = len(players)
-    timeline = visible is not None
+    if visible is None:  # every mode: the timeline; with none given, the cursor's teammate on the right
+        right = 1 if active == total - 1 else active
+        visible, hidden_side = timeline_columns(total, right, active)
+    timeline = True
     first = min(max(first_column, active - 2), active, total - 3)
     shown = visible if timeline else list(range(first, first + 3))
     players = [players[c] for c in shown]
@@ -621,8 +633,8 @@ def timing_history(d, f, stones, players, active, end, first_column=0, scroll=0,
             label = f"{value:.2f}"
             font = digits if digits.width(label) <= column_width - 6 else long_digits
             font.draw_in_box(d, label, left + 1, right - 1, y, y + pitch - 1, align="center", fill=half)
-    if timeline:  # the bar: thin on the side the fourth column is on
-        first = 0 if hidden_side > 0 else 1
+    if timeline:  # the bar: thin on the side the fourth column is on (five columns: one each side)
+        first = 0 if total == 4 and hidden_side > 0 else 1
     width = W - 2 * margin
     for column in range(total):
         left = margin + column * width // total
@@ -643,13 +655,7 @@ def competition_screen(stones, me=0, active=0, low_battery=False, tip=False, wai
     d.fontmode = "1"
     strip = H - TIP_H
     times_top(d, f, stones, waiting, COMP_MID)
-    hidden_side = 1
-    if visible is None:
-        left = 0 if active == 3 else active
-        visible = timeline_columns(me, left, (left + 1) % 3, active, True)
-        hidden_side = timeline_hidden_side(left, (left + 1) % 3, active, True)
-    timing_history(d, f, stones, league_columns(me), active, strip, first_column, scroll, scrolling, visible=visible,
-                   hidden_side=hidden_side)
+    timing_history(d, f, stones, league_columns(me), active, strip, first_column, scroll, scrolling, visible=visible)
     badge_strip(img, d, f, "COMPETITION", low_battery, "SCROLL MODE" if scrolling else None)
     d.line((0, strip, W - 1, strip), fill=1)
     if tip in ("undo", "off"):

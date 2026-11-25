@@ -393,19 +393,28 @@ static int columnScrollLimit(const Stone* stones, int count, uint8_t player) {
     return splits > kHistorySplits ? splits - kHistorySplits : 0;
 }
 
-int8_t timelineColumns(uint8_t me, uint8_t left, uint8_t right, uint8_t active, bool forward,
-                       uint8_t out[kVisibleTimeColumns]) {
-    const uint8_t them = themColumn(me);
-    if (active == left || active == them || active == right) {
-        out[0] = left, out[1] = them, out[2] = right;
-        return forward ? 1 : -1;  // the fourth: ahead (on the right) or behind (on the left)
-    }
-    if (forward) {
-        out[0] = them, out[1] = right, out[2] = active;
-        return -1;  // left is the one not shown, before THEM
-    }
-    out[0] = active, out[1] = left, out[2] = them;
-    return 1;  // right is the one not shown, after THEM
+void timelineCycle(uint8_t seat, uint8_t right, uint8_t* cycle) {
+    const int mates = columnCount(seat) - 1;
+    cycle[0] = static_cast<uint8_t>((right + mates - 1) % mates);
+    cycle[1] = themColumn(seat);
+    for (int j = 0; j < mates - 1; ++j) cycle[2 + j] = static_cast<uint8_t>((right + j) % mates);
+}
+
+int8_t timelineColumns(uint8_t seat, uint8_t right, uint8_t active, int8_t side, uint8_t out[kVisibleTimeColumns]) {
+    const int n = columnCount(seat);
+    uint8_t cycle[kCoachColumns];
+    timelineCycle(seat, right, cycle);
+    int k = 0;
+    while (k < n - 1 && cycle[k] != active) ++k;
+    bool forward;
+    if (side != 0) forward = side > 0;
+    else forward = k - 2 < n - k || (k - 2 == n - k && cycle[k] > right);  // a tie (four columns): later this end
+    int start = 0;  // the window's first place in the cycle
+    if (k > 2) start = forward ? k - 2 : k;
+    for (int i = 0; i < kVisibleTimeColumns; ++i) out[i] = cycle[(start + i) % n];
+    if (n != 4) return 0;
+    if (start == 0) return cycle[3] > right ? 1 : -1;  // the fourth: later this end (right), or earlier
+    return start == 1 ? -1 : 1;
 }
 
 void historyColumns(const TimeHistoryView& view, uint8_t active, uint8_t total, uint8_t out[kVisibleTimeColumns]) {
@@ -438,6 +447,12 @@ static void timingColumnBar(Canvas& c, uint8_t firstColumn, uint8_t columns, int
 
 static void drawTimingHistory(Canvas& c, const Stone* stones, uint8_t count, uint8_t me,
                               uint8_t active, TimeHistoryView history, int end, bool framed = false) {
+    if (!history.timeline) {  // no arrangement given (the render samples): the cursor's teammate on the right
+        const uint8_t them = themColumn(me);
+        const uint8_t right = active == them ? 1 : active;
+        history.hiddenSide = timelineColumns(me, right, active, 0, history.visible);
+        history.timeline = true;
+    }
     constexpr int columnWidth = (W - 2 * kHistoryMargin) / kVisibleTimeColumns;
     const uint8_t total = columnCount(me);
     uint8_t shown[kVisibleTimeColumns];
@@ -512,7 +527,7 @@ static void drawTimingHistory(Canvas& c, const Stone* stones, uint8_t count, uin
     }
     // the bar: a segment a column, thick for the three shown; the timeline's thin one is the side the
     // fourth column is on (press that way to show it)
-    if (timeline) timingColumnBar(c, history.hiddenSide > 0 ? 0 : 1, total, bottom);
+    if (timeline) timingColumnBar(c, total == 4 && history.hiddenSide > 0 ? 0 : 1, total, bottom);
     else timingColumnBar(c, shown[0], total, bottom);
 }
 
@@ -521,13 +536,6 @@ void drawCompetition(Canvas& c, const Stone* stones, uint8_t count, uint8_t me, 
     c.clear();
     const int strip = H - TIP_H;
     timesTop(c, stones, count, waiting, COMP_MID);
-    if (!history.timeline) {  // no arrangement given (the render samples): the cursor's teammate and the next
-        const uint8_t them = themColumn(me);
-        const uint8_t left = activeCol == them ? 0 : activeCol;
-        history.hiddenSide = timelineColumns(me, left, static_cast<uint8_t>((left + 1) % them), activeCol, true,
-                                             history.visible);
-        history.timeline = true;
-    }
     drawTimingHistory(c, stones, count, me, activeCol, history, strip);
     badgeStrip(c, "COMPETITION", lowBattery, history.scrolling ? "SCROLL MODE" : nullptr);
     c.fillRect(0, strip, W - 1, strip, false);

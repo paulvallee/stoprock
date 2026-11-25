@@ -153,10 +153,11 @@ uint8_t columns() { return columnCount(seat()); }
 // throws next, and the rocker moves it too (or moves a time afterwards).
 uint8_t activeCol = 0;          // the column with the cursor
 TimeHistoryView timeHistory;    // shared by the three modes that have player columns
-// Competition's timeline (TimeHistoryView): THEM between our last thrower (left) and our next (right),
-// the fourth column (other) beyond them; the rocker steps round [left, THEM, right, other].
-// timelineSide: which way the window slid to show other, when you moved there (0: by the clock).
-uint8_t timelineLeft = 0, timelineRight = 1, timelineOther = 2;
+// The timeline (TimeHistoryView, every mode with player columns): THEM between the teammate before
+// (left) and the teammate whose pair is under way or next (right); the rocker steps round the cycle
+// (timelineCycle()). timelineSide: which way the window slid to show a column beyond them, when you
+// moved there (0: back on the three, or the clock put it there).
+uint8_t timelineRight = 1;
 int8_t timelineSide = 0;
 int basicScroll = 0;             // basic: rows scrolled down, to older stones (the rocker; a new stone resets it)
 // League: what rocker up/down work on, the focus (bold border): the players' columns (up = next,
@@ -475,15 +476,15 @@ void displayTask(void*) {
 void syncModel(board::Refresh refresh = board::Refresh::Partial) {
     static board::Refresh requestedRefresh;
     requestedRefresh = refresh;
-    if (mode == GameMode::Competition) {  // the timeline, from the throw order (by the clock, or the stone under way)
+    if (rules().columns) {  // the timeline, from the throw order (by the clock, or the stone under way)
         const int64_t at = timing.active() && stoneStart >= 0 ? stoneStart : esp_timer_get_time();
-        order.besideThem(at, timelineLeft, timelineRight);
-        timelineOther = static_cast<uint8_t>(0 + 1 + 2 - timelineLeft - timelineRight);  // three teammate columns
-        if (activeCol != timelineOther) timelineSide = 0;
-        const bool forward = timelineSide != 0 ? timelineSide > 0 : timelineOther > timelineRight;
+        uint8_t left;
+        order.besideThem(at, left, timelineRight);
+        uint8_t cycle[kCoachColumns];
+        timelineCycle(seat(), timelineRight, cycle);
+        if (activeCol == cycle[0] || activeCol == cycle[1] || activeCol == cycle[2]) timelineSide = 0;
         timeHistory.timeline = true;
-        timeHistory.hiddenSide = timelineColumns(seat(), timelineLeft, timelineRight, activeCol, forward,
-                                                 timeHistory.visible);
+        timeHistory.hiddenSide = timelineColumns(seat(), timelineRight, activeCol, timelineSide, timeHistory.visible);
     }
     if (rules().columns) {
         timeHistory.first = firstVisibleTimeColumn(timeHistory.first, activeCol, columns());
@@ -1089,13 +1090,14 @@ void scrollTimeHistory(int dir) {
 
 uint8_t shiftColumn(uint8_t column, int dir) {
     const int count = columns();
-    if (mode == GameMode::Competition) {  // round the timeline, as it's drawn: [left, THEM, right, other]
-        const uint8_t cycle[4] = {timelineLeft, static_cast<uint8_t>(themColumn(seat())), timelineRight, timelineOther};
+    if (rules().columns) {  // round the timeline, as it's drawn
+        uint8_t cycle[kCoachColumns];
+        timelineCycle(seat(), timelineRight, cycle);
         int i = 0;
-        while (i < 3 && cycle[i] != column) ++i;
-        const uint8_t to = cycle[(i + 4 + dir) % 4];
-        if (to == timelineOther) timelineSide = static_cast<int8_t>(dir);  // the window slides the way you went
-        return to;
+        while (i < count - 1 && cycle[i] != column) ++i;
+        const int j = (i + count + dir) % count;
+        if (j > 2) timelineSide = static_cast<int8_t>(dir);  // beyond the three: the window slides the way you went
+        return cycle[j];
     }
     return (column + count + dir) % count;
 }

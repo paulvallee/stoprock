@@ -287,24 +287,25 @@ def columns(c, names, lit, x1=150, y=50):
 
 
 def whose_turn(c):
-    xs = columns(c, ("3rd", "Skip", "THEM"), lit=1, x1=142)
-    stopwatch(c, xs[1], 102, 11)                              # the next time lands here
-    c.arrow((xs[1], 84), (xs[1], 81), (xs[1], 78), (xs[1], 74), width=2, head=6)
-    rocker(c, 168, 46, lit=("up", "down"))
-    label(c, "left", 164, 50, size=11, anchor="ra", weight="Bold")
-    label(c, "right", 164, 94, size=11, anchor="ra", weight="Bold")
+    # the screen's order: the teammate before, THEM, the one throwing (the highlight, on the right)
+    xs = columns(c, ("2nd", "THEM", "3rd"), lit=2, x1=192)
+    stopwatch(c, xs[2], 104, 11)                              # the next time lands here
+    c.arrow((xs[2], 86), (xs[2], 82), (xs[2], 78), (xs[2], 74), width=2, head=6)
+    rocker(c, 16, 76, lit=("up", "down"), scale=0.85)
+    label(c, "left", 42, 77, size=11, weight="Bold")
+    label(c, "right", 42, 115, size=11, weight="Bold")
 
 
 def move_time(c):
-    xs = columns(c, ("3rd", "Skip"), lit=0, x1=124)
-    # the newest time, filed under Skip, moving one column left while up is held
-    time_pill(c, xs[1] - 18, 80, xs[1] + 18, 98, "3.42", False)
-    c.rrect(xs[0] - 18, 80, xs[0] + 18, 98, 5, fill=None, outline=0, width=1.2)  # where it goes
-    for dx in range(-14, 15, 6):                                                    # (dashed)
-        c.rect(xs[0] + dx, 79, xs[0] + dx + 2.6, 81, fill=255)
-        c.rect(xs[0] + dx, 97, xs[0] + dx + 2.6, 99, fill=255)
-    c.arrow((xs[1], 101), (xs[1] - 4, 122), (xs[0] + 4, 122), (xs[0], 101.5), width=2.4, head=7)
-    rocker(c, 164, 46, lit=("up",), hold=("up", "left"))
+    xs = columns(c, ("2nd", "THEM", "3rd"), lit=1, x1=192)
+    # the newest time, filed under the 3rd, moving one column left (to THEM) while up is held
+    time_pill(c, xs[2] - 20, 80, xs[2] + 20, 98, "3.42", False)
+    c.rrect(xs[1] - 20, 80, xs[1] + 20, 98, 5, fill=None, outline=0, width=1.2)  # where it goes
+    for dx in range(-16, 17, 6):                                                    # (dashed)
+        c.rect(xs[1] + dx, 79, xs[1] + dx + 2.6, 81, fill=255)
+        c.rect(xs[1] + dx, 97, xs[1] + dx + 2.6, 99, fill=255)
+    c.arrow((xs[2], 101), (xs[2] - 4, 124), (xs[1] + 4, 124), (xs[1], 101.5), width=2.4, head=7)
+    rocker(c, 16, 76, lit=("up",), hold=("up", "right"), scale=0.85)
 
 
 def older_times(c, basic=False):
