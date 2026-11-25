@@ -40,7 +40,7 @@ constexpr int64_t kAuditEveryUs = 10 * 60 * kSec;   // clock audit sample interv
 // Switch off after 2 hours with no press: a game is about that long, and someone who times only a
 // stone or two in the last end mustn't lose the game to it. Light sleep costs little more meanwhile.
 constexpr int64_t kPowerOffUs = 2 * 60 * 60 * kSec;
-constexpr int64_t kCleanAfterHhUs = 5 * kSec;
+constexpr int64_t kCleanAfterHhUs = 15 * kSec;  // the ghost-clean waits this long after an H2H: time to read it
 constexpr uint8_t kStonesPerClean = 4;         // ghost-clearing full refresh after every 4th timed stone
 #ifdef STOPROCK_BOARD_EMU
 // Simulator: react to the battery slider quickly.

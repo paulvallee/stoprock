@@ -173,7 +173,7 @@ The physical update takes about 0.26s whatever the area changed, so the goal is 
 | First result of a stone (B2H, or H2H with no B2H) | Beep. One update: the new value in the large row; after a B2H the stopwatch moves to the Hog2Hog box. |
 | H2H after a B2H | Beep. Only the large H2H cell (replacing the stopwatch, which moved there with the B2H). |
 | Rocker | Beep. That rock, the cursor and the percentage. |
-| Ghost clearing (2s full refresh) | After the **first timed stone** of a game (switching on uses fast updates, which can leave the off page or menu ghosting), then after **every 4th** (a setting, to tune on the real panel): **5s after its H2H click**, or **20s after its B2H click** if it has no H2H. A timer wakes the chip from light sleep for it. Abandoned starts don't count. If the next stone has already started, it waits for that stone to end. |
+| Ghost clearing (2s full refresh) | After the **first timed stone** of a game (switching on uses fast updates, which can leave the off page or menu ghosting), then after **every 4th** (a setting, to tune on the real panel): **15s after its H2H click** (time to read it; the next stone usually starts 25-30s after an H2H), or **20s after its B2H click** if it has no H2H. A timer wakes the chip from light sleep for it. Abandoned starts don't count. If the next stone has already started, it waits for that stone to end. |
 
 Rules:
 1. During a stone (first click until done or abandoned), only timing updates run. Rocker entries are logged and beep immediately; their screen update waits.
