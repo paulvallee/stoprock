@@ -6,6 +6,8 @@
 
 #include "screens.h"
 #include "startup_menu.h"
+
+#include <utility>
 #include "tutorials.h"
 
 using namespace stoprock;
@@ -107,6 +109,23 @@ int main(int argc, char** argv) {
         drawStartupMenu(c, kTutorialMenuItems, kTutorialMenuCount, menuSelection, kTutorialsHeading);
         snprintf(path, sizeof path, "%s/tutorial-menu%d.pbm", dir, i);
         writePbm(c, path);
+    }
+    // the Sounds page: as it comes, each row selected; then some levels changed, and everything muted
+    SoundSettings sounds;
+    SoundSettings mixed;
+    const uint8_t levels[kSoundKinds] = {3, 4, 2, 0, 1};
+    for (int k = 0; k < kSoundKinds; ++k) mixed.level[k] = levels[k];
+    SoundSettings muted = mixed;
+    muted.muted = true;
+    for (const auto& [name, settings] : {std::pair<const char*, const SoundSettings*>{"sounds", &sounds},
+                                         {"sounds-mixed", &mixed}, {"sounds-muted", &muted}}) {
+        menuSelection = {};
+        for (int i = 0; i < kSoundMenuCount; ++i) {
+            menuSelection.select(i, kSoundMenuCount);
+            drawSoundsMenu(c, *settings, menuSelection);
+            snprintf(path, sizeof path, "%s/%s%d.pbm", dir, name, i);
+            writePbm(c, path);
+        }
     }
     for (const auto mode : {GameMode::Basic, GameMode::Competition, GameMode::League, GameMode::Coach}) {
         for (uint8_t page = 0; page < tutorialPageCount(mode); ++page) {

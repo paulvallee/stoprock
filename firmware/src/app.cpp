@@ -64,26 +64,48 @@ const Note kUndo[] = {{1800, 60}, {0, 25}, {1200, 80}};
 constexpr Note kError[] = {{300, 180, 50}};
 constexpr Note kBasicError[] = {{kError[0].hz, kError[0].ms, 5}};
 
+// The Sounds page's settings (kept as "sounds"): muted, and each kind's level.
+SoundSettings soundSettings;
+
 struct Sound {
     const Note* notes = nullptr;
     uint8_t count = 0, index = 0;
+    SoundKind kind = SoundKind::Click;
+    bool preview = false;
     int64_t until = 0;
 
-    template <size_t N> void play(const Note (&n)[N]) {
+    // A sound of a kind, at its level (nothing when that's off, or muted). preview: the Sounds page
+    // trying a level, heard even while muted.
+    template <size_t N> void play(const Note (&n)[N], SoundKind k, bool tryLevel = false) {
+        if (soundVolume(soundSettings, k, 100, tryLevel) == 0) {  // silent: stop whatever was playing
+            if (notes) board::tone(0, 0);
+            notes = nullptr;
+            return;
+        }
         notes = n;
         count = N;
         index = 0;
-        board::tone(n[0].hz, n[0].volume);
+        kind = k;
+        preview = tryLevel;
+        tone(n[0]);
         until = esp_timer_get_time() + n[0].ms * 1000LL;
     }
     bool playing() const { return notes != nullptr; }
     void update(int64_t now) {
         if (!notes || now < until) return;
         if (++index >= count) { notes = nullptr; board::tone(0, 0); return; }
-        board::tone(notes[index].hz, notes[index].volume);
+        tone(notes[index]);
         until = now + notes[index].ms * 1000LL;
     }
+    void tone(const Note& n) const { board::tone(n.hz, soundVolume(soundSettings, kind, n.volume, preview)); }
 } sound;
+
+void loadSoundSettings(Preferences& p) {
+    SoundSettings s;
+    if (p.getBytesLength("sounds") == sizeof s) p.getBytes("sounds", &s, sizeof s);
+    s.sanitize();
+    soundSettings = s;
+}
 
 // ------------------------------------------------------------------ buttons
 struct ButtonState {
@@ -122,7 +144,7 @@ GameMode mode = GameMode::Competition;
 uint8_t coachPage = 0;          // coach: 0 timer priority, 1 rock priority
 uint8_t myPosition = 0;         // 0 lead .. 3 skip (double press of the rocker centre; kept)
 
-void playError() { sound.play(mode == GameMode::Basic ? kBasicError : kError); }
+void playError() { sound.play(mode == GameMode::Basic ? kBasicError : kError, SoundKind::Error); }
 
 // What differs between the modes, all in one place: everything else is the same code for all four.
 struct ModeRules {
@@ -381,7 +403,7 @@ uint16_t toStored(int32_t hundredths) {
 }
 
 // ------------------------------------------------------------------ display task
-enum class MenuPage : uint8_t { Modes, Tutorials, Slide };
+enum class MenuPage : uint8_t { Modes, Tutorials, Slide, Sounds };
 
 struct Model {
     GameMode mode = GameMode::League;
@@ -402,6 +424,7 @@ struct Model {
     StartupMenuSelection menuSelection;
     GameMode tutorialMode = GameMode::Basic;
     uint8_t tutorialPage = 0;
+    SoundSettings sounds;   // the Sounds page
     board::Refresh refresh = board::Refresh::Partial;
     Tip tip = Tip::None;    // a box over the times: the switch-on tip, or "Keep holding to undo"
     Waiting waiting = Waiting::None;  // a stone being timed: the stopwatch shows where its time will go
@@ -442,6 +465,7 @@ void displayTask(void*) {
             drawOffPage(next, m.offBattery, m.offGamesLeft);
         } else if (m.menu) {
             if (m.menuPage == MenuPage::Slide) drawTutorial(next, m.tutorialMode, m.tutorialPage);
+            else if (m.menuPage == MenuPage::Sounds) drawSoundsMenu(next, m.sounds, m.menuSelection);
             else if (m.menuPage == MenuPage::Tutorials)
                 drawStartupMenu(next, kTutorialMenuItems, kTutorialMenuCount, m.menuSelection, kTutorialsHeading);
             else drawStartupMenu(next, kStartupMenuItems, kStartupMenuCount, m.menuSelection);
@@ -797,11 +821,29 @@ int menuIndex(GameMode mode) {
 }
 constexpr int64_t kMenuIdleUs = 5 * 60 * kSec;  // untouched this long at the menu: switch off
 
+void saveSoundSettings() {
+    prefs.putBytes("sounds", &soundSettings, sizeof soundSettings);
+    Serial.printf("sounds: %s, levels clicks %u made %u missed %u undo %u error %u\n",
+                  soundSettings.muted ? "muted" : "on", soundSettings.level[0], soundSettings.level[1],
+                  soundSettings.level[2], soundSettings.level[3], soundSettings.level[4]);
+}
+
+// A sound at its new level on the Sounds page (heard even while muted; nothing at off).
+void playPreview(SoundKind k) {
+    switch (k) {
+        case SoundKind::Click: sound.play(kClick, k, true); break;
+        case SoundKind::Made: sound.play(kMade, k, true); break;
+        case SoundKind::Missed: sound.play(kMissed, k, true); break;
+        case SoundKind::Undo: sound.play(kUndo, k, true); break;
+        case SoundKind::Error: sound.play(kError, k, true); break;
+    }
+}
+
 // At switch-on, unless the rocker is held: the modes, the one used last selected. Up/down
 // choose (round and round), the rocker's middle starts the one selected. The side button held 3s
 // switches off as always (once it's been let go after switching on).
 GameMode chooseMode() {
-    static StartupMenuSelection selection, tutorialSelection;
+    static StartupMenuSelection selection, tutorialSelection, soundSelection;
     static MenuPage page;
     static GameMode tutorialMode;
     static uint8_t tutorialPage;
@@ -811,13 +853,16 @@ GameMode chooseMode() {
     selection = {};
     selection.select(menuIndex(static_cast<GameMode>(last)), kStartupMenuCount);
     tutorialSelection = {};
+    soundSelection = {};
     page = MenuPage::Modes;
     auto show = [](bool f) {
         full = f;
         publish([](Model& m) {
             m.menu = true;
             m.menuPage = page;
-            m.menuSelection = page == MenuPage::Modes ? selection : tutorialSelection;
+            m.menuSelection = page == MenuPage::Modes ? selection
+                              : page == MenuPage::Sounds ? soundSelection : tutorialSelection;
+            m.sounds = soundSettings;
             m.tutorialMode = tutorialMode;
             m.tutorialPage = tutorialPage;
             m.off = false;
@@ -841,8 +886,29 @@ GameMode chooseMode() {
             down[i] = raw;
             if (!raw) continue;
             lastInput = now;
-            sound.play(kClick);
             const int dir = rocker[i] == board::kUp ? -1 : 1;
+            if (page == MenuPage::Sounds) {
+                // All sounds: on / muted. A sound: its next level, played as a preview. Back: the modes.
+                if (rocker[i] != board::kPress) {
+                    sound.play(kClick, SoundKind::Click);
+                    soundSelection.select(soundSelection.selected + dir, kSoundMenuCount);
+                } else if (soundSelection.selected == 0) {
+                    soundSettings.muted = !soundSettings.muted;
+                    if (!soundSettings.muted) sound.play(kClick, SoundKind::Click);
+                    saveSoundSettings();
+                } else if (soundSelection.selected <= kSoundKinds) {
+                    const auto k = static_cast<SoundKind>(soundSelection.selected - 1);
+                    soundSettings.step(k);
+                    playPreview(k);
+                    saveSoundSettings();
+                } else {
+                    sound.play(kClick, SoundKind::Click);
+                    page = MenuPage::Modes;
+                }
+                show(false);
+                continue;
+            }
+            sound.play(kClick, SoundKind::Click);
             if (page == MenuPage::Slide) {
                 if (rocker[i] == board::kPress) page = MenuPage::Tutorials;
                 else {
@@ -859,6 +925,10 @@ GameMode chooseMode() {
             if (rocker[i] == board::kPress) {
                 const StartupMenuItem& item = tutorials ? kTutorialMenuItems[list.selected] : kStartupMenuItems[list.selected];
                 if (item.action == StartupMenuAction::Tutorials) page = MenuPage::Tutorials;
+                else if (item.action == StartupMenuAction::Sounds) {
+                    page = MenuPage::Sounds;
+                    soundSelection = {};
+                }
                 else if (item.action == StartupMenuAction::Back) page = MenuPage::Modes;
                 else if (tutorials) {
                     tutorialMode = item.mode;
@@ -917,7 +987,7 @@ void onTimingPress(int64_t t, uint8_t b) {
     const Outcome o = timing.click(t);
     if (b == board::kSide) sideClick = o;
     if (o.event == TimingEvent::IgnoredTooSoon) playError();
-    else sound.play(kClick);
+    else sound.play(kClick, SoundKind::Click);
     handleOutcome(o, t);
     if ((wasScrolling || wasOnRocks) && o.event == TimingEvent::IgnoredTooSoon) syncModel();
     // Nothing to wait for between clicks: sleep as soon as the beep and screen are done.
@@ -927,7 +997,7 @@ void onTimingPress(int64_t t, uint8_t b) {
 void onShot(bool made) {
     if (!shots.add(made)) { playError(); return; }
     addEntry(Entry::Shot);
-    if (made) sound.play(kMade); else sound.play(kMissed);
+    if (made) sound.play(kMade, SoundKind::Made); else sound.play(kMissed, SoundKind::Missed);
     Serial.printf("shots: %s, %d/%d\n", made ? "made" : "missed", shots.madeCount(), shots.count());
     // Each logged rock pins the throw order: which of the team's eight stones of which end it was
     // (league: one of your two; coach: the team's, in throwing order).
@@ -985,7 +1055,7 @@ bool onUndo() {
     const int64_t now = esp_timer_get_time();
     undoHint = false;  // the screen update below clears it
     if (timing.active() && !cancelTiming(now)) {
-        sound.play(kUndo);
+        sound.play(kUndo, SoundKind::Undo);
         reaim(now);
         syncModel();
         return true;
@@ -996,7 +1066,7 @@ bool onUndo() {
         return false;
     }
     undoEntry(now);
-    sound.play(kUndo);
+    sound.play(kUndo, SoundKind::Undo);
     syncModel();
     return true;
 }
@@ -1025,7 +1095,7 @@ void takeBackSideClick() {
     } else {
         return;
     }
-    sound.play(kUndo);
+    sound.play(kUndo, SoundKind::Undo);
     Serial.println("timing: side click taken back (it was the start of a power-off hold)");
 }
 
@@ -1045,7 +1115,7 @@ void onRockerPress(ButtonState& s, int64_t t) {
     if (t - lastRockerPress < kDoublePressUs) {
         s.holdFired = true;      // this press can't turn into an undo
         lastRockerPress = -kSec; // a third press starts over
-        sound.play(kClick);
+        sound.play(kClick, SoundKind::Click);
         if (rules().pages) {
             switchPage();
         } else if (rules().positions) {
@@ -1071,7 +1141,7 @@ void scrollBasic(int dir) {
     const int to = basicScroll + dir;
     if (to < 0 || to > (most > 0 ? most : 0)) { playError(); return; }
     basicScroll = to;
-    sound.play(kClick);
+    sound.play(kClick, SoundKind::Click);
     Serial.printf("basic: scrolled %d\n", basicScroll);
     syncModel();
 }
@@ -1083,7 +1153,7 @@ void scrollTimeHistory(int dir) {
     const int to = timeHistory.offset + dir;
     if (to < 0 || to > limit) { playError(); return; }
     timeHistory.offset = to;
-    sound.play(kClick);
+    sound.play(kClick, SoundKind::Click);
     Serial.printf("%s: history offset %d\n", modeName(mode), timeHistory.offset);
     syncModel();
 }
@@ -1107,7 +1177,7 @@ void movePlayer(int dir) {
     activeCol = shiftColumn(activeCol, dir);
     manualCursor = true;
     rocksFocusAt = -1;  // you're on the columns on purpose
-    sound.play(kClick);
+    sound.play(kClick, SoundKind::Click);
     const uint8_t p = columnPlayer(seat(), activeCol);
     Serial.printf("timing: %s next\n", p == kThem ? "THEM" : kPositionNames[p]);
     syncModel();
@@ -1122,7 +1192,7 @@ bool stepMove() {
     stones[0].player = columnPlayer(seat(), to);
     activeCol = to;
     ++moveSteps;
-    sound.play(kClick);
+    sound.play(kClick, SoundKind::Click);
     syncModel();
     return true;
 }
@@ -1152,7 +1222,7 @@ void setFocus(Focus f) {
     if (f == Focus::Players && rocksPage()) coachPage = 0;
     focus = f;
     rocksFocusAt = -1;
-    sound.play(kClick);
+    sound.play(kClick, SoundKind::Click);
     Serial.printf("focus: %s\n", f == Focus::Players ? "players" : "rocks");
     syncModel();
 }
@@ -1322,7 +1392,7 @@ void pollButtons(int64_t now) {
                     }
                 }
                 activity(now);
-                sound.play(kClick);
+                sound.play(kClick, SoundKind::Click);
                 syncModel();
                 continue;
             }
@@ -1399,6 +1469,11 @@ void runCommand(const char* buf) {
         sleepWhileTiming = !strcmp(buf + 12, "on");
         prefs.putBool("sleeptim", sleepWhileTiming);
         Serial.printf("sleep while timing: %s\n", sleepWhileTiming ? "on" : "off");
+    } else if (!strcmp(buf, "sounds")) {
+        saveSoundSettings();  // prints them
+    } else if (!strcmp(buf, "sounds mute") || !strcmp(buf, "sounds on")) {
+        soundSettings.muted = buf[7] == 'm';
+        saveSoundSettings();
     } else if (!strcmp(buf, "n")) {
         newGame();
         syncModel();
@@ -1435,7 +1510,7 @@ void runCommand(const char* buf) {
         printCrashes();
     } else if (buf[0]) {
         Serial.println("commands: t <unix seconds> | s | games | games new | game <id> | ack <id> | bank | "
-                       "erase-all yes | audit | crash | crash clear | sleeptiming on|off | n (new game) | "
+                       "erase-all yes | audit | crash | crash clear | sleeptiming on|off | sounds [mute|on] | n (new game) | "
                        "o (power off) | mode basic|competition|league|coach | page");
     }
 }
@@ -1468,6 +1543,7 @@ void setup() {
     noteCrashes();
     sleepWhileTiming = prefs.getBool("sleeptim", true);
     myPosition = prefs.getUChar("mypos", 0) % 4;
+    loadSoundSettings(prefs);
     if (!bankStore.begin()) Serial.println("databank: no \"games\" partition, games won't be kept");
     bank.begin();
     // The simulator's first start is "off": the off page, until the side button switches it on (a

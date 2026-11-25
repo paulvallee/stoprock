@@ -125,6 +125,9 @@ def main():
         emit_bitmap("kOffPage", off_page, out)
     emit_bitmap("kBasicIntro", screen.basic_intro(), out)
     emit_bitmap("kPositionCard", screen.position_card(), out)
+    emit_bitmap("kSoundsHeading", screen.menu_heading("Sounds"), out)
+    emit_bitmap("kSoundSwitchOn", screen.sound_switch(True), out)
+    emit_bitmap("kSoundSwitchOff", screen.sound_switch(False), out)
     for i, title in enumerate(screen.POSITION_TITLES):
         emit_bitmap(f"kPosition{title}", screen.position_title(i), out)
     out.append("const Bitmap kPositionTitles[] = {"

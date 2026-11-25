@@ -60,6 +60,8 @@ Switching on with the side button alone shows the **mode menu**: the 176 px logo
 
 **Tutorials** in the mode menu opens a second picker headed Tutorials. Choose Basic, Competition, League or Coach. Use rocker up/down to go back or forward through the illustrated cards (Basic 7, Competition 11, League 12, Coach 12: one idea a card; timing first, then reading the screen and the rocker, then power), and centre to return to the Tutorials picker; up on the first card or down on the last also returns to it. The cards are drawn by `tools/tutorials_claude/build.py` and stored whole in the firmware (`tools/tutorials.py`). Choose Back to return to the mode menu.
 
+**Sounds** in the mode menu opens a page headed Sounds, three cards at a time. **All sounds** comes first, with a switch: press to mute every sound, press again to bring them back (with a click). Below it is a card for each sound (Clicks, Made, Missed, Undo, Error) with a meter of four bars: press to step its level up a bar, and from four round to off; each press plays the sound at its new level, even while muted, so you hear what you chose. While muted the cards read `All muted` and keep their levels for when sound returns. **Back** returns to the mode menu. The settings are kept (`sounds` in the preferences) and apply in every mode; the serial command `sounds` prints them, and `sounds mute` / `sounds on` switch them.
+
 | Switch on with | Mode | Screen | Rocker |
 |---|---|---|---|
 | Side button + rocker **middle** (or choose it in the menu) | **Competition** | Times only: three player columns at a time, with a cursor on the player about to throw; a black badge strip at the bottom shows the stoprock logo and `COMPETITION` / `STOPWATCH ONLY`, for an umpire | Up moves left, down moves right; hold up to move the newest time, hold down to enter scroll mode; double press: your position |
@@ -191,6 +193,8 @@ Rules:
 | Missed | Low beep |
 | Undo | Falling two-tone |
 | Not allowed (including a click too soon after a B2H) | Error buzz |
+
+Each sound's volume follows its level on the Sounds page (section 2): off, then four bars, the third as designed and the others at 15%, 40% and 150% of it. Mute silences them all. The Clicks level covers every button beep, menu included; Basic's error buzz is the Error sound at a tenth of its volume.
 
 ## 12. Brand
 

@@ -139,9 +139,33 @@ static void test_timeline_columns() {
     TEST_ASSERT_EQUAL_UINT8(4, out[2]);
 }
 
+// The Sounds page's settings: a press steps a level up and round; muting silences all but a preview.
+static void test_sound_settings() {
+    SoundSettings s;
+    for (int k = 0; k < kSoundKinds; ++k) TEST_ASSERT_EQUAL_UINT8(kDefaultSoundLevel, s.level[k]);
+    TEST_ASSERT_EQUAL_UINT8(67, soundVolume(s, SoundKind::Click, 67));  // level 3: as designed
+    s.step(SoundKind::Click);
+    TEST_ASSERT_EQUAL_UINT8(4, s.of(SoundKind::Click));
+    TEST_ASSERT_EQUAL_UINT8(101, soundVolume(s, SoundKind::Click, 67));  // louder
+    s.step(SoundKind::Click);
+    TEST_ASSERT_EQUAL_UINT8(0, s.of(SoundKind::Click));  // round to off
+    TEST_ASSERT_EQUAL_UINT8(0, soundVolume(s, SoundKind::Click, 67));
+    TEST_ASSERT_EQUAL_UINT8(0, soundVolume(s, SoundKind::Click, 67, true));  // off has no preview
+    s.step(SoundKind::Click);
+    TEST_ASSERT_EQUAL_UINT8(1, s.of(SoundKind::Click));
+    TEST_ASSERT_EQUAL_UINT8(1, soundVolume(s, SoundKind::Click, 5));  // the quietest still sounds
+    s.muted = true;
+    TEST_ASSERT_EQUAL_UINT8(0, soundVolume(s, SoundKind::Made, 67));
+    TEST_ASSERT_EQUAL_UINT8(67, soundVolume(s, SoundKind::Made, 67, true));  // a preview while muted
+    s.level[2] = 9;  // as read back from storage
+    s.sanitize();
+    TEST_ASSERT_EQUAL_UINT8(kDefaultSoundLevel, s.of(SoundKind::Missed));
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_timeline_columns);
+    RUN_TEST(test_sound_settings);
     RUN_TEST(test_no_players_drops_oldest);
     RUN_TEST(test_player_with_few_stones_keeps_them);
     RUN_TEST(test_every_player_keeps_a_screenful);

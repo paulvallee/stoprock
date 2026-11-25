@@ -229,6 +229,7 @@ MENU_ITEMS = (
     ("League", "Team times, your shots"),
     ("Coach", "Track the whole team"),
     ("Tutorials", "Learn the controls"),
+    ("Sounds", "Mute or set volumes"),
 )
 TUTORIAL_MENU_ITEMS = (
     ("Basic", "Buttons and times"),
@@ -239,22 +240,59 @@ TUTORIAL_MENU_ITEMS = (
 )
 MENU_TOP, MENU_PITCH, MENU_HEIGHT, MENU_VISIBLE = 51, 44, 40, 3
 
+# The Sounds page: mute everything, or set each sound's level (0 off .. 4), a press stepping it up
+# and round; the firmware's SoundKind order. The levels scale each sound's own volume.
+SOUND_NAMES = ("Clicks", "Made", "Missed", "Undo", "Error")
+SOUND_DETAILS = ("Timing and buttons", "A rock made", "A rock missed", "Taking a time back", "Too soon, can't do")
+SOUND_LEVELS = 4
+MUTE_DETAILS = ("Press to mute", "Muted")
 
-def mode_menu(selected, first_visible=0, tutorials=False):
-    """The startup list below the fixed wordmark. The window follows the selected row."""
-    from logo import NATIVE_LOGO
 
+def menu_heading(text):
+    """A menu page's heading, as wide as the screen: Tutorials, Sounds."""
+    from logo import NUNITO
+
+    face = ImageFont.truetype(str(NUNITO), 30)
+    face.set_variation_by_name("ExtraBold")
+    image = Image.new("1", (W, 39), 1)
+    draw = ImageDraw.Draw(image)
+    draw.fontmode = "1"
+    text_in_box(draw, text, face, 0, W, 0, 39, align="center", fill=0)
+    return image
+
+
+def sound_switch(on):
+    """The mute row's switch: on, a black pill with the knob cut out on the right; off (muted), an
+    outlined pill with the knob filled on the left. Ink is black (0)."""
+    img = Image.new("1", (28, 16), 1)
+    d = ImageDraw.Draw(img)
+    if on:
+        d.rounded_rectangle((0, 0, 27, 15), radius=8, fill=0)
+        d.ellipse((15, 3, 24, 12), fill=1)
+    else:
+        d.rounded_rectangle((0, 0, 27, 15), radius=8, fill=1, outline=0, width=2)
+        d.ellipse((4, 4, 11, 11), fill=0)
+    return img
+
+
+def sound_meter(d, top, level, ink):
+    """Four bars rising left to right, the first `level` filled, the rest outlined."""
+    for i in range(SOUND_LEVELS):
+        x0, h = 147 + 7 * i, 5 + 4 * i
+        y1 = top + 28
+        y0 = y1 - h + 1
+        if i < level:
+            d.rectangle((x0, y0, x0 + 4, y1), fill=ink)
+        else:
+            d.rectangle((x0, y0, x0 + 4, y1), outline=ink)
+
+
+def menu_list(img, items, selected, first_visible=0, extra=None):
+    """The cards below a heading, three at a time, the window following the selected row. extra(d,
+    index, top, on) draws a row's right-hand side; without it the selected row has a chevron."""
     f = fonts()
-    img = Image.new("1", (W, H), 1)
     d = ImageDraw.Draw(img)
     d.fontmode = "1"
-    if tutorials:
-        from tutorials import heading
-
-        img.paste(heading(), (0, 4))
-    else:
-        with Image.open(NATIVE_LOGO) as logo:
-            img.paste(logo, ((W - logo.width) // 2, 4))
 
     def card(left, top, right, bottom, fill):
         for row, inset in enumerate((3, 2, 1)):
@@ -262,18 +300,20 @@ def mode_menu(selected, first_visible=0, tutorials=False):
             d.line((left + inset, bottom - row, right - inset, bottom - row), fill=fill)
         d.rectangle((left, top + 3, right, bottom - 3), fill=fill)
 
-    items = TUTORIAL_MENU_ITEMS if tutorials else MENU_ITEMS
     count = len(items)
     first_visible = max(selected - MENU_VISIBLE + 1, min(first_visible, selected, count - MENU_VISIBLE))
     for row, (title, description) in enumerate(items[first_visible:first_visible + MENU_VISIBLE]):
+        index = row + first_visible
         top = MENU_TOP + row * MENU_PITCH
         bottom = top + MENU_HEIGHT - 1
-        on = row + first_visible == selected
+        on = index == selected
         card(10, top, 184, bottom, 0)
         if not on:
             card(11, top + 1, 183, bottom - 1, 1)
         glyphs(d, title, f["menu_title"], 20, top + 3, int(on))
         glyphs(d, description, f["menu_detail"], 20, top + 22, int(on))
+        if extra and extra(d, index, top, on):
+            continue
         if on:
             for offset in (0, 1):
                 d.line((170 + offset, top + 15, 175 + offset, top + 20, 170 + offset, top + 25), fill=1)
@@ -286,6 +326,41 @@ def mode_menu(selected, first_visible=0, tutorials=False):
         d.line((192, top, 192, top + height - 1), fill=0)
         d.rectangle((190, top + offset, 194, top + offset + thumb - 1), fill=0)
     return img
+
+
+def mode_menu(selected, first_visible=0, tutorials=False):
+    """The startup list below the fixed wordmark (or the Tutorials heading)."""
+    from logo import NATIVE_LOGO
+
+    img = Image.new("1", (W, H), 1)
+    if tutorials:
+        img.paste(menu_heading("Tutorials"), (0, 4))
+    else:
+        with Image.open(NATIVE_LOGO) as logo:
+            img.paste(logo, ((W - logo.width) // 2, 4))
+    return menu_list(img, TUTORIAL_MENU_ITEMS if tutorials else MENU_ITEMS, selected, first_visible)
+
+
+def sounds_menu(selected, levels=(3,) * 5, muted=False, first_visible=0):
+    """The Sounds page: All sounds (the switch), a row a sound (its meter), Back."""
+    img = Image.new("1", (W, H), 1)
+    img.paste(menu_heading("Sounds"), (0, 4))
+    items = [("All sounds", MUTE_DETAILS[muted])]
+    items += [(name, "All muted" if muted else detail) for name, detail in zip(SOUND_NAMES, SOUND_DETAILS)]
+    items.append(("Back", "Return to modes"))
+
+    def extra(d, index, top, on):
+        ink = int(on)
+        if index == 0:
+            switch = sound_switch(not muted)
+            img.paste(ink, (146, top + 12), ImageChops.invert(switch.convert("L")).convert("1"))
+            return True
+        if index <= len(SOUND_NAMES):
+            sound_meter(d, top, levels[index - 1], ink)
+            return True
+        return False
+
+    return menu_list(img, items, selected, first_visible, extra)
 
 
 def basic_intro():

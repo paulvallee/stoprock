@@ -2,10 +2,11 @@
 
 #include "canvas.h"
 #include "databank.h"
+#include "sounds.h"
 
 namespace stoprock {
 
-enum class StartupMenuAction : uint8_t { Mode, Tutorials, Back };
+enum class StartupMenuAction : uint8_t { Mode, Tutorials, Sounds, Back };
 
 struct StartupMenuItem {
     GameMode mode;
@@ -20,6 +21,7 @@ inline constexpr StartupMenuItem kStartupMenuItems[] = {
     {GameMode::League, "League", "Team times, your shots"},
     {GameMode::Coach, "Coach", "Track the whole team"},
     {GameMode::Basic, "Tutorials", "Learn the controls", StartupMenuAction::Tutorials},
+    {GameMode::Basic, "Sounds", "Mute or set volumes", StartupMenuAction::Sounds},
 };
 inline constexpr int kStartupMenuCount = sizeof kStartupMenuItems / sizeof kStartupMenuItems[0];
 inline constexpr StartupMenuItem kTutorialMenuItems[] = {
@@ -31,6 +33,11 @@ inline constexpr StartupMenuItem kTutorialMenuItems[] = {
 };
 inline constexpr int kTutorialMenuCount = sizeof kTutorialMenuItems / sizeof kTutorialMenuItems[0];
 inline constexpr int kStartupMenuVisibleRows = 3;
+// The Sounds page: All sounds (row 0), a row for each SoundKind (rows 1..5), Back.
+inline constexpr int kSoundMenuCount = 1 + kSoundKinds + 1;
+inline constexpr const char* kSoundNames[kSoundKinds] = {"Clicks", "Made", "Missed", "Undo", "Error"};
+inline constexpr const char* kSoundDetails[kSoundKinds] = {"Timing and buttons", "A rock made", "A rock missed",
+                                                           "Taking a time back", "Too soon, can't do"};
 
 struct StartupMenuSelection {
     int selected = 0;
@@ -42,5 +49,6 @@ struct StartupMenuSelection {
 
 void drawStartupMenu(Canvas& c, const StartupMenuItem* items, int count, const StartupMenuSelection& selection,
                      const Bitmap& heading = kLogo);
+void drawSoundsMenu(Canvas& c, const SoundSettings& sounds, const StartupMenuSelection& selection);
 
 }  // namespace stoprock

@@ -35,6 +35,11 @@ def main():
         refs[f"menu{i}"] = screen.mode_menu(i)
     for i in range(len(screen.TUTORIAL_MENU_ITEMS)):
         refs[f"tutorial-menu{i}"] = screen.mode_menu(i, tutorials=True)
+    mixed = (3, 4, 2, 0, 1)
+    for name, levels, muted in (("sounds", (3,) * 5, False), ("sounds-mixed", mixed, False),
+                                ("sounds-muted", mixed, True)):
+        for i in range(len(screen.SOUND_NAMES) + 2):
+            refs[f"{name}{i}"] = screen.sounds_menu(i, levels, muted)
     for mode, name in enumerate(tutorials.MODES):
         for page in range(tutorials.page_count(mode)):
             refs[f"tutorial-{name.lower()}-{page + 1:02d}"] = tutorials.page_image(mode, page)

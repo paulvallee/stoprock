@@ -43,10 +43,11 @@ void drawScrollBar(Canvas& c, int firstVisible, int count) {
     c.fillRect(190, top + offset, 194, top + offset + thumb - 1);
 }
 
-}  // namespace
-
-void drawStartupMenu(Canvas& c, const StartupMenuItem* items, int count, const StartupMenuSelection& selection,
-                     const Bitmap& heading) {
+// The cards under a heading, three at a time. extra(c, index, top, selected) draws a row's right-hand
+// side and returns true; otherwise the selected row gets the chevron.
+template <typename Extra>
+void drawList(Canvas& c, const StartupMenuItem* items, int count, const StartupMenuSelection& selection,
+              const Bitmap& heading, Extra extra) {
     c.clear();
     c.blit(heading, (Canvas::W - heading.w) / 2, 4);
     for (int row = 0; row < kStartupMenuVisibleRows; ++row) {
@@ -61,6 +62,7 @@ void drawStartupMenu(Canvas& c, const StartupMenuItem* items, int count, const S
         if (!selected) roundedCard(c, kCardLeft + 1, top + 1, kCardRight - 1, bottom - 1, false);
         c.text(kFontMenuTitle, kTextLeft, top + 3, item.title, !selected);
         c.text(kFontMenuDetail, kTextLeft, top + 22, item.description, !selected);
+        if (extra(c, index, top, selected)) continue;
         if (selected) {
             for (int offset = 0; offset < 2; ++offset) {
                 c.line(170 + offset, top + 15, 175 + offset, top + 20, 1, false);
@@ -69,6 +71,47 @@ void drawStartupMenu(Canvas& c, const StartupMenuItem* items, int count, const S
         }
     }
     drawScrollBar(c, selection.firstVisible, count);
+}
+
+// Four bars rising left to right, the first `level` filled, the rest outlined.
+void drawMeter(Canvas& c, int top, uint8_t level, bool black) {
+    for (int i = 0; i < kSoundLevels; ++i) {
+        const int x0 = 147 + 7 * i, x1 = x0 + 4, y1 = top + 28, y0 = y1 - (5 + 4 * i) + 1;
+        if (i < level) {
+            c.fillRect(x0, y0, x1, y1, black);
+        } else {
+            c.fillRect(x0, y0, x1, y0, black);
+            c.fillRect(x0, y1, x1, y1, black);
+            c.fillRect(x0, y0, x0, y1, black);
+            c.fillRect(x1, y0, x1, y1, black);
+        }
+    }
+}
+
+}  // namespace
+
+void drawStartupMenu(Canvas& c, const StartupMenuItem* items, int count, const StartupMenuSelection& selection,
+                     const Bitmap& heading) {
+    drawList(c, items, count, selection, heading, [](Canvas&, int, int, bool) { return false; });
+}
+
+void drawSoundsMenu(Canvas& c, const SoundSettings& sounds, const StartupMenuSelection& selection) {
+    StartupMenuItem items[kSoundMenuCount];
+    items[0] = {GameMode::Basic, "All sounds", sounds.muted ? "Muted" : "Press to mute"};
+    for (int k = 0; k < kSoundKinds; ++k)
+        items[1 + k] = {GameMode::Basic, kSoundNames[k], sounds.muted ? "All muted" : kSoundDetails[k]};
+    items[kSoundMenuCount - 1] = {GameMode::Basic, "Back", "Return to modes", StartupMenuAction::Back};
+    drawList(c, items, kSoundMenuCount, selection, kSoundsHeading, [&](Canvas& cv, int index, int top, bool selected) {
+        if (index == 0) {
+            cv.blit(sounds.muted ? kSoundSwitchOff : kSoundSwitchOn, 146, top + 12, !selected);
+            return true;
+        }
+        if (index <= kSoundKinds) {
+            drawMeter(cv, top, sounds.level[index - 1], !selected);
+            return true;
+        }
+        return false;
+    });
 }
 
 }  // namespace stoprock

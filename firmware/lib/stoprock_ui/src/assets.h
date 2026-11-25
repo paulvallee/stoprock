@@ -39,6 +39,9 @@ extern const Font kFontSpleen16x32; // large THEM heading (only its letters)
 extern const Font kFontMenuTitle;  // Nunito ExtraBold, 18 px
 extern const Font kFontMenuDetail; // Nunito Bold, 13 px
 extern const Bitmap kLogo;         // 176 px wordmark
+extern const Bitmap kSoundsHeading;  // the Sounds page's heading
+extern const Bitmap kSoundSwitchOn;  // the Sounds page's switch: sounds on
+extern const Bitmap kSoundSwitchOff; // ... muted
 extern const Bitmap kOffPage;       // 200 x 200 wake screen
 extern const Bitmap kBasicIntro;    // 200 x 200 tutorial pointing at the timing buttons
 extern const Bitmap kPositionCard;  // position tip frame, arrow and instructions

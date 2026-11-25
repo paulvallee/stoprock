@@ -6,33 +6,19 @@ Each card is stored whole, 200 x 200, 1 bit (about 5 KB each), so the device sho
 the generator drew. The decks are indexed by GameMode (databank.h): League, Competition, Coach, Basic.
 """
 import sys
-from functools import cache
 from pathlib import Path
-
-from PIL import Image, ImageDraw, ImageFont
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "tutorials_claude"))
 import build as cards  # noqa: E402
-from fontgen import emit_bitmap, logo, screen  # noqa: E402
+from fontgen import emit_bitmap, screen  # noqa: E402
 
 OUT = Path(__file__).resolve().parents[1] / "firmware/lib/stoprock_ui/src/tutorial_data.cpp"
 MODES = ("League", "Competition", "Coach", "Basic")  # the GameMode enum's order
 
 
-@cache
-def font(size, weight="Bold"):
-    face = ImageFont.truetype(str(logo.NUNITO), size)
-    face.set_variation_by_name(weight)
-    return face
-
-
 def heading():
     """The Tutorials list's heading."""
-    image = Image.new("1", (200, 39), 1)
-    draw = ImageDraw.Draw(image)
-    draw.fontmode = "1"
-    screen.text_in_box(draw, "Tutorials", font(30, "ExtraBold"), 0, 200, 0, 39, align="center", fill=0)
-    return image
+    return screen.menu_heading("Tutorials")
 
 
 def page_count(mode):
