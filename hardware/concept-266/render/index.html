@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<script type="importmap">{"imports": {"three": "./node_modules/three/build/three.module.js",
+ "three/addons/": "./node_modules/three/examples/jsm/"}}</script>
+<style>body{margin:0;background:#f4f4f2}canvas{display:block}</style></head>
+<body>
+<script type="module">
+// Renders ../concept.py's parts (mm): X across the face, Y up it, Z out of it.
+import * as THREE from 'three';
+import { STLLoader } from 'three/addons/loaders/STLLoader.js';
+const W = 640, H = 560;
+const view = new URLSearchParams(location.search).get('view') || 'front';
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(2);
+renderer.setSize(W, H);
+renderer.setClearColor(0xf4f4f2);
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.add(new THREE.HemisphereLight(0xffffff, 0x50565f, 0.7));
+const key = new THREE.DirectionalLight(0xffffff, 3.0); key.position.set(-110, 120, 140); scene.add(key);
+const fill = new THREE.DirectionalLight(0xffffff, 0.9); fill.position.set(120, -20, -60); scene.add(fill);
+const loader = new STLLoader();
+const load = (f) => new Promise((ok, bad) => loader.load(f, g => { g.computeVertexNormals(); ok(g); }, undefined, bad));
+const mat = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.7, ...extra });
+const group = new THREE.Group(); scene.add(group);
+const add = async (file, material) => { const m = new THREE.Mesh(await load(file), material); group.add(m); return m; };
+await add('model-body.stl', mat(0x2b2e33, { roughness: 0.8 }));
+await add('model-glass.stl', mat(0xdcdcd6, { roughness: 0.3 }));
+await add('model-stick.stl', mat(0x55595f, { roughness: 0.6 }));
+await add('model-button.stl', mat(0xd9542b, { roughness: 0.5 }));
+if (view.startsWith('broom') || view === 'side') {
+  await add('model-handle.stl', mat(0xe9e6df, { roughness: 0.4 }));   // a white composite handle
+  await add('model-strap.stl', mat(0x1c1d20, { roughness: 0.95 }));
+}
+const tex = await new THREE.TextureLoader().loadAsync('screen.png');
+tex.colorSpace = THREE.SRGBColorSpace;
+tex.anisotropy = 8;
+const scr = new THREE.Mesh(new THREE.PlaneGeometry(60.09, 30.70),
+  new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9, color: 0xeeeeea }));
+scr.position.set(42, 55.85, 16 - 1.6 + 0.02); group.add(scr);
+group.position.set(-42, -40, -8);
+const views = {
+  front: [[60, 40, 190], [0, 2, 0]],
+  face: [[0, 0, 200], [0, 0, 0]],
+  broom: [[150, -60, 170], [0, 0, -8]],
+  'broom-hand': [[-40, -170, 150], [0, 5, -6]],
+  side: [[210, 15, 10], [0, 0, -8]],
+  back: [[-60, 30, -180], [0, 0, -4]],
+};
+const [pos, look] = views[view] || views.front;
+const cam = new THREE.PerspectiveCamera(30, W / H, 1, 3000);
+cam.position.set(...pos);
+cam.lookAt(...look);
+renderer.render(scene, cam);
+document.title = 'done';
+</script></body></html>
