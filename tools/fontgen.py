@@ -139,7 +139,7 @@ def main():
     emit_sprite("kRockSmall", lambda d, c: d.ellipse([c - 5, c - 5, c + 5, c + 5], outline=0, width=1), 15, out)
     emit_sprite("kCursorSmall", lambda d, c: d.ellipse([c - 5, c - 5, c + 5, c + 5], outline=0, width=3), 15, out)
     emit_sprite("kMadeSmall", lambda d, c: d.ellipse([c - 5, c - 5, c + 5, c + 5], fill=0), 15, out)
-    emit_sprite("kMissedSmall", lambda d, c: d.ellipse([c - 2, c - 2, c + 2, c + 2], fill=0), 15, out)
+    emit_sprite("kMissedSmall", lambda d, c: screen.missed_x(d, c, c), 15, out)
     # the stopwatch shown where a time is awaited: in the large row, and coach page 2's small one
     emit_sprite("kStopwatch", lambda d, c: screen.stopwatch(d, c, c, screen.STOPWATCH_BIG), 31, out)
     emit_sprite("kStopwatchSmall", lambda d, c: screen.stopwatch(d, c, c, screen.STOPWATCH_SMALL), 23, out)

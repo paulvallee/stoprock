@@ -169,13 +169,15 @@ def time_pill(c, x0, y0, x1, y1, value, h2h):
 
 
 def rock(c, cx, cy, state, r=10):
-    """A rock as on the screen: filled made, a dot in the ring missed."""
+    """A rock as on the screen: filled made, an X in the ring (to its edge) missed."""
     if state == "made":
         c.disc(cx, cy, r)
     else:
         c.ring(cx, cy, r, width=2)
         if state == "missed":
-            c.disc(cx, cy, r * 0.32)
+            a = (r - 1.6) * 0.7071  # the X's ends: on the ring's inside, at 45 degrees
+            c.d.line(c._p(cx - a, cy - a, cx + a, cy + a), fill=0, width=round(3 * S))
+            c.d.line(c._p(cx - a, cy + a, cx + a, cy - a), fill=0, width=round(3 * S))
 
 
 def stopwatch(c, cx, cy, r, fill=0):

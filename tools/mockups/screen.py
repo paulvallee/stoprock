@@ -730,12 +730,24 @@ def league_screen(stones, shots, me=0, active=0, low_battery=False, tip=False, w
     return img
 
 
+def missed_x(d, cx, cy):
+    """A missed rock's mark: an X of 2 px strokes, to the edge of the ring (clipped to its inside)."""
+    x = Image.new("1", (15, 15), 1)
+    xd = ImageDraw.Draw(x)
+    xd.line([(2, 2), (12, 12)], fill=0, width=2)
+    xd.line([(2, 12), (12, 2)], fill=0, width=2)
+    for py in range(15):
+        for px in range(15):
+            if x.getpixel((px, py)) == 0 and (px - 7) ** 2 + (py - 7) ** 2 <= 20.25:
+                d.point((cx - 7 + px, cy - 7 + py), fill=0)
+
+
 def small_rock(d, cx, cy, state, cursor):
-    """A rock (radius 5): an empty ring not yet thrown, filled made, a dot in the ring missed; bold
+    """A rock (radius 5): an empty ring not yet thrown, filled made, an X in the ring missed; bold
     ring = cursor."""
     d.ellipse([cx - 5, cy - 5, cx + 5, cy + 5], outline=0, width=1, fill=0 if state is True else None)
     if state is False:
-        d.ellipse([cx - 2, cy - 2, cx + 2, cy + 2], fill=0)
+        missed_x(d, cx, cy)
     if cursor:
         d.ellipse([cx - 5, cy - 5, cx + 5, cy + 5], outline=0, width=3)
 

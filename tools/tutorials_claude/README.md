@@ -42,8 +42,8 @@ Timing first (Hog to hog only right after Time a stone, as a way to time one), t
 
 - One idea a card; at most two lines of copy (Nunito Bold 15), each checked to fit.
 - Words used the same way everywhere: press, hold, double-click, the middle (of the rocker), time.
-- Drawn as the screen draws it: B2H black on white, H2H white on black; made a filled rock, missed a
-  dot in a ring; the selected player's header inverted; the big times in the device's DSEG digits.
+- Drawn as the screen draws it: B2H black on white, H2H white on black; made a filled rock, missed an
+  X in a ring; the selected player's header inverted; the big times in the device's DSEG digits.
 - The device drawn from `hardware/coreink/coreink.json`, every button where it really is; the rocker
   labelled but left outlined, so it isn't mistaken for a timing button.
 - Shapes and arrows drawn at 4x and reduced to 1 bit (smooth curves); text drawn at 1x in 1 bit (crisp).

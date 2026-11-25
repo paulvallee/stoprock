@@ -48,7 +48,7 @@ The same word for the same thing, everywhere: on the device, in the tutorials, i
 - 200 x 200, 1 bit. Black ink on white, white on black for emphasis; nothing in between.
 - **B2H black on white, on the left; H2H white on black, on the right** — in the big numbers, the columns and
   every illustration. There are no B2H/H2H labels on the timing screens: the colours are the label.
-- A made rock is a filled disc, a missed rock a ring with a dot, a rock not yet thrown an empty ring; the next
+- A made rock is a filled disc, a missed rock a ring with an X, a rock not yet thrown an empty ring; the next
   rock to log has a bold ring.
 - The highlighted (inverted) header is the player the next time goes to.
 - The player columns (competition, league, coach) run in throw order with THEM in the middle: the teammate before, THEM, the teammate whose pair is under way or next. Their headers are all alike, bold Spleen 12x24.
