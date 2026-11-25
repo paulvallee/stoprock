@@ -163,6 +163,7 @@ def _make_fonts():
         menu_detail=menu_detail,
         label=bdf("spleen-6x12"),
         hint=bdf("spleen-12x24"),  # the hold hints
+        them=bdf("spleen-16x32"),  # Competition's THEM heading
         big=ImageFont.truetype(str(DSEG), 37),  # the newest stone, at the top
         big_long=ImageFont.truetype(str(DSEG), 33),  # ... an H2H of 20.00 s, too wide at 37
         top_small=ImageFont.truetype(str(DSEG), 24),  # coach page 2's newest stone
@@ -176,6 +177,8 @@ def _make_fonts():
         zoom_league_long=SegFont(h=22, w=11, t=3, gap=2, dot=3, prop=True, solid_one=True),
         competition=SegFont(h=24, w=14, t=3, gap=2, dot=3, prop=True, solid_one=True),
         competition_long=SegFont(h=24, w=11, t=3, gap=2, dot=3, prop=True, solid_one=True),
+        competition_them=SegFont(h=23, w=14, t=3, gap=2, dot=3, prop=True, solid_one=True),
+        competition_them_long=SegFont(h=23, w=11, t=3, gap=2, dot=3, prop=True, solid_one=True),
         zoom_coach=SegFont(h=18, w=11, t=2, gap=2, dot=2, prop=True, solid_one=True),
         zoom_coach_long=SegFont(h=18, w=8, t=2, gap=2, dot=2, prop=True, solid_one=True),
         pct=ImageFont.truetype(str(DSEG), 16),
@@ -529,58 +532,66 @@ def basic_screen(stones, low_battery=False, tip=False, waiting=None, scroll=0):
     return img
 
 
-def competition_screen(stones, me=0, active=0, low_battery=False, tip=False, waiting=None, scroll=0):
-    """Three fixed columns, with THEM over one edge when selected."""
+def competition_screen(stones, me=0, active=0, low_battery=False, tip=False, waiting=None,
+                       first_column=0, scroll=0, scrolling=False):
+    """Show three of the four Competition columns, with a position bar below."""
     f = fonts()
     img = Image.new("1", (W, H), 1)
     d = ImageDraw.Draw(img)
     d.fontmode = "1"
     strip = H - TIP_H
     times_top(d, f, stones, waiting, COMP_MID)
-    players = list(league_columns(me)[:3])
-    panel = None
-    if active == 3:
-        left, _, right = players
-        recent_edge = next((owner for bh, hh, owner in stones
-                            if owner in (left, right) and (bh is not None or hh is not None)), left)
-        panel = 0 if recent_edge == right else 2
-        players[panel] = THEM
+    first = 0 if active == 0 else 1 if active == 3 else int(bool(first_column))
+    players = league_columns(me)[first:first + 3]
     margin, column_width = 4, 64
+    bar_top = strip - 3
     columns = [[(value, half) for bh, hh, owner in stones if owner == player
                 for half, value in enumerate((bh, hh)) if value is not None] for player in players]
     limit = max(0, max(map(len, columns)) - 4)
-    scroll = min(scroll, limit)
-    if scroll > 0:
-        top, bottom, thumb_height = LEAGUE_TOP + 2, strip - 4, 10
+    scroll = min(scroll, limit) if scrolling else 0
+    if scrolling and limit > 0:
+        top, bottom, thumb_height = LEAGUE_TOP + 2, bar_top - 4, 10
         thumb = top + scroll * (bottom - top + 1 - thumb_height) // limit
-        track = 1 if panel == 2 else W - 2
+        track = W - 2
         d.line((track, top, track, bottom), fill=0)
         d.rectangle((track - 1, thumb, track + 1, thumb + thumb_height - 1), fill=0)
-    pitch = (strip - LEAGUE_TOP) // 4
+    them_lines_top = 67
     for slot, (player, splits) in enumerate(zip(players, columns)):
         left = margin + slot * column_width
         right = left + column_width
-        name = "THEM" if player == THEM else POSITION_NAMES[player]
-        focused = (3 if slot == panel else slot) == active
-        if focused:
-            d.rectangle((left, GRID_LABEL[0], right - 1, GRID_LABEL[1]), fill=0)
-        if slot == panel:
-            outer_left, outer_right = (0, left - 1) if panel == 0 else (right, W - 1)
-            d.rectangle((outer_left, GRID_LABEL[0], outer_right, GRID_LABEL[1]), fill=0)
-            inner = right - 1 if panel == 0 else left + 1
-            d.line((inner, GRID_LABEL[0], inner, strip - 1), fill=0)
-        d.text(((left + right - 6 * len(name)) // 2, GRID_LABEL[0]), name, font=f["label"], fill=int(focused))
+        theirs = player == THEM
+        focused = first + slot == active
+        if theirs:
+            if focused:
+                d.rectangle((left, GRID_LABEL[0], W - 1, them_lines_top - 1), fill=0)
+            text_in_box(d, "THEM", f["them"], left, W, GRID_LABEL[0], them_lines_top,
+                        align="center", margin=0, fill=int(focused))
+        else:
+            name = POSITION_NAMES[player]
+            if focused:
+                d.rectangle((left, GRID_LABEL[0], right - 1, GRID_LABEL[1]), fill=0)
+            d.text(((left + right - 6 * len(name)) // 2, GRID_LABEL[0]), name, font=f["label"], fill=int(focused))
         if slot:
-            d.line((left, GRID_LABEL[0], left, strip - 1), fill=0)
+            d.line((left, GRID_LABEL[0], left, bar_top - 1), fill=0)
+        lines_top = them_lines_top if theirs else LEAGUE_TOP
+        pitch = (bar_top - lines_top) // 4
+        font = "competition_them" if theirs else "competition"
         skip = min(scroll, max(0, len(splits) - 4))
         for row, (value, half) in enumerate(splits[skip:skip + 4]):
-            y = LEAGUE_TOP + row * pitch
+            y = lines_top + row * pitch
             if half:
                 d.rectangle((left + 2, y, right - 2, y + pitch - 2), fill=0)
             label = f"{value:.2f}"
-            digits = f["competition"] if f["competition"].width(label) <= column_width - 6 else f["competition_long"]
+            digits = f[font] if f[font].width(label) <= column_width - 6 else f[font + "_long"]
             digits.draw_in_box(d, label, left + 1, right - 1, y, y + pitch - 1, align="center", fill=half)
-    badge_strip(img, d, f, "COMPETITION", low_battery)
+    for column in range(4):
+        left = margin + 48 * column
+        if first <= column < first + 3:
+            d.rectangle((left, bar_top, left + 45, strip - 1), fill=0)
+        else:
+            d.line((left, bar_top + 1, left + 45, bar_top + 1), fill=0)
+    badge_strip(img, d, f, "COMPETITION", low_battery, "SCROLL MODE" if scrolling else None)
+    d.line((0, strip, W - 1, strip), fill=1)
     if tip in ("undo", "off"):
         tooltip(d, f, UNDO_TIP if tip == "undo" else OFF_TIP, HINT_TOP, strip)
     elif tip == "move":  # over the badge strip, clear of the columns

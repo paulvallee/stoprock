@@ -57,11 +57,14 @@ int main(int argc, char** argv) {
     drawCompetition(c, league, nl, 1, 3, false);
     snprintf(path, sizeof path, "%s/competition-them-right.pbm", dir);
     writePbm(c, path);
-    drawCompetition(c, league, nl, 3, 3, false);
-    snprintf(path, sizeof path, "%s/competition-them-left.pbm", dir);
+    drawCompetition(c, league, nl, 1, 1, false, Tip::None, Waiting::None, 1);
+    snprintf(path, sizeof path, "%s/competition-columns-right.pbm", dir);
     writePbm(c, path);
-    drawCompetition(c, league, nl, 1, 3, false, Tip::None, Waiting::None, 2);
+    drawCompetition(c, league, nl, 1, 3, false, Tip::None, Waiting::None, 1, 2, true);
     snprintf(path, sizeof path, "%s/competition-history.pbm", dir);
+    writePbm(c, path);
+    drawCompetition(c, league, nl, 1, 3, false, Tip::None, Waiting::None, 1, 0, true);
+    snprintf(path, sizeof path, "%s/competition-history-top.pbm", dir);
     writePbm(c, path);
     for (uint8_t me = 0; me < 4; ++me) {  // each position as yours, the cursor on each column
         drawCompetition(c, league, nl, me, (me + 1) % 4, false);

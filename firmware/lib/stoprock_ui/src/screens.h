@@ -41,15 +41,19 @@ void drawOffPage(Canvas& c, int battery = -1, int gamesLeft = -1);
 void drawBasic(Canvas& c, const Stone* stones, uint8_t count, bool lowBattery, Tip tip = Tip::None,
                Waiting waiting = Waiting::None, int scroll = 0);
 
-// Competition keeps the teammate columns fixed. When THEM is active, cover the edge
-// teammate with the less recent reading. Stone history is newest first.
-enum class CompetitionPanel : uint8_t { Closed, Left, Right };
-CompetitionPanel competitionPanel(const Stone* stones, uint8_t count, uint8_t me, uint8_t activeCol);
+// Three adjacent columns of teammates followed by THEM. Shift only when the cursor leaves the window.
+constexpr uint8_t kCompetitionVisibleColumns = 3;
+constexpr uint8_t competitionFirstColumn(uint8_t first, uint8_t activeCol) {
+    if (activeCol == 0) return 0;
+    if (activeCol >= kCompetitionVisibleColumns) return 1;
+    return first > 0 ? 1 : 0;
+}
 constexpr uint8_t kGridRows = 8;  // stones kept per player (addStone)
 // Maximum offset, in split rows, among the three visible columns.
-int competitionHistoryLimit(const Stone* stones, uint8_t count, uint8_t me, uint8_t activeCol);
+int competitionHistoryLimit(const Stone* stones, uint8_t count, uint8_t me, uint8_t firstColumn);
 void drawCompetition(Canvas& c, const Stone* stones, uint8_t count, uint8_t me, uint8_t activeCol,
-                     bool lowBattery, Tip tip = Tip::None, Waiting waiting = Waiting::None, int scroll = 0);
+                     bool lowBattery, Tip tip = Tip::None, Waiting waiting = Waiting::None,
+                     uint8_t firstColumn = 0, int scroll = 0, bool scrolling = false);
 
 // League (side button + rocker down): the newest stone large, then four columns: your three
 // teammates in throwing order and the other team (THEM), each listing its stones newest first, a

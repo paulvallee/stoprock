@@ -73,6 +73,7 @@ constexpr SegFont kNarrowFont{12, 6, 2, 1, 2, true};  // coach's five columns: a
 struct Zoom { SegFont font, longFont; };
 constexpr Zoom kZoomLeague{{22, 13, 3, 2, 3, true, true}, {22, 11, 3, 2, 3, true, true}};
 constexpr Zoom kCompetitionDigits{{24, 14, 3, 2, 3, true, true}, {24, 11, 3, 2, 3, true, true}};
+constexpr Zoom kCompetitionThemDigits{{23, 14, 3, 2, 3, true, true}, {23, 11, 3, 2, 3, true, true}};
 constexpr Zoom kZoomCoach{{18, 11, 2, 2, 2, true, true}, {18, 8, 2, 2, 2, true, true}};
 constexpr int kZoomLines = 4;      // filling the column's height
 constexpr double kZoomSpread = 1.3;  // its width, in columns: over 15% of each neighbour (30% of one at an edge)
@@ -484,26 +485,9 @@ void drawBasic(Canvas& c, const Stone* stones, uint8_t count, bool lowBattery, T
 }
 
 constexpr int kCompetitionSplits = 4;
-constexpr uint8_t kCompetitionSlots = kLeagueColumns - 1;
-constexpr uint8_t kRightTeammate = kCompetitionSlots - 1;
-
-CompetitionPanel competitionPanel(const Stone* stones, uint8_t count, uint8_t me, uint8_t activeCol) {
-    if (activeCol != themColumn(me)) return CompetitionPanel::Closed;
-    const uint8_t left = columnPlayer(me, 0), right = columnPlayer(me, kRightTeammate);
-    for (uint8_t i = 0; i < count; ++i) {
-        const Stone& stone = stones[i];
-        if (stone.bh < 0 && stone.hh < 0) continue;
-        if (stone.player == left) return CompetitionPanel::Right;
-        if (stone.player == right) return CompetitionPanel::Left;
-    }
-    return CompetitionPanel::Right;
-}
-
-static uint8_t competitionColumn(CompetitionPanel panel, uint8_t slot) {
-    const bool coversLeft = panel == CompetitionPanel::Left && slot == 0;
-    const bool coversRight = panel == CompetitionPanel::Right && slot == kRightTeammate;
-    return coversLeft || coversRight ? kLeagueColumns - 1 : slot;
-}
+constexpr int kCompetitionMargin = 4;
+constexpr int kCompetitionBarHeight = 3;
+constexpr int kThemLinesTop = 67;
 
 static int competitionColumnLimit(const Stone* stones, int count, uint8_t player) {
     int splits = 0;
@@ -513,56 +497,66 @@ static int competitionColumnLimit(const Stone* stones, int count, uint8_t player
     return splits > kCompetitionSplits ? splits - kCompetitionSplits : 0;
 }
 
-static int competitionHistoryLimit(const Stone* stones, uint8_t count, uint8_t me, CompetitionPanel panel) {
+int competitionHistoryLimit(const Stone* stones, uint8_t count, uint8_t me, uint8_t firstColumn) {
     int limit = 0;
-    for (uint8_t slot = 0; slot < kCompetitionSlots; ++slot) {
-        const uint8_t player = columnPlayer(me, competitionColumn(panel, slot));
+    for (uint8_t slot = 0; slot < kCompetitionVisibleColumns; ++slot) {
+        const uint8_t player = columnPlayer(me, firstColumn + slot);
         const int columnLimit = competitionColumnLimit(stones, count, player);
         if (columnLimit > limit) limit = columnLimit;
     }
     return limit;
 }
 
-int competitionHistoryLimit(const Stone* stones, uint8_t count, uint8_t me, uint8_t activeCol) {
-    return competitionHistoryLimit(stones, count, me, competitionPanel(stones, count, me, activeCol));
+static void competitionColumnBar(Canvas& c, uint8_t firstColumn, int top) {
+    constexpr int part = (W - 2 * kCompetitionMargin) / kLeagueColumns;
+    for (int column = 0; column < kLeagueColumns; ++column) {
+        const int left = kCompetitionMargin + column * part;
+        const int right = left + part - 3;
+        if (column >= firstColumn && column < firstColumn + kCompetitionVisibleColumns)
+            c.fillRect(left, top, right, top + kCompetitionBarHeight - 1);
+        else
+            hline(c, left, right, top + 1);
+    }
 }
 
 static void competitionHistory(Canvas& c, const Stone* stones, uint8_t count, uint8_t me,
-                               uint8_t active, CompetitionPanel panel, int bottom, int scroll) {
-    constexpr int margin = 4;
-    constexpr int columnWidth = (W - 2 * margin) / kCompetitionSlots;
-    const int pitch = (bottom - kLinesTop) / kCompetitionSplits;
-    if (scroll > 0) {
-        const int limit = competitionHistoryLimit(stones, count, me, panel);
+                               uint8_t active, uint8_t firstColumn, int bottom, int scroll, bool scrolling) {
+    constexpr int columnWidth = (W - 2 * kCompetitionMargin) / kCompetitionVisibleColumns;
+    if (scrolling) {
+        const int limit = competitionHistoryLimit(stones, count, me, firstColumn);
         if (scroll > limit) scroll = limit;
         if (limit > 0) {
             constexpr int thumbHeight = 10;
             const int trackTop = kLinesTop + 2, trackBottom = bottom - 4;
             const int thumbTop = trackTop + scroll * (trackBottom - trackTop + 1 - thumbHeight) / limit;
-            const int track = panel == CompetitionPanel::Right ? 1 : W - 2;
+            const int track = W - 2;
             vline(c, track, trackTop, trackBottom);
             c.fillRect(track - 1, thumbTop, track + 1, thumbTop + thumbHeight - 1);
         }
     }
 
-    for (uint8_t slot = 0; slot < kCompetitionSlots; ++slot) {
-        const uint8_t column = competitionColumn(panel, slot);
-        const int left = margin + slot * columnWidth;
+    for (uint8_t slot = 0; slot < kCompetitionVisibleColumns; ++slot) {
+        const uint8_t column = firstColumn + slot;
+        const int left = kCompetitionMargin + slot * columnWidth;
         const int right = left + columnWidth;
         const uint8_t player = columnPlayer(me, column);
-        const char* name = player == kThem ? "THEM" : kPositions[player];
+        const bool theirs = player == kThem;
         const bool focused = column == active;
-        if (focused) c.fillRect(left, GRID_LABEL_Y0, right - 1, GRID_LABEL_Y1);
-        if (player == kThem) {
-            const bool fromLeft = panel == CompetitionPanel::Left;
-            c.fillRect(fromLeft ? 0 : right, GRID_LABEL_Y0,
-                       fromLeft ? left - 1 : W - 1, GRID_LABEL_Y1);
-            vline(c, fromLeft ? right - 1 : left + 1, GRID_LABEL_Y0, bottom - 1);
+        if (theirs) {
+            if (focused) c.fillRect(left, GRID_LABEL_Y0, W - 1, kThemLinesTop - 1);
+            textInBox(c, kFontSpleen16x32, "THEM", left, W, GRID_LABEL_Y0, kThemLinesTop,
+                      kCentre, 0, !focused);
+        } else {
+            const char* name = kPositions[player];
+            if (focused) c.fillRect(left, GRID_LABEL_Y0, right - 1, GRID_LABEL_Y1);
+            c.text(kFontSpleen6x12, (left + right - 6 * static_cast<int>(strlen(name))) / 2,
+                   GRID_LABEL_Y0, name, !focused);
         }
-        c.text(kFontSpleen6x12, (left + right - 6 * static_cast<int>(strlen(name))) / 2,
-               GRID_LABEL_Y0, name, !focused);
         if (slot > 0) vline(c, left, GRID_LABEL_Y0, bottom - 1);
 
+        const int linesTop = theirs ? kThemLinesTop : kLinesTop;
+        const int pitch = (bottom - linesTop) / kCompetitionSplits;
+        const Zoom& zoom = theirs ? kCompetitionThemDigits : kCompetitionDigits;
         const int limit = scroll > 0 ? competitionColumnLimit(stones, count, player) : 0;
         int skip = scroll < limit ? scroll : limit;
         int row = 0;
@@ -573,12 +567,11 @@ static void competitionHistory(Canvas& c, const Stone* stones, uint8_t count, ui
                 const int32_t value = values[half];
                 if (value < 0) continue;
                 if (skip > 0) { --skip; continue; }
-                const int y = kLinesTop + row++ * pitch;
+                const int y = linesTop + row++ * pitch;
                 if (half == 1) c.fillRect(left + 2, y, right - 2, y + pitch - 2);
                 char label[12];
                 formatTime(value, label, sizeof label);
-                const SegFont& digits = kCompetitionDigits.font.width(label) <= columnWidth - 6
-                    ? kCompetitionDigits.font : kCompetitionDigits.longFont;
+                const SegFont& digits = zoom.font.width(label) <= columnWidth - 6 ? zoom.font : zoom.longFont;
                 segInBox(c, digits, label, left + 1, right - 1, y, y + pitch - 1, kCentre, 0, half == 0);
             }
         }
@@ -586,12 +579,16 @@ static void competitionHistory(Canvas& c, const Stone* stones, uint8_t count, ui
 }
 
 void drawCompetition(Canvas& c, const Stone* stones, uint8_t count, uint8_t me, uint8_t activeCol,
-                     bool lowBattery, Tip tip, Waiting waiting, int scroll) {
+                     bool lowBattery, Tip tip, Waiting waiting, uint8_t firstColumn, int scroll, bool scrolling) {
     c.clear();
     const int strip = H - TIP_H;
     timesTop(c, stones, count, waiting, COMP_MID);
-    competitionHistory(c, stones, count, me, activeCol, competitionPanel(stones, count, me, activeCol), strip, scroll);
-    badgeStrip(c, "COMPETITION", lowBattery);
+    const uint8_t first = competitionFirstColumn(firstColumn, activeCol);
+    const int barTop = strip - kCompetitionBarHeight;
+    competitionHistory(c, stones, count, me, activeCol, first, barTop, scrolling ? scroll : 0, scrolling);
+    competitionColumnBar(c, first, barTop);
+    badgeStrip(c, "COMPETITION", lowBattery, scrolling ? "SCROLL MODE" : nullptr);
+    c.fillRect(0, strip, W - 1, strip, false);
     if (tip == Tip::SwitchOn) switchOnTip(c, me);
     if (tip == Tip::Undo || tip == Tip::PowerOff) undoTip(c, kHintTop, strip, tip);
     if (tip == Tip::Move) moveTip(c, strip, H);  // over the badge strip

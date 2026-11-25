@@ -63,8 +63,9 @@ def main():
                                                       focus="rocks" if n % 2 else "players")
     refs["competition"] = screen.competition_screen(ls, lme, lact)
     refs["competition-them-right"] = screen.competition_screen(ls, lme, 3)
-    refs["competition-them-left"] = screen.competition_screen(ls, 3, 3)
-    refs["competition-history"] = screen.competition_screen(ls, lme, 3, scroll=2)
+    refs["competition-columns-right"] = screen.competition_screen(ls, lme, lact, first_column=1)
+    refs["competition-history"] = screen.competition_screen(ls, lme, 3, scroll=2, scrolling=True)
+    refs["competition-history-top"] = screen.competition_screen(ls, lme, 3, scrolling=True)
     refs["competition-battery"] = screen.competition_screen(ls, lme, lact, low_battery=True)
     for me in range(4):  # each position as yours, the cursor on each column
         refs[f"competition-me{me}"] = screen.competition_screen(ls, me, (me + 1) % 4)

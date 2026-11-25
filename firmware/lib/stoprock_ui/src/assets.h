@@ -35,6 +35,7 @@ extern const Font kFontDseg24;      // coach page 2's newest result
 extern const Font kFontDseg16;      // percentage
 extern const Font kFontSpleen6x12;  // labels and tips
 extern const Font kFontSpleen12x24; // the hold hints (only their letters)
+extern const Font kFontSpleen16x32; // Competition's THEM heading (only its letters)
 extern const Font kFontMenuTitle;  // Nunito ExtraBold, 18 px
 extern const Font kFontMenuDetail; // Nunito Bold, 13 px
 extern const Bitmap kLogo;         // 176 px wordmark
