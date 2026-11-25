@@ -109,13 +109,13 @@ void ThrowOrder::besideThem(int64_t t, uint8_t& left, uint8_t& right) const {
         return columnOf(i - 16 * e, first);
     };
     left = right = 0;
-    for (int i = p.s - 1; i >= p.s - 32; --i) {
+    for (int i = p.s; i <= p.s + 32; ++i) {  // our next throw: its pair is under way, or next
         const uint8_t c = columnAt(i);
-        if (c != themColumn() && c != kMine) { left = c; break; }
+        if (c != themColumn() && c != kMine) { right = c; break; }
     }
-    for (int i = p.s; i <= p.s + 32; ++i) {
+    for (int i = p.s - 1; i >= p.s - 32; --i) {  // the teammate before them
         const uint8_t c = columnAt(i);
-        if (c != themColumn() && c != kMine && c != left) { right = c; break; }
+        if (c != themColumn() && c != kMine && c != right) { left = c; break; }
     }
 }
 

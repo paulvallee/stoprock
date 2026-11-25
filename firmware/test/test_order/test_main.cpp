@@ -121,9 +121,14 @@ static void test_beside_them() {
     o.besideThem(165 * S, left, right);
     TEST_ASSERT_EQUAL_UINT8(0, left);
     TEST_ASSERT_EQUAL_UINT8(1, right);
-    o.place(1, 400 * S);                 // our 3rd's first rock: 3rd | THEM | Skip
+    o.place(1, 400 * S);                 // our 3rd's first rock: the 3rd stays right for their second
     TEST_ASSERT_EQUAL_INT(8, o.lastThrow());
     o.besideThem(400 * S, left, right);
+    TEST_ASSERT_EQUAL_UINT8(0, left);
+    TEST_ASSERT_EQUAL_UINT8(1, right);
+    o.place(2, 671 * S);                 // our skip's first rock: 3rd | THEM | Skip, not next end's lead
+    TEST_ASSERT_EQUAL_INT(12, o.lastThrow());
+    o.besideThem(671 * S, left, right);
     TEST_ASSERT_EQUAL_UINT8(1, left);
     TEST_ASSERT_EQUAL_UINT8(2, right);
 }
