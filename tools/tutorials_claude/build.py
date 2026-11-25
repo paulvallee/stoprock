@@ -420,7 +420,7 @@ CARDS = {
     "buttons": ("Timing buttons", timing_buttons, ("Press the top or side", "button at each line.")),
     "stone": ("Time a stone", time_a_stone, ("Press at back or tee line,", "then at each hog line.")),
     "read": ("Read the times", read_the_times, ("The big numbers show the", "last stone you timed.")),
-    "turn": ("Who's throwing", whose_turn, ("The highlight moves by", "itself. Times go there.")),
+    "turn": ("Who's throwing", whose_turn, ("The highlight moves by", "itself, or use the rocker.")),
     "fix": ("Wrong player?", move_time, ("Hold up to move the", "last time one player left.")),
     "rocks": ("Log your shot", log_shot, ("Hold down twice for rocks:", "Up: made. Down: missed.")),
     "older": ("Older times", older_times, ("Hold down to see older", "times. Hold up to return.")),
