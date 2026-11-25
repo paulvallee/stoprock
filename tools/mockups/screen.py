@@ -627,10 +627,10 @@ def competition_screen(stones, me=0, active=0, low_battery=False, tip=False, wai
 # white on black. The newest stone is also shown large at the top. Below, your own rocks like a
 # scoreboard (ends across, rock 1 over rock 2) with your percentage large on the right.
 # The rocker works on one half at a time, the focus, shown by a bold border: the columns (up =
-# next column, down = previous: the cursor, the highlighted header, goes on whoever is about to
+# left, down = right: the cursor, the highlighted header, goes on whoever is about to
 # throw; it also moves there by itself) or your rocks (up/down = made/missed). Hold down to log your
-# rocks; logging one goes back to the columns. Hold up on the columns to move the newest time a
-# column right every 0.7 s (as rocker up moves the cursor), put down where it is when let go.
+# rocks from history; logging one goes back to the columns. Hold up on the columns to move the
+# newest time one column left every 0.7 s, in the same direction as a rocker-up tap.
 LEAGUE_ROWS_BOTTOM = 159     # 2 px line under the times
 LEAGUE_PCT_X = 149           # 2 px divider left of the percentage: in line with the THEM column's
 LEAGUE_SLOTS = 16

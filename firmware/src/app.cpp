@@ -1056,9 +1056,14 @@ void scrollTimeHistory(int dir) {
     syncModel();
 }
 
-// The player cursor one column left (-1) or right (+1), round and round.
+uint8_t shiftColumn(uint8_t column, int dir) {
+    const int count = columns();
+    return (column + count + dir) % count;
+}
+
+// The player cursor one column left (-1) or right (+1), wrapping at the edges.
 void movePlayer(int dir) {
-    activeCol = (activeCol + (dir < 0 ? columns() - 1 : 1)) % columns();
+    activeCol = shiftColumn(activeCol, dir);
     manualCursor = true;
     rocksFocusAt = -1;  // you're on the columns on purpose
     sound.play(kClick);
@@ -1067,12 +1072,12 @@ void movePlayer(int dir) {
     syncModel();
 }
 
-// Rocker up held on the columns: the newest time moves a column right every 0.7 s, wrapping.
+// Rocker up held on the columns: the newest time moves a column left every 0.7 s, wrapping.
 // Returns false when there's no time to move.
 bool stepMove() {
     const int col = stoneCount > 0 ? playerColumn(seat(), stones[0].player) : -1;
     if (col < 0) { playError(); return false; }
-    const uint8_t to = static_cast<uint8_t>((col + 1) % columns());
+    const uint8_t to = shiftColumn(col, -1);
     stones[0].player = columnPlayer(seat(), to);
     activeCol = to;
     ++moveSteps;
@@ -1137,7 +1142,7 @@ void releaseAction(uint8_t b) {
     if (buttons[b].holdFired) return;
     if (timeHistory.scrolling) scrollTimeHistory(b == board::kDown ? 1 : -1);
     else if (rules().shotsPerEnd && (!rules().focus || focus == Focus::Rocks)) onShot(b == board::kUp);
-    else if (rules().columns) movePlayer(b == board::kUp ? 1 : -1);  // up = next player, down = previous
+    else if (rules().columns) movePlayer(b == board::kUp ? -1 : 1);  // up = left, down = right
     else scrollBasic(b == board::kDown ? 1 : -1);  // basic: down = older stones, up = newer
 }
 
@@ -1269,7 +1274,7 @@ void pollButtons(int64_t now) {
                 continue;
             }
             // In League and Coach, hold up on the rocks to return to the columns.
-            // Holding up on the columns moves the newest time right.
+            // Holding up on the columns moves the newest time left.
             const bool rocker = b == board::kUp || b == board::kDown;
             const bool moves = !timeHistory.scrolling && rules().columns && b == board::kUp && raw &&
                                focus == Focus::Players;
