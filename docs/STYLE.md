@@ -51,6 +51,7 @@ The same word for the same thing, everywhere: on the device, in the tutorials, i
 - A made rock is a filled disc, a missed rock a ring with a dot, a rock not yet thrown an empty ring; the next
   rock to log has a bold ring.
 - The highlighted (inverted) header is the player the next time goes to.
+- Competition's columns run in throw order with THEM in the middle (our last thrower, THEM, our next); their headers are all alike, bold Spleen 12x24.
 - Typefaces:
   - **DSEG7 Classic Bold**: the big times.
   - Drawn seven-segment digits: the times in the columns.

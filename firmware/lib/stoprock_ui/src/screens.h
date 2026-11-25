@@ -41,13 +41,17 @@ void drawOffPage(Canvas& c, int battery = -1, int gamesLeft = -1);
 void drawBasic(Canvas& c, const Stone* stones, uint8_t count, bool lowBattery, Tip tip = Tip::None,
                Waiting waiting = Waiting::None, int scroll = 0);
 
-// Three adjacent player columns, with a separate offset for older split rows.
+// Three player columns, with a separate offset for older split rows. League and coach show three
+// adjacent columns from first. Competition shows them in throw order (timeline): our last thrower,
+// THEM, our next (visible, from timelineColumns()); all headers alike, in bold Spleen 12x24.
+constexpr uint8_t kVisibleTimeColumns = 3;
 struct TimeHistoryView {
     uint8_t first = 0;
     int offset = 0;
     bool scrolling = false;
+    bool timeline = false;
+    uint8_t visible[kVisibleTimeColumns] = {0, 0, 0};
 };
-constexpr uint8_t kVisibleTimeColumns = 3;
 constexpr uint8_t firstVisibleTimeColumn(uint8_t first, uint8_t active, uint8_t total) {
     const uint8_t last = total - kVisibleTimeColumns;
     if (first > last) first = last;
@@ -55,8 +59,15 @@ constexpr uint8_t firstVisibleTimeColumn(uint8_t first, uint8_t active, uint8_t 
     if (active >= first + kVisibleTimeColumns) return active + 1 - kVisibleTimeColumns;
     return first;
 }
+// Competition's timeline: left (the teammate column of our last thrower), THEM, right (our next). With
+// the cursor (active) on the fourth column, the window slides to it: forward [THEM, right, it] or
+// back [it, left, THEM]. me: your position (THEM is column 3).
+void timelineColumns(uint8_t me, uint8_t left, uint8_t right, uint8_t active, bool forward,
+                     uint8_t out[kVisibleTimeColumns]);
+// The columns a view shows, left to right.
+void historyColumns(const TimeHistoryView& view, uint8_t active, uint8_t total, uint8_t out[kVisibleTimeColumns]);
 constexpr uint8_t kGridRows = 8;  // stones kept per player (addStone)
-int historyScrollLimit(const Stone* stones, uint8_t count, uint8_t seat, uint8_t first);
+int historyScrollLimit(const Stone* stones, uint8_t count, uint8_t seat, const uint8_t visible[kVisibleTimeColumns]);
 void drawCompetition(Canvas& c, const Stone* stones, uint8_t count, uint8_t me, uint8_t activeCol,
                      bool lowBattery, Tip tip = Tip::None, Waiting waiting = Waiting::None,
                      TimeHistoryView history = {});

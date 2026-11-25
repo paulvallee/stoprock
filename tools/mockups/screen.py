@@ -542,10 +542,25 @@ def times_top(d, f, stones, waiting, mid, y0=0):
 
 
 
-def timing_history(d, f, stones, players, active, end, first_column=0, scroll=0, scrolling=False, framed=False):
+def timeline_columns(me, left, right, active, forward):
+    """Competition's columns in throw order: left (the teammate column of our last thrower), THEM, right
+    (our next). With the cursor (active) on the fourth column, the window slides to it: forward
+    [THEM, right, it] or back [it, left, THEM]."""
+    them = 3
+    if active in (left, them, right):
+        return [left, them, right]
+    return [them, right, active] if forward else [active, left, them]
+
+
+def timing_history(d, f, stones, players, active, end, first_column=0, scroll=0, scrolling=False, framed=False,
+                   visible=None):
+    """visible: the columns to show, left to right (competition's timeline: every header alike, in bold
+    Spleen 12x24, no column bar); otherwise three adjacent from first_column."""
     total = len(players)
+    timeline = visible is not None
     first = min(max(first_column, active - 2), active, total - 3)
-    players = players[first:first + 3]
+    shown = visible if timeline else list(range(first, first + 3))
+    players = [players[c] for c in shown]
     margin, column_width = 4, 64
     bar_top = end - 3
     columns = [[(value, half) for bh, hh, owner in stones if owner == player
@@ -566,8 +581,15 @@ def timing_history(d, f, stones, players, active, end, first_column=0, scroll=0,
         left = margin + slot * column_width
         right = left + column_width
         theirs = player == THEM
-        focused = first + slot == active
-        if theirs:
+        focused = shown[slot] == active
+        if timeline:  # every header alike: bold Spleen 12x24, the cursor's inverted
+            name = "THEM" if theirs else POSITION_NAMES[player]
+            if focused:
+                d.rectangle((left + (1 if slot else 0), GRID_LABEL[0], right - 1, them_lines_top - 1), fill=0)
+            x = (left + right - (12 * len(name) + 1)) // 2
+            for dx in (0, 1):
+                d.text((x + dx, GRID_LABEL[0] - 2), name, font=f["hint"], fill=int(focused))
+        elif theirs:
             if focused:
                 d.rectangle((left, GRID_LABEL[0], W - 1, them_lines_top - 1), fill=0)
             text_in_box(d, "THEM", f["them"], left, W, GRID_LABEL[0], them_lines_top,
@@ -579,9 +601,9 @@ def timing_history(d, f, stones, players, active, end, first_column=0, scroll=0,
             d.text(((left + right - 6 * len(name)) // 2, GRID_LABEL[0]), name, font=f["label"], fill=int(focused))
         if slot:
             d.line((left, GRID_LABEL[0], left, bar_top - 1), fill=0)
-        lines_top = them_lines_top if theirs else LEAGUE_TOP
+        lines_top = them_lines_top if theirs or timeline else LEAGUE_TOP
         pitch = (bar_top - lines_top) // 4
-        height = min(pitch - 3, 23 if theirs else 24)
+        height = min(pitch - 3, 23 if theirs or timeline else 24)
         digits = SegFont(h=height, w=14, t=3, gap=2, dot=3, prop=True, solid_one=True)
         long_digits = SegFont(h=height, w=11, t=3, gap=2, dot=3, prop=True, solid_one=True)
         skip = scroll  # every column the same distance back; one with fewer splits runs out (blank rows)
@@ -592,6 +614,8 @@ def timing_history(d, f, stones, players, active, end, first_column=0, scroll=0,
             label = f"{value:.2f}"
             font = digits if digits.width(label) <= column_width - 6 else long_digits
             font.draw_in_box(d, label, left + 1, right - 1, y, y + pitch - 1, align="center", fill=half)
+    if timeline:
+        return
     width = W - 2 * margin
     for column in range(total):
         left = margin + column * width // total
@@ -603,14 +627,19 @@ def timing_history(d, f, stones, players, active, end, first_column=0, scroll=0,
 
 
 def competition_screen(stones, me=0, active=0, low_battery=False, tip=False, waiting=None,
-                       first_column=0, scroll=0, scrolling=False):
+                       first_column=0, scroll=0, scrolling=False, visible=None):
+    """visible: the timeline's columns (timeline_columns()); none given: the cursor's teammate, THEM,
+    the next teammate (the cursor on THEM: the first two teammates)."""
     f = fonts()
     img = Image.new("1", (W, H), 1)
     d = ImageDraw.Draw(img)
     d.fontmode = "1"
     strip = H - TIP_H
     times_top(d, f, stones, waiting, COMP_MID)
-    timing_history(d, f, stones, league_columns(me), active, strip, first_column, scroll, scrolling)
+    if visible is None:
+        left = 0 if active == 3 else active
+        visible = timeline_columns(me, left, (left + 1) % 3, active, True)
+    timing_history(d, f, stones, league_columns(me), active, strip, first_column, scroll, scrolling, visible=visible)
     badge_strip(img, d, f, "COMPETITION", low_battery, "SCROLL MODE" if scrolling else None)
     d.line((0, strip, W - 1, strip), fill=1)
     if tip in ("undo", "off"):

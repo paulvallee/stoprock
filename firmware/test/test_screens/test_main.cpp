@@ -103,16 +103,35 @@ static void test_history_counts_only_visible_recorded_splits() {
     const Stone stones[] = {{345, 1390, kThem}, {334, -1, kThem}, {-1, 1412, kThem},
                             {356, 1401, kThem}, {352, 1378, 1}};
     const uint8_t count = sizeof stones / sizeof stones[0];
-    TEST_ASSERT_EQUAL_INT(0, historyScrollLimit(stones, count, 0, 0));
-    TEST_ASSERT_EQUAL_INT(2, historyScrollLimit(stones, count, 0, 1));
+    const uint8_t first[] = {0, 1, 2}, second[] = {1, 2, 3};
+    TEST_ASSERT_EQUAL_INT(0, historyScrollLimit(stones, count, 0, first));
+    TEST_ASSERT_EQUAL_INT(2, historyScrollLimit(stones, count, 0, second));
     const Stone left[] = {{341, -1, 3}, {345, 1390, 1}, {334, 1412, 1}, {356, 1401, 1}};
     const uint8_t leftCount = sizeof left / sizeof left[0];
-    TEST_ASSERT_EQUAL_INT(2, historyScrollLimit(left, leftCount, 0, 0));
-    TEST_ASSERT_EQUAL_INT(0, historyScrollLimit(left, leftCount, 0, 1));
+    TEST_ASSERT_EQUAL_INT(2, historyScrollLimit(left, leftCount, 0, first));
+    TEST_ASSERT_EQUAL_INT(0, historyScrollLimit(left, leftCount, 0, second));
+}
+
+// Competition's timeline: [left, THEM, right]; the fourth column slides the window the way you went.
+static void test_timeline_columns() {
+    uint8_t out[kVisibleTimeColumns];
+    timelineColumns(1, 0, 1, 3, true, out);  // the cursor on THEM: our last, THEM, our next
+    TEST_ASSERT_EQUAL_UINT8(0, out[0]);
+    TEST_ASSERT_EQUAL_UINT8(3, out[1]);
+    TEST_ASSERT_EQUAL_UINT8(1, out[2]);
+    timelineColumns(1, 0, 1, 2, true, out);  // on the fourth, forward: THEM, right, it
+    TEST_ASSERT_EQUAL_UINT8(3, out[0]);
+    TEST_ASSERT_EQUAL_UINT8(1, out[1]);
+    TEST_ASSERT_EQUAL_UINT8(2, out[2]);
+    timelineColumns(1, 0, 1, 2, false, out);  // back: it, left, THEM
+    TEST_ASSERT_EQUAL_UINT8(2, out[0]);
+    TEST_ASSERT_EQUAL_UINT8(0, out[1]);
+    TEST_ASSERT_EQUAL_UINT8(3, out[2]);
 }
 
 int main() {
     UNITY_BEGIN();
+    RUN_TEST(test_timeline_columns);
     RUN_TEST(test_no_players_drops_oldest);
     RUN_TEST(test_player_with_few_stones_keeps_them);
     RUN_TEST(test_every_player_keeps_a_screenful);

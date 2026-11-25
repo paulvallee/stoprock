@@ -393,10 +393,28 @@ static int columnScrollLimit(const Stone* stones, int count, uint8_t player) {
     return splits > kHistorySplits ? splits - kHistorySplits : 0;
 }
 
-int historyScrollLimit(const Stone* stones, uint8_t count, uint8_t me, uint8_t firstColumn) {
+void timelineColumns(uint8_t me, uint8_t left, uint8_t right, uint8_t active, bool forward,
+                     uint8_t out[kVisibleTimeColumns]) {
+    const uint8_t them = themColumn(me);
+    if (active == left || active == them || active == right) {
+        out[0] = left, out[1] = them, out[2] = right;
+    } else if (forward) {
+        out[0] = them, out[1] = right, out[2] = active;
+    } else {
+        out[0] = active, out[1] = left, out[2] = them;
+    }
+}
+
+void historyColumns(const TimeHistoryView& view, uint8_t active, uint8_t total, uint8_t out[kVisibleTimeColumns]) {
+    const uint8_t first = firstVisibleTimeColumn(view.first, active, total);
+    for (uint8_t slot = 0; slot < kVisibleTimeColumns; ++slot)
+        out[slot] = view.timeline ? view.visible[slot] : first + slot;
+}
+
+int historyScrollLimit(const Stone* stones, uint8_t count, uint8_t me, const uint8_t visible[kVisibleTimeColumns]) {
     int limit = 0;
     for (uint8_t slot = 0; slot < kVisibleTimeColumns; ++slot) {
-        const uint8_t player = columnPlayer(me, firstColumn + slot);
+        const uint8_t player = columnPlayer(me, visible[slot]);
         const int columnLimit = columnScrollLimit(stones, count, player);
         if (columnLimit > limit) limit = columnLimit;
     }
@@ -419,11 +437,13 @@ static void drawTimingHistory(Canvas& c, const Stone* stones, uint8_t count, uin
                               uint8_t active, TimeHistoryView history, int end, bool framed = false) {
     constexpr int columnWidth = (W - 2 * kHistoryMargin) / kVisibleTimeColumns;
     const uint8_t total = columnCount(me);
-    const uint8_t firstColumn = firstVisibleTimeColumn(history.first, active, total);
+    uint8_t shown[kVisibleTimeColumns];
+    historyColumns(history, active, total, shown);
+    const bool timeline = history.timeline;
     const int bottom = end - kHistoryBarHeight;
     int scroll = history.scrolling ? history.offset : 0;
     if (history.scrolling) {
-        const int limit = historyScrollLimit(stones, count, me, firstColumn);
+        const int limit = historyScrollLimit(stones, count, me, shown);
         if (scroll > limit) scroll = limit;
         const int trackTop = kLinesTop + 2, trackBottom = bottom - 4;
         const int track = framed ? 3 : W - 2;
@@ -438,13 +458,18 @@ static void drawTimingHistory(Canvas& c, const Stone* stones, uint8_t count, uin
     }
 
     for (uint8_t slot = 0; slot < kVisibleTimeColumns; ++slot) {
-        const uint8_t column = firstColumn + slot;
+        const uint8_t column = shown[slot];
         const int left = kHistoryMargin + slot * columnWidth;
         const int right = left + columnWidth;
         const uint8_t player = columnPlayer(me, column);
         const bool theirs = player == kThem;
         const bool focused = column == active;
-        if (theirs) {
+        if (timeline) {  // every header alike: bold Spleen 12x24, the cursor's inverted
+            const char* name = theirs ? "THEM" : kPositions[player];
+            if (focused) c.fillRect(left + (slot ? 1 : 0), GRID_LABEL_Y0, right - 1, kThemLinesTop - 1);
+            const int x = (left + right - (12 * static_cast<int>(strlen(name)) + 1)) / 2;
+            for (int dx = 0; dx < 2; ++dx) c.text(kFontSpleen12x24, x + dx, GRID_LABEL_Y0 - 2, name, !focused);
+        } else if (theirs) {
             if (focused) c.fillRect(left, GRID_LABEL_Y0, W - 1, kThemLinesTop - 1);
             textInBox(c, kFontSpleen16x32, "THEM", left, W, GRID_LABEL_Y0, kThemLinesTop,
                       kCentre, 0, !focused);
@@ -456,9 +481,9 @@ static void drawTimingHistory(Canvas& c, const Stone* stones, uint8_t count, uin
         }
         if (slot > 0) vline(c, left, GRID_LABEL_Y0, bottom - 1);
 
-        const int linesTop = theirs ? kThemLinesTop : kLinesTop;
+        const int linesTop = theirs || timeline ? kThemLinesTop : kLinesTop;
         const int pitch = (bottom - linesTop) / kHistorySplits;
-        const int maxHeight = theirs ? 23 : 24;
+        const int maxHeight = theirs || timeline ? 23 : 24;
         const int height = pitch - 3 < maxHeight ? pitch - 3 : maxHeight;
         const SegFont digits{height, 14, 3, 2, 3, true, true};
         const SegFont longDigits{height, 11, 3, 2, 3, true, true};
@@ -482,7 +507,7 @@ static void drawTimingHistory(Canvas& c, const Stone* stones, uint8_t count, uin
             }
         }
     }
-    timingColumnBar(c, firstColumn, total, bottom);
+    if (!timeline) timingColumnBar(c, shown[0], total, bottom);
 }
 
 void drawCompetition(Canvas& c, const Stone* stones, uint8_t count, uint8_t me, uint8_t activeCol,
@@ -490,6 +515,12 @@ void drawCompetition(Canvas& c, const Stone* stones, uint8_t count, uint8_t me, 
     c.clear();
     const int strip = H - TIP_H;
     timesTop(c, stones, count, waiting, COMP_MID);
+    if (!history.timeline) {  // no arrangement given (the render samples): the cursor's teammate and the next
+        const uint8_t them = themColumn(me);
+        const uint8_t left = activeCol == them ? 0 : activeCol;
+        timelineColumns(me, left, static_cast<uint8_t>((left + 1) % them), activeCol, true, history.visible);
+        history.timeline = true;
+    }
     drawTimingHistory(c, stones, count, me, activeCol, history, strip);
     badgeStrip(c, "COMPETITION", lowBattery, history.scrolling ? "SCROLL MODE" : nullptr);
     c.fillRect(0, strip, W - 1, strip, false);

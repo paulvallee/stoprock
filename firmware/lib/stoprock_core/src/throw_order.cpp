@@ -99,6 +99,26 @@ uint8_t ThrowOrder::predict(int64_t t) const {
     return columnOf(p.s, p.ourFirst);
 }
 
+void ThrowOrder::besideThem(int64_t t, uint8_t& left, uint8_t& right) const {
+    const Pos p = best(last_, throwsSince(t), -1);  // the next throw (not yours), as predict() has it
+    // the column of throw i counted from the start of p's end (i < 0: the ends before, i >= 16: the
+    // ones after; who throws first is guessed to swap every end)
+    auto columnAt = [&](int i) {
+        const int e = i >= 0 ? i / 16 : -((15 - i) / 16);
+        const bool first = (e % 2 == 0) ? p.ourFirst : !p.ourFirst;
+        return columnOf(i - 16 * e, first);
+    };
+    left = right = 0;
+    for (int i = p.s - 1; i >= p.s - 32; --i) {
+        const uint8_t c = columnAt(i);
+        if (c != themColumn() && c != kMine) { left = c; break; }
+    }
+    for (int i = p.s; i <= p.s + 32; ++i) {
+        const uint8_t c = columnAt(i);
+        if (c != themColumn() && c != kMine && c != left) { right = c; break; }
+    }
+}
+
 int ThrowOrder::throwsToMine() const {
     for (int pos = 1; pos <= 32; ++pos) {
         const int i = last_.s + pos;

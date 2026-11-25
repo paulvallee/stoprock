@@ -116,6 +116,7 @@ def main():
     emit_font("kFontMenuTitle", f["menu_title"], ascii_chars, out)
     emit_font("kFontMenuDetail", f["menu_detail"], ascii_chars, out)
     hint = "".join(screen.UNDO_TIP + screen.OFF_TIP + screen.PAGE_TIP + screen.MOVE_HINT)
+    hint += "".join(screen.POSITION_NAMES) + "THEM"  # competition's column headers
     emit_font("kFontSpleen12x24", f["hint"], "".join(sorted(set(hint))), out)
     emit_font("kFontSpleen16x32", f["them"], "THEM", out)
     with Image.open(screen.OFF_PAGE_PATH) as off_page:

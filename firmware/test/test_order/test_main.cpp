@@ -106,6 +106,28 @@ static void test_your_shot_pins_the_order() {
     TEST_ASSERT_EQUAL_UINT8(ThrowOrder::kThem, o.predict());
 }
 
+// Competition's timeline: our teammate columns either side of THEM's next stone.
+static void test_beside_them() {
+    ThrowOrder o;
+    o.reset(1);  // 2nd: columns Lead, 3rd, Skip, THEM; we throw first
+    uint8_t left = 9, right = 9;
+    o.place(0, 0);                       // our lead
+    o.place(ThrowOrder::kThem, 55 * S);
+    o.place(0, 110 * S);                 // our lead's second
+    o.besideThem(110 * S, left, right);  // THEM next: Lead | THEM | 3rd (your rocks have no column)
+    TEST_ASSERT_EQUAL_UINT8(0, left);
+    TEST_ASSERT_EQUAL_UINT8(1, right);
+    o.place(ThrowOrder::kThem, 165 * S); // while you throw: still Lead | THEM | 3rd
+    o.besideThem(165 * S, left, right);
+    TEST_ASSERT_EQUAL_UINT8(0, left);
+    TEST_ASSERT_EQUAL_UINT8(1, right);
+    o.place(1, 400 * S);                 // our 3rd's first rock: 3rd | THEM | Skip
+    TEST_ASSERT_EQUAL_INT(8, o.lastThrow());
+    o.besideThem(400 * S, left, right);
+    TEST_ASSERT_EQUAL_UINT8(1, left);
+    TEST_ASSERT_EQUAL_UINT8(2, right);
+}
+
 static void test_throws_to_mine() {
     ThrowOrder o;
     o.reset(1);  // 2nd, throwing first: your rocks are throws 4 and 6
@@ -240,6 +262,7 @@ int main() {
     RUN_TEST(test_other_team_first_is_learnt_from_one_correction);
     RUN_TEST(test_moving_the_newest_stone_refiles_it);
     RUN_TEST(test_your_shot_pins_the_order);
+    RUN_TEST(test_beside_them);
     RUN_TEST(test_throws_to_mine);
     RUN_TEST(test_cursor_follows_the_clock);
     RUN_TEST(test_mine_so_far);

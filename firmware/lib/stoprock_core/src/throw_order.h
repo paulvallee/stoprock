@@ -73,6 +73,10 @@ public:
     // may move on then. -1: never (nothing placed yet, or far past the end).
     int64_t nextChange(int64_t t) const;
     int64_t lastStart() const { return lastT_; }
+    // For a view in throw order with THEM in the middle (competition): our teammate columns either side
+    // of THEM's next stone, by t (as predict()): left, the column of our most recent throw before the
+    // next one; right, the next different column after it. Your own throws (no column) are skipped.
+    void besideThem(int64_t t, uint8_t& left, uint8_t& right) const;
     // The throws whose shots are logged, so far, up to and including the last throw placed: yours
     // (two an end), or for a coach the whole team's (eight). Compared with the shots logged, how
     // many are owed.
