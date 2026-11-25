@@ -2,7 +2,8 @@
 
 The CoreInk's back socket (2 x 8, 2.54 mm, female) carries six free inputs, enough for a 5-way stick and
 a timing button; the Grove port stays free. A right-angle header plugs into the socket so the wiring lies
-about 5-6 mm off the back instead of 12-14 with a straight plug. `wiring.png` shows it put together.
+about 5-6 mm off the back instead of 12-14 with a straight plug. `wiring.png` shows it put together;
+`case.png` shows a broom case for it (`case.py`).
 
 ## Parts
 
@@ -45,3 +46,14 @@ cp ../../case/render/model-coreink.stl ../../case/render/screen.png .
 python3 -m http.server 8379 &
 node shoot.js && python3 sheet.py     # -> ../wiring.png
 ```
+
+## The case (concept)
+
+`case.py` models a broom case round it: 45 x 114 x 27 mm, the stick and the timing button stacked in a
+30 mm tail (16 mm thick) below the CoreInk, the saddle on the back sitting on a 1 1/8" handle, a strap
+through two tunnels. The CoreInk sits **upside down**: its USB-C port (on its bottom edge) is then at the
+top of the case, open for charging, where the tail would otherwise cover it. The firmware turns the screen
+180 degrees and swaps the dial's up and down. The dial and the side button end up on the case's left
+side, both reachable; the top button ends up under the tail, covered (the stick and the new timing button
+take over). 27 mm thick: 4 for the saddle and tunnels, 5.5 for the wiring behind the CoreInk, its 16, and
+a 1.5 mm frame. Renders: `python3 case.py`, then in `render/` `node shoot-case.js && python3 sheet_case.py`.

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<script type="importmap">{"imports": {"three": "./node_modules/three/build/three.module.js",
+ "three/addons/": "./node_modules/three/examples/jsm/"}}</script>
+<style>body{margin:0;background:#f4f4f2}canvas{display:block}</style></head>
+<body>
+<script type="module">
+// Renders ../case.py's parts (mm): X across the face, Y up it, Z out of it. The CoreInk is turned over.
+import * as THREE from 'three';
+import { STLLoader } from 'three/addons/loaders/STLLoader.js';
+const W = 640, H = 560;
+const view = new URLSearchParams(location.search).get('view') || 'front';
+const C = await (await fetch('case.json')).json();
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(2); renderer.setSize(W, H); renderer.setClearColor(0xf4f4f2);
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.add(new THREE.HemisphereLight(0xffffff, 0x50565f, 0.75));
+const key = new THREE.DirectionalLight(0xffffff, 2.8); key.position.set(-110, 120, 150); scene.add(key);
+const fill = new THREE.DirectionalLight(0xffffff, 1.0); fill.position.set(120, -20, -60); scene.add(fill);
+const loader = new STLLoader();
+const load = (f) => new Promise((ok, bad) => loader.load(f, g => { g.computeVertexNormals(); ok(g); }, undefined, bad));
+const mat = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.7, ...extra });
+const g = new THREE.Group(); scene.add(g);
+const add = async (file, material) => { const m = new THREE.Mesh(await load(file), material); g.add(m); return m; };
+const xray = view === 'xray';
+await add('model-case-body.stl', mat(0x2b2e33, xray ? { roughness: 0.8, transparent: true, opacity: 0.25, depthWrite: false } : { roughness: 0.8 }));
+await add('model-case-stick.stl', mat(0x55595f, { roughness: 0.6 }));
+await add('model-case-button.stl', mat(0xd9542b, { roughness: 0.5 }));
+// the CoreInk, turned over
+const dev = await load('model-coreink.stl');
+dev.translate(-2.5, -2.5, -2.5); dev.rotateZ(Math.PI); dev.translate(C.device.w + C.device.x0, C.device.h + C.device.y0, C.device.z0);
+g.add(new THREE.Mesh(dev, mat(0xe9e9e4, { roughness: 0.5 })));
+const tex = await new THREE.TextureLoader().loadAsync('screen.png'); tex.colorSpace = THREE.SRGBColorSpace;
+const scr = new THREE.Mesh(new THREE.PlaneGeometry(27.6, 27.6), new THREE.MeshBasicMaterial({ map: tex }));
+scr.position.set(...C.screen); g.add(scr);           // upright: the firmware turns the picture over
+if (xray) {   // the controls' boards in the tail
+  const board = (w, h, y) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, 1.6), mat(0x1f5fa8)); m.position.set(C.W / 2, y, C.tail.t - 8); g.add(m); };
+  board(24, 22, C.tail.stick_y); board(22, 20, C.tail.button_y);
+}
+if (view.startsWith('broom') || view === 'side') {
+  await add('model-case-handle.stl', mat(0xe9e6df, { roughness: 0.4 }));
+  await add('model-case-strap.stl', mat(0x1c1d20, { roughness: 0.95 }));
+}
+g.position.set(-C.W / 2, -C.H / 2, -C.T / 2);
+const views = {
+  front: [[55, 40, 230], [0, 0, 0]],
+  face: [[0, 0, 240], [0, 0, 0]],
+  top: [[-40, 140, 120], [0, 40, 0]],
+  left: [[-200, 30, 80], [0, 5, 0]],
+  side: [[230, 20, 10], [0, 0, -8]],
+  broom: [[160, 40, 200], [0, -5, -10]],
+  'broom-hand': [[-40, -190, 170], [0, 5, -6]],
+  back: [[-60, 30, -220], [0, 0, -4]],
+  xray: [[-60, 40, 200], [0, 0, 0]],
+};
+const [pos, look] = views[view] || views.front;
+const cam = new THREE.PerspectiveCamera(30, W / H, 1, 3000);
+cam.position.set(...pos); cam.lookAt(...look);
+renderer.render(scene, cam);
+document.title = 'done';
+</script></body></html>
