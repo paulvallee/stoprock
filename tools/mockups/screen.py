@@ -322,8 +322,8 @@ def basic_intro():
     title.set_variation_by_name("ExtraBold")
     emphasis = ImageFont.truetype(str(NUNITO), 25)
     emphasis.set_variation_by_name("ExtraBold")
-    for text, font, y in (("click any button", title, 74), ("to start the", title, 99),
-                          ("stopwatch!", emphasis, 124)):
+    for text, font, y in (("Press the top or", title, 74), ("side button to", title, 99),
+                          ("start timing!", emphasis, 124)):
         text_in_box(d, text, font, 0, W, y, y, align="center")
     return img
 

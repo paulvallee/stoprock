@@ -422,7 +422,7 @@ CARDS = {
     "read": ("Read the times", read_the_times, ("The big numbers show the", "last stone you timed.")),
     "turn": ("Who's throwing", whose_turn, ("The highlight moves by", "itself, or use the rocker.")),
     "fix": ("Wrong player?", move_time, ("Hold up to move the", "last time one player left.")),
-    "rocks": ("Log your shot", log_shot, ("Hold down twice for rocks:", "Up: made. Down: missed.")),
+    "rocks": ("Log your shot", log_shot, ("Hold down again for rocks:", "Up: made. Down: missed.")),
     "older": ("Older times", older_times, ("Hold down to see older", "times. Hold up to return.")),
     "basic_older": ("Older stones", lambda c: older_times(c, basic=True), ("Down: older stones.", "Up: newer stones.")),
     "position": ("Your position", position, ("Double-click the middle", "to change your position.")),
@@ -437,8 +437,9 @@ DECKS = {
     "Basic": ("buttons", "stone", "h2h", "read", "basic_older", "undo_times", "off", "menu"),
     "Competition": ("buttons", "stone", "h2h", "read", "turn", "fix", "older", "position", "undo_times", "off",
                     "menu"),
-    "League": ("buttons", "stone", "h2h", "read", "turn", "fix", "rocks", "older", "position", "undo", "off", "menu"),
-    "Coach": ("buttons", "stone", "h2h", "read", "turn", "fix", "rocks", "older", "pages", "undo", "off", "menu"),
+    # Older times (hold down once) before Log your shot (hold down again): the order the holds go in
+    "League": ("buttons", "stone", "h2h", "read", "turn", "fix", "older", "rocks", "position", "undo", "off", "menu"),
+    "Coach": ("buttons", "stone", "h2h", "read", "turn", "fix", "older", "rocks", "pages", "undo", "off", "menu"),
 }
 
 

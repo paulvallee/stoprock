@@ -14,7 +14,7 @@ the firmware (`firmware/lib/stoprock_ui/src/tutorial_data.cpp`), each card whole
 |---|---|
 | Basic (8) | Timing buttons, Time a stone, Hog to hog only, Read the times, Older stones, Undo, Turn off, Skip the menu |
 | Competition (11) | Timing buttons, Time a stone, Hog to hog only, Read the times, Who's throwing, Wrong player?, Older times, Your position, Undo, Turn off, Skip the menu |
-| League (12) | as Competition, plus Log your shot |
+| League (12) | as Competition, plus Log your shot (after Older times: hold down once, then again) |
 | Coach (12) | as League, with Two pages instead of Your position |
 
 Timing first (Hog to hog only right after Time a stone, as a way to time one), then reading and the rocker, then power.
@@ -28,7 +28,7 @@ Timing first (Hog to hog only right after Time a stone, as a way to time one), t
 | Read the times | The big numbers show the / last stone you timed. |
 | Who's throwing | The highlight moves by / itself, or use the rocker. |
 | Wrong player? | Hold up to move the / last time one player left. |
-| Log your shot | Hold down twice for rocks: / Up: made. Down: missed. |
+| Log your shot | Hold down again for rocks: / Up: made. Down: missed. |
 | Older times | Hold down to see older / times. Hold up to return. |
 | Older stones (Basic) | Down: older stones. / Up: newer stones. |
 | Your position | Double-click the middle / to change your position. |
