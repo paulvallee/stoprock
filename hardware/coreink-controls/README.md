@@ -67,6 +67,11 @@ Inside (the `cut`, `cut-tail` and `xray` views):
 - the **Adafruit 1119** tactile switch sits on a shelf, two wires soldered to its legs;
 - printed caps: the stick's on the switch's stem, the 16 mm button's on the switch's actuator.
 
+The stick's cap is PS2-style but sized to the switch's short travel (`stick-cap.png`): 13 mm across, a
+dished top, a ribbed rim, printed in TPU for a soft grip, standing about 5 mm proud. The switch registers a
+tilt of about 3 degrees, about 0.4 mm at the cap's rim; a low collar round it, 1 mm clear, guards its edge
+from a glove and stops it tilting much further.
+
 Soldering: 7 pads on the 5-way board and 2 legs on the switch, 9 joints in all. The CoreInk end plugs
 in (jumper plugs on the right-angle header).
 

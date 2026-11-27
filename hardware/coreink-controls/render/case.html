@@ -27,7 +27,7 @@ const xray = view === 'xray', cut = view.startsWith('cut');
 const shellMat = xray ? mat(0x2b2e33, { roughness: 0.8, transparent: true, opacity: 0.22, depthWrite: false })
                       : mat(0x2b2e33, { roughness: 0.8, side: THREE.DoubleSide });
 await add(cut ? 'model-case-cut.stl' : 'model-case-body.stl', shellMat);
-await add('model-case-stick.stl', mat(0x55595f, { roughness: 0.6 }));
+await add('model-case-stick.stl', mat(0x4a4e54, { roughness: 0.95 }));   // soft-touch
 await add('model-case-button.stl', mat(0xd9542b, { roughness: 0.5 }));
 // the CoreInk, turned over
 const dev = await load('model-coreink.stl');
@@ -104,6 +104,9 @@ const views = {
   back: [[-60, 30, -220], [0, 0, -4]],
   xray: [[-60, 40, 200], [0, 0, 0]],
   cut: [[150, 25, 45], [0, -6, 0]],
+  'stick-close': [[34, -2, 62], [0, -25, 4]],
+  'stick-side': [[78, -22, 8], [0, -25, 5]],
+  'cut-stick': [[66, -16, 22], [0, -26, 3]],
   'cut-tail': [[120, 10, 40], [0, -32, 0]],
 };
 const [pos, look] = views[view] || views.front;

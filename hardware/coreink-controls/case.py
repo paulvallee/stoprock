@@ -39,7 +39,12 @@ DEV_Z0 = BACK + WIRING                 # its back face
 # ------------------------------------------------------------------ the tail: the stick above the button
 TAIL_W, TAIL_T = 30.0, 18.5            # as wide as the handle (about 29 mm); thinner than the body
 SKIN = 1.6                             # the tail's front wall
-STICK_KNOB, BUTTON = 10.0, 16.0
+STICK_KNOB, BUTTON = 13.0, 16.0        # the stick's cap: PS2-style, sized to the switch's short travel
+# The switch registers a tilt of about 0.25 mm at 4.3 mm up its stem (about 3 degrees): at the 13 mm cap's
+# rim that is about 0.4 mm. A low collar round the cap, 1 mm clear of it, guards its edge from a glove and
+# stops it tilting much further than that.
+COLLAR = dict(inner=STICK_KNOB / 2 + 1.0, outer=STICK_KNOB / 2 + 3.2, height=1.6)
+CAP_LIFT = 1.0                         # the cap's underside above the face, inside the collar
 RAMP = 9.0                             # the face slopes down from the body to the tail over this length
 STICK_Y = 13.0 + 10.0 + 2.0 + 8.0      # from the tail's bottom: margin, button well, gap, stick well
 BUTTON_Y = 13.0
@@ -125,7 +130,7 @@ def body():
     power = rounded_rect(py1 - py0, 10.0, 3.0).extrude(WALL + FIT + 2.0).rotate((0, 90, 0)).translate((-1.0, (py0 + py1) / 2, DEV_Z0 + 8.05))
     # wells round the stick and the button
     wells = []
-    for y, d, depth in ((STICK_Y, STICK_KNOB + 6, 2.0), (BUTTON_Y, BUTTON + 4, 1.6)):
+    for y, d, depth in ((BUTTON_Y, BUTTON + 4, 1.6),):
         wells.append(Manifold.batch_hull([
             Manifold.cylinder(0.01, d / 2 - depth, circular_segments=SEG).translate((W / 2, y, TAIL_T - depth)),
             Manifold.cylinder(0.01, d / 2 + depth, circular_segments=SEG).translate((W / 2, y, TAIL_T + 0.01)),
@@ -134,8 +139,13 @@ def body():
         (W / 2, -1, SADDLE_DEPTH - HANDLE_R - 0.3))
     tunnels = [Manifold.cube((W + 2, STRAP_W + 1, TUNNEL_Z[1] - TUNNEL_Z[0])).translate((-1, y - (STRAP_W + 1) / 2, TUNNEL_Z[0]))
                for y in TUNNEL_YS]
-    cut = window + port + port_bevel + dial + power + wells[0] + wells[1] + saddle + tunnels[0] + tunnels[1]
-    return shell - cut - inside() + mounts()
+    cut = window + port + port_bevel + dial + power + wells[0] + saddle + tunnels[0] + tunnels[1]
+    # the collar round the stick: a low ring on the tail's face, its top rounded
+    ring = Manifold.batch_hull([
+        Manifold.cylinder(0.01, COLLAR["outer"], circular_segments=SEG).translate((W / 2, STICK_Y, TAIL_T - 0.5)),
+        Manifold.cylinder(0.01, COLLAR["outer"] - 0.8, circular_segments=SEG).translate((W / 2, STICK_Y, TAIL_T + COLLAR["height"])),
+    ]) - Manifold.cylinder(TAIL_T, COLLAR["inner"], circular_segments=SEG).translate((W / 2, STICK_Y, TAIL_T - 1.0))
+    return shell + ring - cut - inside() + mounts()
 
 
 def header_box():
@@ -183,16 +193,35 @@ def mounts():
 
 
 def stick():
-    """The printed cap on the 5-way switch's stem: a skirt down through the hole, the knob above."""
+    """The PS2-style cap on the 5-way switch's stem: a shaft down through the hole onto the stem, a 13 mm
+    head with a dished top and a ribbed grip ring round its rim."""
+    x, y = W / 2, STICK_Y
     stem_top = PMD_Z + PMD_T + SWITCH[1] + STEM[1]
-    post = (Manifold.cylinder(TAIL_T - (stem_top - 2.5), 4.0, circular_segments=SEG).translate((W / 2, STICK_Y, stem_top - 2.5))
-            - Manifold.cube((STEM[0] + 0.2, STEM[0] + 0.2, 2.6), center=True).translate((W / 2, STICK_Y, stem_top - 1.2)))
-    cap = Manifold.cylinder(3.2, STICK_KNOB / 2, STICK_KNOB / 2 - 0.6, circular_segments=SEG).translate((W / 2, STICK_Y, TAIL_T - 0.6))
-    dish = Manifold.sphere(9, circular_segments=SEG).translate((W / 2, STICK_Y, TAIL_T + 2.6 + 9 - 0.5))
-    knob = cap - dish
-    for a in range(0, 180, 30):
-        knob = knob - Manifold.cube((0.8, STICK_KNOB, 0.6), center=True).rotate((0, 0, a)).translate((W / 2, STICK_Y, TAIL_T + 2.2))
-    return post + knob
+    base = TAIL_T + CAP_LIFT                    # the head's underside
+    shaft = (Manifold.cylinder(base - (stem_top - 2.5) + 0.5, 3.6, circular_segments=SEG).translate((x, y, stem_top - 2.5))
+             - Manifold.cube((STEM[0] + 0.2, STEM[0] + 0.2, 2.6), center=True).translate((x, y, stem_top - 1.2)))
+    r, h = STICK_KNOB / 2, 4.2
+    # the head: a slightly flared drum with a rounded rim (a hull of rings)
+    head = Manifold.batch_hull([
+        Manifold.cylinder(0.01, r - 0.8, circular_segments=SEG).translate((x, y, base)),
+        Manifold.cylinder(0.01, r, circular_segments=SEG).translate((x, y, base + 1.4)),
+        Manifold.cylinder(0.01, r, circular_segments=SEG).translate((x, y, base + h - 0.9)),
+        Manifold.cylinder(0.01, r - 0.7, circular_segments=SEG).translate((x, y, base + h)),
+    ])
+    # the dish: a shallow spherical hollow in the top
+    dish_r = 14.0
+    head = head - Manifold.sphere(dish_r, circular_segments=SEG * 2).translate((x, y, base + h + dish_r - 1.5))
+    # the grip ring: small ribs round the rim's side, like a PS2 cap's knurled edge
+    for i in range(36):
+        a = i * 10
+        rib = Manifold.cube((0.6, 0.9, h - 2.0), center=True).translate((r, 0, 0)).rotate((0, 0, a)).translate((x, y, base + h / 2 + 0.2))
+        head = head - rib
+    # a texture ring of tiny pits on the dish's flat
+    for i in range(18):
+        a = i * 20
+        pit = Manifold.sphere(0.45, circular_segments=12).translate((r - 2.0, 0, 0)).rotate((0, 0, a)).translate((x, y, base + h - 0.85))
+        head = head - pit
+    return shaft + head
 
 
 def button():
