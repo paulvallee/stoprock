@@ -26,7 +26,7 @@ SEG = 64
 # ------------------------------------------------------------------ the CoreInk, turned over
 DEV_W, DEV_H, DEV_T = CI["body"]["width"], CI["body"]["height"], CI["body"]["depth"]   # 40 x 56 x 16
 FIT, WALL = 0.2, 2.5
-BACK = 4.0            # the back under the CoreInk's wiring: the saddle and the strap tunnels
+BACK = 6.5            # the back under the CoreInk's wiring: the saddle, and the strap tunnels under the wiring
 WIRING = 5.5          # room behind the CoreInk for the right-angle header and its plugs
 LIP = 1.5             # the front frame over the CoreInk's face
 EDGE = 2.0            # the front edge's rounding
@@ -37,7 +37,8 @@ DEV_X0 = WALL + FIT                    # the CoreInk's left edge (as the case is
 DEV_Z0 = BACK + WIRING                 # its back face
 
 # ------------------------------------------------------------------ the tail: the stick above the button
-TAIL_W, TAIL_T = 30.0, 16.0            # as wide as the handle (about 29 mm); thinner than the body
+TAIL_W, TAIL_T = 30.0, 18.5            # as wide as the handle (about 29 mm); thinner than the body
+SKIN = 1.6                             # the tail's front wall
 STICK_KNOB, BUTTON = 10.0, 16.0
 RAMP = 9.0                             # the face slopes down from the body to the tail over this length
 STICK_Y = 13.0 + 10.0 + 2.0 + 8.0      # from the tail's bottom: margin, button well, gap, stick well
@@ -48,8 +49,31 @@ H = DEV_Y0 + DEV_H + FIT + WALL
 
 HANDLE_R, SADDLE_DEPTH = 14.3, 3.0     # 1 1/8" handle (28.6 mm)
 STRAP_W = 16.0
-TUNNEL_Z = (SADDLE_DEPTH + 0.4, SADDLE_DEPTH + 0.4 + 2.4)
+TUNNEL_Z = (SADDLE_DEPTH + 0.4, SADDLE_DEPTH + 0.4 + 2.2)
 TUNNEL_YS = (DEV_Y0 + 11.0, DEV_Y0 + 49.0)
+
+
+# ------------------------------------------------------------------ the parts inside
+# The right-angle header in the CoreInk's back socket (window x 3.5-8.75, y 8.75-29.75 in its own
+# coordinates): its legs in the socket's two columns, its body beside the window, the bent pins and the
+# jumper plugs on them lying across the back toward the middle. Socket pin n: column n odd/even, position
+# (n - 1) // 2 along the socket; the 8 pins not used are snipped off.
+SOCKET_COLS = (4.855, 7.395)
+HEADER_BODY = (9.0, 11.5)              # its x span, CoreInk coordinates
+PLUG_LEN = 14.0
+ROW_Z = {1: -3.81, 0: -1.27}           # below the CoreInk's back: odd pins in the far row, even in the near
+PINS = {1: "gnd", 6: "vcc", 7: "up", 8: "down", 14: "left", 12: "right", 13: "centre", 16: "time"}
+# PMD Way's 5-way breakout (SparkFun's design): about 20.3 x 19 x 1.6, the switch in the middle, a row of 7
+# pads (+ U C L D R -) along one edge. It is mounted turned round, the pads toward the CoreInk; the firmware
+# maps the directions back. Wires are soldered to the pads from behind.
+PMD_W, PMD_H, PMD_T = 20.3, 19.0, 1.6
+PMD_PADS = ("-", "R", "D", "L", "C", "U", "+")     # left to right, as seen from the front, turned round
+PMD_Z = BACK + 2.0                     # the board stands on posts, the wires under it
+SWITCH = (7.5, 3.5)                    # the 5-way switch body's side and height
+STEM = (2.6, 3.5)
+# Adafruit 1119: a 12 mm tactile switch, 6 mm tall with its actuator; its legs at the corners.
+TACT = (12.0, 3.8, 2.2)                # body side, body height, actuator height
+TACT_Z = TAIL_T - SKIN - TACT[1] - TACT[2]           # on a shelf; its actuator meets the cap
 
 
 def dev(x, y):
@@ -111,11 +135,58 @@ def body():
     tunnels = [Manifold.cube((W + 2, STRAP_W + 1, TUNNEL_Z[1] - TUNNEL_Z[0])).translate((-1, y - (STRAP_W + 1) / 2, TUNNEL_Z[0]))
                for y in TUNNEL_YS]
     cut = window + port + port_bevel + dial + power + wells[0] + wells[1] + saddle + tunnels[0] + tunnels[1]
-    return shell - cut
+    return shell - cut - inside() + mounts()
+
+
+def header_box():
+    """The pocket behind the CoreInk for the header and its plugs, in case coordinates (x0, x1, y0, y1)."""
+    ys = [DEV_Y0 + DEV_H - pin_y(n) for n in PINS]
+    x0 = DEV_X0 + DEV_W - (HEADER_BODY[1] + 0.6 + PLUG_LEN) - 1.0
+    x1 = DEV_X0 + DEV_W - SOCKET_COLS[0] + 1.5
+    return x0, x1, min(ys) - 2.5, max(ys) + 2.5
+
+
+def pin_y(n):
+    return 19.25 + ((n - 1) // 2 - 3.5) * 2.54
+
+
+def inside():
+    """What is hollow: the CoreInk's pocket, the header's pocket behind it, the conduit down through the
+    shoulder, and the tail's inside."""
+    pocket = Manifold.cube((DEV_W + 2 * FIT, DEV_H + 2 * FIT, DEV_T + 0.01)).translate((DEV_X0 - FIT, DEV_Y0 - FIT, DEV_Z0))
+    x0, x1, y0, y1 = header_box()
+    header = Manifold.cube((x1 - x0, y1 - y0, WIRING + 0.01)).translate((x0, y0, BACK))
+    conduit_top = y0 + 4.0
+    conduit = Manifold.cube((10.0, conduit_top - (SHOULDER - RAMP - 2.0), WIRING + 0.01)).translate(
+        (W / 2 - 7.0, SHOULDER - RAMP - 2.0, BACK))
+    # the conduit's turn into the header pocket
+    turn = Manifold.cube((W / 2 + 3.0 - x0, 6.0, WIRING + 0.01)).translate((x0, y0, BACK))
+    tail = (rounded_rect(TAIL_W - 4.0, SHOULDER - RAMP, 8.0, W / 2, (SHOULDER - RAMP) / 2 + 2.0)
+            .extrude(TAIL_T - SKIN - BACK).translate((0, 0, BACK)))
+    holes = (Manifold.cylinder(TAIL_T, 6.2, circular_segments=SEG).translate((W / 2, STICK_Y, BACK))
+             + Manifold.cylinder(TAIL_T, BUTTON / 2 + 0.4, circular_segments=SEG).translate((W / 2, BUTTON_Y, BACK)))
+    return pocket + header + conduit + turn + tail + holes
+
+
+def mounts():
+    """Four posts with pegs for the 5-way board's corner holes, and a shelf under the tactile switch."""
+    m = None
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            x, y = W / 2 + sx * (PMD_W / 2 - 2.6), STICK_Y + sy * (PMD_H / 2 - 2.6)
+            post = (Manifold.cylinder(PMD_Z - BACK, 2.2, circular_segments=SEG).translate((x, y, BACK - 0.01))
+                    + Manifold.cylinder(PMD_T + 0.6, 1.1, circular_segments=SEG).translate((x, y, PMD_Z - 0.01)))
+            m = post if m is None else m + post
+    shelf = Manifold.cube((TACT[0] - 1.0, TACT[0] - 5.0, TACT_Z - BACK + 0.01)).translate(
+        (W / 2 - (TACT[0] - 1.0) / 2, BUTTON_Y - (TACT[0] - 5.0) / 2, BACK - 0.01))
+    return m + shelf
 
 
 def stick():
-    post = Manifold.cylinder(2.0, 2.2, circular_segments=SEG).translate((W / 2, STICK_Y, TAIL_T - 2.2))
+    """The printed cap on the 5-way switch's stem: a skirt down through the hole, the knob above."""
+    stem_top = PMD_Z + PMD_T + SWITCH[1] + STEM[1]
+    post = (Manifold.cylinder(TAIL_T - (stem_top - 2.5), 4.0, circular_segments=SEG).translate((W / 2, STICK_Y, stem_top - 2.5))
+            - Manifold.cube((STEM[0] + 0.2, STEM[0] + 0.2, 2.6), center=True).translate((W / 2, STICK_Y, stem_top - 1.2)))
     cap = Manifold.cylinder(3.2, STICK_KNOB / 2, STICK_KNOB / 2 - 0.6, circular_segments=SEG).translate((W / 2, STICK_Y, TAIL_T - 0.6))
     dish = Manifold.sphere(9, circular_segments=SEG).translate((W / 2, STICK_Y, TAIL_T + 2.6 + 9 - 0.5))
     knob = cap - dish
@@ -150,6 +221,29 @@ def strap():
     return parts[0] + parts[1]
 
 
+def inside_parts():
+    """Positions of the parts inside, for the render (case coordinates)."""
+    dx = lambda x: DEV_X0 + DEV_W - x   # noqa: E731  (the CoreInk is turned over)
+    pins = []
+    for n, what in PINS.items():
+        row = n % 2
+        pins.append(dict(n=n, what=what, y=DEV_Y0 + DEV_H - pin_y(n), z=DEV_Z0 + ROW_Z[row],
+                         socket_x=dx(SOCKET_COLS[0] if row else SOCKET_COLS[1])))
+    pads = {name: W / 2 + (i - 3) * 2.54 for i, name in enumerate(PMD_PADS)}
+    pad_y = STICK_Y + PMD_H / 2 - 1.6
+    ends = {"gnd": (pads["-"], pad_y), "vcc": (pads["+"], pad_y), "up": (pads["U"], pad_y), "down": (pads["D"], pad_y),
+            "left": (pads["L"], pad_y), "right": (pads["R"], pad_y), "centre": (pads["C"], pad_y),
+            "time": (W / 2 + TACT[0] / 2 + 0.3, BUTTON_Y + 2.5)}
+    return dict(
+        header=dict(body_x=[dx(HEADER_BODY[1]), dx(HEADER_BODY[0])], plug_x=[dx(HEADER_BODY[1] + 0.6 + PLUG_LEN), dx(HEADER_BODY[1] + 0.6)],
+                    z_back=DEV_Z0, pins=pins),
+        ends={k: [x, y] for k, (x, y) in ends.items()},
+        conduit_x=W / 2 - 2.0, wire_z=BACK + 1.0,
+        pmd=dict(x=W / 2, y=STICK_Y, z=PMD_Z, w=PMD_W, h=PMD_H, t=PMD_T, switch=list(SWITCH), stem=list(STEM)),
+        tact=dict(x=W / 2, y=BUTTON_Y, z=TACT_Z, size=list(TACT), gnd_leg=[W / 2 - TACT[0] / 2 - 0.3, BUTTON_Y + 2.5]),
+        shoulder=SHOULDER, ramp=RAMP)
+
+
 def save(m, name):
     mesh = m.to_mesh()
     trimesh.Trimesh(vertices=np.asarray(mesh.vert_properties)[:, :3], faces=np.asarray(mesh.tri_verts)).export(OUT / f"model-case-{name}.stl")
@@ -157,12 +251,16 @@ def save(m, name):
 
 if __name__ == "__main__":
     OUT.mkdir(exist_ok=True)
-    for name, part in (("body", body()), ("stick", stick()), ("button", button()), ("handle", handle()), ("strap", strap())):
+    b = body()
+    half = Manifold.cube((W / 2 + 0.3, H + 10, T + 10)).translate((-1, -5, -5))   # the left half, cut through the conduit
+    for name, part in (("body", b), ("cut", b ^ half), ("stick", stick()), ("button", button()), ("handle", handle()),
+                       ("strap", strap())):
         save(part, name)
     sx, sy = dev(*CI["front"]["screen_window_centre"])
     (OUT / "case.json").write_text(json.dumps(dict(
         W=W, H=H, T=T, screen=[sx, sy, DEV_Z0 + DEV_T + 0.05],
         # the CoreInk model (its own coordinates, offset 2.5 in M5Stack's file) turned over and placed
         device=dict(x0=DEV_X0, y0=DEV_Y0, z0=DEV_Z0, w=DEV_W, h=DEV_H),
-        tail=dict(stick_y=STICK_Y, button_y=BUTTON_Y, t=TAIL_T)), indent=1))
+        tail=dict(stick_y=STICK_Y, button_y=BUTTON_Y, t=TAIL_T),
+        inside=inside_parts()), indent=1))
     print(f"case {W:.1f} x {H:.1f} x {T:.1f} mm (tail {TAIL_W:.0f} wide, {TAIL_T:.0f} thick)")

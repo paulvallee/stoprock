@@ -23,20 +23,70 @@ const load = (f) => new Promise((ok, bad) => loader.load(f, g => { g.computeVert
 const mat = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.7, ...extra });
 const g = new THREE.Group(); scene.add(g);
 const add = async (file, material) => { const m = new THREE.Mesh(await load(file), material); g.add(m); return m; };
-const xray = view === 'xray';
-await add('model-case-body.stl', mat(0x2b2e33, xray ? { roughness: 0.8, transparent: true, opacity: 0.25, depthWrite: false } : { roughness: 0.8 }));
+const xray = view === 'xray', cut = view.startsWith('cut');
+const shellMat = xray ? mat(0x2b2e33, { roughness: 0.8, transparent: true, opacity: 0.22, depthWrite: false })
+                      : mat(0x2b2e33, { roughness: 0.8, side: THREE.DoubleSide });
+await add(cut ? 'model-case-cut.stl' : 'model-case-body.stl', shellMat);
 await add('model-case-stick.stl', mat(0x55595f, { roughness: 0.6 }));
 await add('model-case-button.stl', mat(0xd9542b, { roughness: 0.5 }));
 // the CoreInk, turned over
 const dev = await load('model-coreink.stl');
 dev.translate(-2.5, -2.5, -2.5); dev.rotateZ(Math.PI); dev.translate(C.device.w + C.device.x0, C.device.h + C.device.y0, C.device.z0);
-g.add(new THREE.Mesh(dev, mat(0xe9e9e4, { roughness: 0.5 })));
+const devMesh = new THREE.Mesh(dev, mat(0xe9e9e4, { roughness: 0.5, ...(cut ? { transparent: true, opacity: 0.35, depthWrite: false } : {}) }));
+g.add(devMesh);
 const tex = await new THREE.TextureLoader().loadAsync('screen.png'); tex.colorSpace = THREE.SRGBColorSpace;
 const scr = new THREE.Mesh(new THREE.PlaneGeometry(27.6, 27.6), new THREE.MeshBasicMaterial({ map: tex }));
 scr.position.set(...C.screen); g.add(scr);           // upright: the firmware turns the picture over
-if (xray) {   // the controls' boards in the tail
-  const board = (w, h, y) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, 1.6), mat(0x1f5fa8)); m.position.set(C.W / 2, y, C.tail.t - 8); g.add(m); };
-  board(24, 22, C.tail.stick_y); board(22, 20, C.tail.button_y);
+
+// --- the parts inside: the header and its plugs, the wires down the conduit, the 5-way board, the switch
+if (xray || cut) {
+  const I = C.inside, gold = { metalness: 0.8, roughness: 0.3 };
+  const box = (w, h, d, color, x, y, z, extra = {}) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(color, extra)); m.position.set(x, y, z); g.add(m); return m; };
+  const rod = (a, b, r, color, extra = {}) => {
+    const A = new THREE.Vector3(...a), B = new THREE.Vector3(...b), len = A.distanceTo(B);
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, len, 16), mat(color, extra));
+    m.position.copy(A.clone().add(B).multiplyScalar(0.5));
+    m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), B.clone().sub(A).normalize()); g.add(m); return m;
+  };
+  const H_ = I.header, zb = H_.z_back;
+  const ys = H_.pins.map(p => p.y);
+  box(H_.body_x[1] - H_.body_x[0], Math.max(...ys) - Math.min(...ys) + 2.54, 5.1, 0x1b1c1f,
+      (H_.body_x[0] + H_.body_x[1]) / 2, (Math.max(...ys) + Math.min(...ys)) / 2, zb - 2.55);
+  const colours = { gnd: 0x202124, vcc: 0xd93025, up: 0xf6c026, down: 0x34a853, left: 0x4285f4, right: 0xa142f4, centre: 0xff8c1a, time: 0xffffff };
+  const P = I.pmd, T_ = I.tact;
+  for (const pin of H_.pins) {
+    rod([pin.socket_x, pin.y, zb + 2.5], [pin.socket_x, pin.y, pin.z], 0.32, 0xd4af37, gold);       // leg, into the socket
+    rod([pin.socket_x, pin.y, pin.z], [H_.body_x[0], pin.y, pin.z], 0.32, 0xd4af37, gold);           // the bend
+    box(H_.plug_x[1] - H_.plug_x[0], 2.5, 2.5, 0x18191b, (H_.plug_x[0] + H_.plug_x[1]) / 2, pin.y, pin.z, { roughness: 0.8 });
+    // the wire: out of the plug, along the pocket, down the conduit, behind the board to its pad
+    const [ex, ey] = I.ends[pin.what];
+    const toTact = pin.what === 'time';
+    const endZ = toTact ? T_.z + 1.0 : P.z - 0.1;
+    const zw = I.wire_z + 0.4 + (pin.n % 4) * 0.7;
+    const pts = [[H_.plug_x[0], pin.y, pin.z], [H_.plug_x[0] - 3, pin.y - 0.5, zw + 1],
+                 [I.conduit_x - 1.5 + (pin.n % 5) * 0.8, Math.min(...ys) - 3, zw],
+                 [I.conduit_x - 1.5 + (pin.n % 5) * 0.8, I.shoulder - I.ramp - 4, zw],
+                 [ex, (toTact ? T_.y + 8 : ey + 4), zw], [ex, ey, endZ]];
+    const curve = new THREE.CatmullRomCurve3(pts.map(p => new THREE.Vector3(...p)), false, 'centripetal');
+    g.add(new THREE.Mesh(new THREE.TubeGeometry(curve, 120, 0.5, 10, false), mat(colours[pin.what], { roughness: 0.5 })));
+  }
+  // the button's ground: a short wire from the board's GND pad to the switch's other leg
+  const gp = I.ends.gnd, gl = T_.gnd_leg;
+  const link = new THREE.CatmullRomCurve3([[gp[0], gp[1], P.z - 0.1], [gp[0], gp[1] + 3, I.wire_z + 0.6], [gl[0], T_.y + 8, I.wire_z + 0.6], [gl[0], gl[1], T_.z + 1.0]]
+    .map(p => new THREE.Vector3(...p)), false, 'centripetal');
+  g.add(new THREE.Mesh(new THREE.TubeGeometry(link, 60, 0.5, 10, false), mat(0x202124)));
+  // the 5-way board (turned round: pads toward the CoreInk), its switch, stem and resistors
+  box(P.w, P.h, P.t, 0xc0262d, P.x, P.y, P.z + P.t / 2, { roughness: 0.5 });
+  box(P.switch[0], P.switch[0], P.switch[1], 0xb8bcc2, P.x, P.y, P.z + P.t + P.switch[1] / 2, { metalness: 0.6, roughness: 0.35 });
+  box(P.stem[0], P.stem[0], P.stem[1], 0x1b1c1f, P.x, P.y, P.z + P.t + P.switch[1] + P.stem[1] / 2);
+  for (let i = 0; i < 5; i++) box(1.0, 2.0, 0.5, 0x222222, P.x + (i - 2) * 2.54, P.y + P.h / 2 - 4.6, P.z + P.t + 0.25);
+  for (let i = 0; i < 7; i++) { const m = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.75, 0.2, 16), mat(0xd4af37, gold)); m.rotation.x = Math.PI / 2; m.position.set(P.x + (i - 3) * 2.54, P.y + P.h / 2 - 1.6, P.z + P.t + 0.1); g.add(m); }
+  // the tactile switch on its shelf, its four legs
+  box(T_.size[0], T_.size[0], T_.size[1], 0x2b2e33, T_.x, T_.y, T_.z + T_.size[1] / 2);
+  const act = new THREE.Mesh(new THREE.CylinderGeometry(3.4, 3.4, T_.size[2], 24), mat(0x1b1c1f)); act.rotation.x = Math.PI / 2;
+  act.position.set(T_.x, T_.y, T_.z + T_.size[1] + T_.size[2] / 2); g.add(act);
+  for (const sx of [-1, 1]) for (const sy of [-1, 1])
+    rod([T_.x + sx * (T_.size[0] / 2 + 0.3), T_.y + sy * 2.5, T_.z + 1.5], [T_.x + sx * (T_.size[0] / 2 + 0.3), T_.y + sy * 2.5, T_.z - 1.5], 0.35, 0xc0c4c8, gold);
 }
 if (view.startsWith('broom') || view === 'side') {
   await add('model-case-handle.stl', mat(0xe9e6df, { roughness: 0.4 }));
@@ -53,6 +103,8 @@ const views = {
   'broom-hand': [[-40, -190, 170], [0, 5, -6]],
   back: [[-60, 30, -220], [0, 0, -4]],
   xray: [[-60, 40, 200], [0, 0, 0]],
+  cut: [[150, 25, 45], [0, -6, 0]],
+  'cut-tail': [[120, 10, 40], [0, -32, 0]],
 };
 const [pos, look] = views[view] || views.front;
 const cam = new THREE.PerspectiveCamera(30, W / H, 1, 3000);

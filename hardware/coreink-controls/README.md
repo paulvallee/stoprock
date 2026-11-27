@@ -49,11 +49,29 @@ node shoot.js && python3 sheet.py     # -> ../wiring.png
 
 ## The case (concept)
 
-`case.py` models a broom case round it: 45 x 114 x 27 mm, the stick and the timing button stacked in a
-30 mm tail (16 mm thick) below the CoreInk, the saddle on the back sitting on a 1 1/8" handle, a strap
-through two tunnels. The CoreInk sits **upside down**: its USB-C port (on its bottom edge) is then at the
-top of the case, open for charging, where the tail would otherwise cover it. The firmware turns the screen
-180 degrees and swaps the dial's up and down. The dial and the side button end up on the case's left
-side, both reachable; the top button ends up under the tail, covered (the stick and the new timing button
-take over). 27 mm thick: 4 for the saddle and tunnels, 5.5 for the wiring behind the CoreInk, its 16, and
-a 1.5 mm frame. Renders: `python3 case.py`, then in `render/` `node shoot-case.js && python3 sheet_case.py`.
+`case.py` models a broom case round it: **45 x 114 x 29.5 mm**, the stick and the timing button stacked
+in a 30 mm tail (18.5 mm thick) below the CoreInk, the saddle on the back sitting on a 1 1/8" handle, a
+strap through two tunnels under the wiring. The CoreInk sits **upside down**: its USB-C port (on its
+bottom edge) is then at the top of the case, open for charging, where the tail would otherwise cover it.
+The firmware turns the screen 180 degrees and swaps the dial's up and down. The dial and the side button
+end up on the case's left side, both reachable; the top button ends up under the tail, covered (the stick
+and the new timing button take over).
+
+Inside (the `cut`, `cut-tail` and `xray` views):
+
+- the CoreInk sits on a solid back, hollowed only where the right-angle header and its plugs are;
+- a **conduit** runs from there down through the shoulder into the tail;
+- **PMD Way's 5-way breakout** (20.3 x 19 mm, 10 kOhm pull-ups on board) sits on four posts with pegs
+  through its corner holes, turned round so its pads face the conduit (the firmware maps the directions
+  back); the wires are soldered to its pads from behind, no header on it;
+- the **Adafruit 1119** tactile switch sits on a shelf, two wires soldered to its legs;
+- printed caps: the stick's on the switch's stem, the 16 mm button's on the switch's actuator.
+
+Soldering: 7 pads on the 5-way board and 2 legs on the switch, 9 joints in all. The CoreInk end plugs
+in (jumper plugs on the right-angle header).
+
+Thickness, back to front: 6.5 (the saddle, and the strap tunnels under the wiring) + 5.5 (the header and
+its plugs) + 16 (the CoreInk) + 1.5 (the frame). Still to work out: how it opens (likely a back shell
+and a front frame screwed together at the CoreInk's back), and how the CoreInk is held.
+
+Renders: `python3 case.py`, then in `render/` `node shoot-case.js && python3 sheet_case.py`.
