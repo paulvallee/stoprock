@@ -3,7 +3,7 @@
 The CoreInk's back socket (2 x 8, 2.54 mm, female) carries six free inputs, enough for a 5-way stick and
 a timing button; the Grove port stays free. A right-angle header plugs into the socket so the wiring lies
 about 5-6 mm off the back instead of 12-14 with a straight plug. `wiring.png` shows it put together;
-`case.png` shows a broom case for it (`case.py`).
+`case.png` shows a broom case for it (`case.py`); [`BOM.md`](BOM.md) lists the parts and costs.
 
 ## Parts
 
